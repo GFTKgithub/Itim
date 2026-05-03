@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>מחולל לוח זמנים לגמרא</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @media print {
+            .no-print { display: none !important; }
+            body { background: white; p: 0; }
+            .calendar-month { page-break-inside: avoid; margin-bottom: 20px; border: 1px solid #ccc; }
+        }
+        .calendar-grid {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 1px;
+            background-color: #e5e7eb;
+        }
+        .calendar-day {
+            min-height: 90px;
+            background: white;
+            padding: 4px;
+            display: flex;
+            flex-direction: column;
+        }
+        .month-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.75rem 1.5rem;
+            background-color: #1e40af; /* כחול כהה */
+            color: white;
+        }
+        .shabbat-bg { background-color: #f0f7ff; }
+    </style>
+</head>
+<body class="bg-gray-100 font-sans text-gray-900 p-4 md:p-8">
+
+    <div class="max-w-4xl mx-auto">
+        <h1 class="text-3xl font-bold text-center mb-8 text-blue-800 no-print">מתכנן לימוד גמרא</h1>
+        
+        <!-- טופס קלט -->
+        <div class="bg-white p-6 rounded-lg shadow-md mb-8 no-print">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <label class="block font-semibold mb-1">בחר מסכת:</label>
+                    <select id="masechetSelect" class="w-full border rounded p-2">
+                        <option value="ברכות">ברכות</option>
+                        <option value="שבת">שבת</option>
+                        <option value="תענית">תענית</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label class="block font-semibold mb-1">שיטת חישוב:</label>
+                    <select id="calcMethod" class="w-full border rounded p-2" onchange="toggleInputs()">
+                        <option value="pace">לפי קצב דפים ליום</option>
+                        <option value="targetDate">לפי תאריך סיום יעד</option>
+                    </select>
+                </div>
+
+                <div id="paceSection">
+                    <label class="block font-semibold mb-1">דפים ליום:</label>
+                    <input type="number" id="paceInput" value="1" step="0.5" class="w-full border rounded p-2">
+                </div>
+
+                <div id="targetDateSection" class="hidden">
+                    <label class="block font-semibold mb-1">תאריך סיום יעד:</label>
+                    <input type="date" id="targetDateInput" class="w-full border rounded p-2">
+                </div>
+                
+                <div>
+                    <label class="block font-semibold mb-1">תאריך התחלה:</label>
+                    <input type="date" id="startDateInput" class="w-full border rounded p-2">
+                </div>
+
+                <div>
+                    <label class="block font-semibold mb-1">התחל מדף (אופציונלי):</label>
+                    <div class="flex gap-2">
+                        <input type="text" id="startDafInput" placeholder="למשל: טז" class="w-full border rounded p-2">
+                        <select id="startAmudSelect" class="border rounded p-2">
+                            <option value="א">א</option>
+                            <option value="ב">ב</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <div class="mt-4 flex items-center gap-2">
+                <input type="checkbox" id="IncludeShabbatInput" checked>
+                <label for="IncludeShabbatInput" class="font-semibold">למד בשבת</label>
+            </div>
+
+            <button onclick="generate()" class="w-full mt-6 bg-blue-600 text-white py-3 rounded font-bold hover:bg-blue-700 transition">צור לוח שנה</button>
+        </div>
+
+        <!-- הצגת לוח הזמנים -->
+        <div id="calendarContainer" class="space-y-12"></div>
+
+        <!-- כפתור הדפסה -->
+        <div id="printBtn" class="mt-8 flex justify-center hidden no-print">
+            <button onclick="window.print()" class="bg-gray-800 text-white px-8 py-3 rounded-lg shadow-lg flex items-center gap-2 hover:bg-black transition">
+                <span>🖨️ הדפס לוח לימוד מוכן</span>
+            </button>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
