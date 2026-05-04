@@ -8,7 +8,7 @@
     <style>
         @media print {
             .no-print { display: none !important; }
-            body { background: white; p: 0; }
+            body { background: white; }
             .calendar-month { page-break-inside: avoid; margin-bottom: 20px; border: 1px solid #ccc; }
         }
         .calendar-grid {
@@ -36,106 +36,132 @@
     </style>
 </head>
 <body class="bg-gray-100 font-sans text-gray-900 p-4 md:p-8">
-
+    <!-- החלף את תוכן ה-body הקיים בחלק של הטופס -->
     <div class="max-w-4xl mx-auto">
-        <h1 class="text-3xl font-bold text-center mb-8 text-blue-800 no-print">מתכנן לימוד גמרא</h1>
-        
-        <!-- טופס קלט -->
-        <div class="bg-white p-6 rounded-lg shadow-md mb-8 no-print">
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                    <label class="block font-semibold mb-1">בחר מסכת:</label>
-                    <select id="masechetSelect" class="w-full border rounded p-2">
-                        <option value="ברכות">ברכות</option>
-                        <option value="שבת">שבת</option>
-                        <option value="עירובין">עירובין</option>
-                        <option value="פסחים">פסחים</option>
-                        <option value="יומא">יומא</option>
-                        <option value="סוכה">סוכה</option>
-                        <option value="ביצה">ביצה</option>
-                        <option value="ראש השנה">ראש השנה</option>
-                        <option value="תענית">תענית</option>
-                        <option value="מגילה">מגילה</option>
-                        <option value="מועד קטן">מועד קטן</option>
-                        <option value="חגיגה">חגיגה</option>
-                        <option value="יבמות">יבמות</option>
-                        <option value="כתובות">כתובות</option>
-                        <option value="נדרים">נדרים</option>
-                        <option value="נזיר">נזיר</option>
-                        <option value="סוטה">סוטה</option>
-                        <option value="גיטין">גיטין</option>
-                        <option value="קידושין">קידושין</option>
-                        <option value="בבא קמא">בבא קמא</option>
-                        <option value="בבא מציעא">בבא מציעא</option>
-                        <option value="בבא בתרא">בבא בתרא</option>
-                        <option value="סנהדרין">סנהדרין</option>
-                        <option value="מכות">מכות</option>
-                        <option value="שבועות">שבועות</option>
-                        <option value="עבודה זרה">עבודה זרה</option>
-                        <option value="הוריות">הוריות</option>
-                        <option value="זבחים">זבחים</option>
-                        <option value="מנחות">מנחות</option>
-                        <option value="חולין">חולין</option>
-                        <option value="בכורות">בכורות</option>
-                        <option value="ערכין">ערכין</option>
-                        <option value="תמורה">תמורה</option>
-                        <option value="כריתות">כריתות</option>
-                        <option value="מעילה">מעילה</option>
-                        <option value="תמיד">תמיד</option>
-                        <option value="נדה">נדה</option>
-                    </select>
-                </div>
+        <h1 class="text-3xl font-bold text-center mb-8 text-blue-800 no-print font-serif">עיתים - מתכנן לימוד</h1>
 
-                <div>
-                    <label class="block font-semibold mb-1">שיטת חישוב:</label>
-                    <select id="calcMethod" class="w-full border rounded p-2" onchange="toggleInputs()">
-                        <option value="pace">לפי קצב דפים ליום</option>
-                        <option value="targetDate">לפי תאריך סיום יעד</option>
-                    </select>
-                </div>
-
-                <div id="paceSection">
-                    <label class="block font-semibold mb-1">דפים ליום:</label>
-                    <input type="number" id="paceInput" value="1" step="0.5" class="w-full border rounded p-2">
-                </div>
-
-                <div id="targetDateSection" class="hidden">
-                    <label class="block font-semibold mb-1">תאריך סיום יעד:</label>
-                    <input type="date" id="targetDateInput" class="w-full border rounded p-2">
-                </div>
-                
-                <div>
-                    <label class="block font-semibold mb-1">תאריך התחלה:</label>
-                    <input type="date" id="startDateInput" class="w-full border rounded p-2">
-                </div>
-
-                <div>
-                    <label class="block font-semibold mb-1">התחל מדף (אופציונלי):</label>
-                    <div class="flex gap-2">
-                        <input type="text" id="startDafInput" placeholder="למשל: טז" class="w-full border rounded p-2">
-                        <select id="startAmudSelect" class="border rounded p-2">
-                            <option value="א">א</option>
-                            <option value="ב">ב</option>
+        <div class="bg-white p-6 rounded-lg shadow-md mb-8 no-print border-t-4 border-blue-600">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <!-- בחירת מסכת ותור -->
+                <div class="bg-blue-50 p-4 rounded-lg">
+                    <label class="block font-bold mb-2">בניית מסלול לימוד:</label>
+                    <div class="flex gap-2 mb-3">
+                        <select id="masechetSelect" class="flex-1 border rounded p-2">
+                            <option value="ברכות">ברכות</option>
+                            <option value="שבת">שבת</option>
+                            <option value="עירובין">עירובין</option>
+                            <option value="פסחים">פסחים</option>
+                            <option value="יומא">יומא</option>
+                            <option value="סוכה">סוכה</option>
+                            <option value="ביצה">ביצה</option>
+                            <option value="ראש השנה">ראש השנה</option>
+                            <option value="תענית">תענית</option>
+                            <option value="מגילה">מגילה</option>
+                            <option value="מועד קטן">מועד קטן</option>
+                            <option value="חגיגה">חגיגה</option>
+                            <option value="יבמות">יבמות</option>
+                            <option value="כתובות">כתובות</option>
+                            <option value="נדרים">נדרים</option>
+                            <option value="נזיר">נזיר</option>
+                            <option value="סוטה">סוטה</option>
+                            <option value="גיטין">גיטין</option>
+                            <option value="קידושין">קידושין</option>
+                            <option value="בבא קמא">בבא קמא</option>
+                            <option value="בבא מציעא">בבא מציעא</option>
+                            <option value="בבא בתרא">בבא בתרא</option>
+                            <option value="סנהדרין">סנהדרין</option>
+                            <option value="מכות">מכות</option>
+                            <option value="שבועות">שבועות</option>
+                            <option value="עבודה זרה">עבודה זרה</option>
+                            <option value="הוריות">הוריות</option>
+                            <option value="זבחים">זבחים</option>
+                            <option value="מנחות">מנחות</option>
+                            <option value="חולין">חולין</option>
+                            <option value="בכורות">בכורות</option>
+                            <option value="ערכין">ערכין</option>
+                            <option value="תמורה">תמורה</option>
+                            <option value="כריתות">כריתות</option>
+                            <option value="מעילה">מעילה</option>
+                            <option value="תמיד">תמיד</option>
+                            <option value="נדה">נדה</option>
                         </select>
+                        <button onclick="addToSequence()"
+                            class="bg-blue-600 text-white px-4 py-2 rounded font-bold hover:bg-blue-700">+</button>
+                    </div>
+                    <div class="flex justify-between items-center mb-2">
+                        <label class="block font-bold">בניית מסלול לימוד:</label>
+                        <button onclick="clearSequence()" class="text-xs text-red-600 hover:underline no-print">נקה הכל</button>
+                    </div>
+                    <ul id="sequenceList"
+                        class="space-y-2 max-h-40 overflow-y-auto bg-white p-2 rounded border min-h-[50px]">
+
+                    </ul>
+                </div>
+
+                <!-- הגדרות כלליות -->
+                <div class="space-y-4">
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block font-semibold mb-1 text-sm">שיטת חישוב:</label>
+                            <select id="calcMethod" class="w-full border rounded p-2 text-sm" onchange="toggleInputs()">
+                                <option value="pace">קצב דפים ליום</option>
+                                <option value="targetDate">תאריך סיום סופי</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block font-semibold mb-1 text-sm text-blue-600">ימי הפסקה בין מסכתות:</label>
+                            <input type="number" id="breakDaysInput" value="0" min="0"
+                                class="w-full border rounded p-2 text-sm" placeholder="ימים">
+                        </div>
+                    </div>
+
+                    <div id="paceSection">
+                        <label class="block font-semibold mb-1 text-sm">דפים ליום:</label>
+                        <input type="number" id="paceInput" value="1" step="0.5" class="w-full border rounded p-2 text-sm">
+                    </div>
+
+                    <div id="targetDateSection" class="hidden">
+                        <label class="block font-semibold mb-1 text-sm text-red-600 font-bold">תאריך סיום למסלול
+                            כולו:</label>
+                        <input type="date" id="targetDateInput" class="w-full border rounded p-2 text-sm">
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block font-semibold mb-1 text-sm">תאריך התחלה:</label>
+                            <input type="date" id="startDateInput" class="w-full border rounded p-2 text-sm">
+                        </div>
+                        <div>
+                            <label class="block font-semibold mb-1 text-sm text-gray-500 italic">התחל מדף
+                                (אופציונלי):</label>
+                            <div class="flex gap-1">
+                                <input type="text" id="startDafInput" placeholder="דף"
+                                    class="w-2/3 border rounded p-2 text-sm">
+                                <select id="startAmudSelect" class="w-1/3 border rounded p-2 text-sm">
+                                    <option value="א">א</option>
+                                    <option value="ב">ב</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="flex items-center gap-2 pt-2 border-t">
+                        <input type="checkbox" id="IncludeShabbatInput" checked>
+                        <label for="IncludeShabbatInput" class="font-semibold text-sm">למד בשבת</label>
                     </div>
                 </div>
             </div>
 
-            <div class="mt-4 flex items-center gap-2">
-                <input type="checkbox" id="IncludeShabbatInput" checked>
-                <label for="IncludeShabbatInput" class="font-semibold">למד בשבת</label>
-            </div>
-
-            <button onclick="generate()" class="w-full mt-6 bg-blue-600 text-white py-3 rounded font-bold hover:bg-blue-700 transition">צור לוח שנה</button>
+            <button onclick="generate()"
+                class="w-full mt-6 bg-blue-700 text-white py-4 rounded-xl font-bold hover:bg-blue-800 transition shadow-lg">צור
+                לוח לימוד למסלול</button>
         </div>
 
-        <!-- הצגת לוח הזמנים -->
         <div id="calendarContainer" class="space-y-12"></div>
-
-        <!-- כפתור הדפסה -->
-        <div id="printBtn" class="mt-8 flex justify-center hidden no-print">
-            <button onclick="window.print()" class="bg-gray-800 text-white px-8 py-3 rounded-lg shadow-lg flex items-center gap-2 hover:bg-black transition">
-                <span>🖨️ הדפס לוח לימוד מוכן</span>
+        <div id="printBtn" class="mt-8 flex justify-center hidden no-print pb-12">
+            <button onclick="window.print()"
+                class="bg-gray-800 text-white px-10 py-4 rounded-full shadow-2xl hover:bg-black transition flex items-center gap-3">
+                <span>🖨️ הדפס תוכנית לימודים</span>
             </button>
         </div>
     </div>

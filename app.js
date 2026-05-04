@@ -105,60 +105,160 @@ function countStudyDays(startDate, endDate, includeShabbat) {
     return count;
 }
 
-function generate() {
-    const masechetName = document.getElementById('masechetSelect').value;
-    const includeShabbat = document.getElementById('IncludeShabbatInput').checked;
-    const method = document.getElementById('calcMethod').value;
-    
-    const startDateVal = document.getElementById('startDateInput').value;
-    let startDate = startDateVal ? new Date(startDateVal) : new Date();
-    startDate.setHours(0,0,0,0);
+let sequence = [];
 
-    const startDafHeb = document.getElementById('startDafInput').value.trim();
-    const startAmudHeb = document.getElementById('startAmudSelect').value;
-    let startIdx = 0;
-    if (startDafHeb) {
-        startIdx = Math.max(0, (hebrewToNumber(startDafHeb) * 2) - 4);
-        if (startAmudHeb === "ב") startIdx += 1;
+// אתחול רשימת המסכתות ב-Select
+window.onload = () => {
+    const select = document.getElementById('masechetSelect');
+    masechtot.forEach(m => {
+        const opt = document.createElement('option');
+        opt.value = m.name;
+        opt.innerText = m.name;
+        select.appendChild(opt);
+    });
+    // קביעת תאריך היום כברירת מחדל
+    document.getElementById('startDateInput').valueAsDate = new Date();
+};
+
+function addToSequence() {
+    const val = document.getElementById('masechetSelect').value;
+    sequence.push(val);
+    updateSequenceUI();
+}
+
+function removeFromSequence(index) {
+    sequence.splice(index, 1);
+    updateSequenceUI();
+}
+
+function clearSequence() {
+    if (confirm("האם למחוק את כל המסכתות מהמסלול?")) {
+        sequence = [];
+        updateSequenceUI();
     }
+}
 
-    const totalAmudim = getTotalAmudim(masechetName);
-    const remainingAmudim = totalAmudim - startIdx;
+function updateSequenceUI() {
+    const list = document.getElementById('sequenceList');
+    list.innerHTML = sequence.map((m, i) => `
+        <li class="flex justify-between items-center bg-blue-100 px-3 py-1 rounded text-sm font-bold">
+            <span>${i + 1}. מסכת ${m}</span>
+            <button onclick="removeFromSequence(${i})" class="text-red-500 hover:text-red-700">✕</button>
+        </li>
+    `).join('');
+}
 
-    if (remainingAmudim <= 0) return alert("דף מחוץ לטווח");
+function generate() {
+    if (sequence.length === 0) return alert("נא להוסיף לפחות מסכת אחת למסלול");
 
+    const includeShabbat = document.getElementById('IncludeShabbatInput').checked;
+    const breakDays = parseInt(document.getElementById('breakDaysInput').value) || 0;
+    const method = document.getElementById('calcMethod').value;
+    const schedule = [];
+
+    let currentDate = new Date(document.getElementById('startDateInput').value);
+    currentDate.setHours(0, 0, 0, 0);
+
+    // 1. חישוב סך עמודים נטו למסלול (לצורך קצב לפי תאריך יעד)
+    let totalAmudimInSequence = 0;
+    sequence.forEach((name, idx) => {
+        let startIdx = 0;
+        if (idx === 0) {
+            const startDafHeb = document.getElementById('startDafInput').value.trim();
+            if (startDafHeb) {
+                startIdx = Math.max(0, (hebrewToNumber(startDafHeb) * 2) - 4);
+                if (document.getElementById('startAmudSelect').value === "ב") startIdx += 1;
+            }
+        }
+        totalAmudimInSequence += (getTotalAmudim(name) - startIdx);
+    });
+
+    // 2. קביעת קצב הלימוד
     let paceAmudim;
     if (method === 'targetDate') {
-        const endDateVal = document.getElementById('targetDateInput').value;
-        if (!endDateVal) return alert("בחר תאריך סיום");
-        const studyDays = countStudyDays(startDate, new Date(endDateVal), includeShabbat);
-        paceAmudim = Math.ceil(remainingAmudim / studyDays);
+        const endDate = new Date(document.getElementById('targetDateInput').value);
+        const totalDays = Math.ceil((endDate - currentDate) / (1000 * 60 * 60 * 24)) + 1;
+        // חישוב ימי לימוד נטו (בקירוב לצורך קצב)
+        const netStudyDays = totalDays - (breakDays * (sequence.length - 1));
+        paceAmudim = Math.ceil(totalAmudimInSequence / Math.max(1, netStudyDays));
     } else {
         paceAmudim = Math.round(parseFloat(document.getElementById('paceInput').value) * 2);
     }
 
-    const schedule = [];
-    let currentAmud = startIdx;
-    let currentDate = new Date(startDate);
+    // 3. יצירת הלוח
+    sequence.forEach((masechetName, mIdx) => {
+        const totalAmudim = getTotalAmudim(masechetName);
+        let currentAmud = 0;
 
-    while (currentAmud < totalAmudim) {
-        const isShabbat = currentDate.getDay() === 6;
-        if (isShabbat && !includeShabbat) {
-            currentDate.setDate(currentDate.getDate() + 1);
-            continue;
+        if (mIdx === 0) {
+            const startDafHeb = document.getElementById('startDafInput').value.trim();
+            if (startDafHeb) {
+                currentAmud = Math.max(0, (hebrewToNumber(startDafHeb) * 2) - 4);
+                if (document.getElementById('startAmudSelect').value === "ב") currentAmud += 1;
+            }
         }
-        let end = Math.min(currentAmud + paceAmudim, totalAmudim);
-        
-        schedule.push({
-            date: new Date(currentDate),
-            content: `${indexToDaf(currentAmud)} - ${indexToDaf(end - 1)}`,
-            pages: (end - currentAmud) / 2,
-            isShabbat: isShabbat
-        });
 
-        currentAmud = end;
-        currentDate.setDate(currentDate.getDate() + 1);
-    }
+        // ימי לימוד למסכת
+        while (currentAmud < totalAmudim) {
+            const isShabbat = currentDate.getDay() === 6;
+            if (isShabbat && !includeShabbat) {
+                schedule.push({
+                    date: new Date(currentDate),
+                    masechet: masechetName,
+                    content: "שבת קודש",
+                    pages: 0,
+                    isShabbat: true,
+                    isEmpty: true
+                });
+            } else {
+                let end = Math.min(currentAmud + paceAmudim, totalAmudim);
+                schedule.push({
+                    date: new Date(currentDate),
+                    masechet: masechetName,
+                    content: `${indexToDaf(currentAmud)} - ${indexToDaf(end - 1)}`,
+                    pages: (end - currentAmud) / 2,
+                    isShabbat: isShabbat,
+                    isEmpty: false
+                });
+                currentAmud = end;
+            }
+            currentDate.setDate(currentDate.getDate() + 1);
+        }
+
+        // ימי הפסקה (לא אחרי המסכת האחרונה)
+        if (mIdx < sequence.length - 1 && breakDays > 0) {
+            let breaksAdded = 0;
+            while (breaksAdded < breakDays) {
+                const isShabbat = currentDate.getDay() === 6;
+
+                if (isShabbat && !includeShabbat) {
+                    // שבת נחשבת כיום הפסקה במניין, אך מוצגת כ"שבת קודש"
+                    schedule.push({
+                        date: new Date(currentDate),
+                        masechet: masechetName,
+                        content: "שבת קודש",
+                        pages: 0,
+                        isShabbat: true,
+                        isEmpty: true
+                    });
+                } else {
+                    schedule.push({
+                        date: new Date(currentDate),
+                        masechet: "הפסקה",
+                        content: "מנוחה/חזרה",
+                        pages: 0,
+                        isShabbat: isShabbat,
+                        isBreak: true,
+                        isEmpty: false
+                    });
+                }
+
+                // הקידום קורה תמיד, כך ששבת "נבלעת" בתוך ימי ההפסקה
+                breaksAdded++;
+                currentDate.setDate(currentDate.getDate() + 1);
+            }
+        }
+    });
 
     renderCalendar(schedule);
     document.getElementById('printBtn').classList.remove('hidden');
@@ -166,10 +266,9 @@ function generate() {
 
 function renderCalendar(schedule) {
     const container = document.getElementById('calendarContainer');
-    const masechetName = document.getElementById('masechetSelect').value; // שליפת שם המסכת
     container.innerHTML = "";
-
     const months = {};
+
     schedule.forEach(day => {
         const monthKey = day.date.toLocaleString('he-IL', { month: 'long', year: 'numeric' });
         if (!months[monthKey]) months[monthKey] = [];
@@ -180,36 +279,35 @@ function renderCalendar(schedule) {
         const monthData = months[key];
         const monthWrapper = document.createElement('div');
         monthWrapper.className = "calendar-month bg-white shadow rounded-lg overflow-hidden mb-8";
-        
-        // יצירת הכותרת עם שם החודש ושם המסכת
-        monthWrapper.innerHTML = `
-            <div class="month-header">
-                <span class="text-xl font-bold">${key}</span>
-                <span class="text-lg font-medium opacity-90 italic">מסכת ${masechetName}</span>
-            </div>
-        `;
+        monthWrapper.innerHTML = `<div class="bg-blue-900 text-white p-3 text-center font-bold text-xl">${key}</div>`;
 
         const grid = document.createElement('div');
-        grid.className = "calendar-grid";
-        
-        // כותרות ימים
+        grid.className = "calendar-grid border-r border-t border-gray-200";
+
         ['א', 'ב', 'ג', 'ד', 'ה', 'ו', 'ש'].forEach(d => {
-            grid.innerHTML += `<div class="bg-gray-100 p-2 text-center text-xs font-bold border-b border-l border-gray-200">${d}</div>`;
+            grid.innerHTML += `<div class="bg-gray-100 p-2 text-center text-[10px] font-bold border-b border-l border-gray-200">${d}</div>`;
         });
 
-        // ימים ריקים
         const firstDayOfWeek = monthData[0].date.getDay();
         for (let i = 0; i < firstDayOfWeek; i++) {
             grid.innerHTML += `<div class="calendar-day bg-gray-50 border-b border-l border-gray-100"></div>`;
         }
 
-        // ימי הלימוד
         monthData.forEach(day => {
+            const isBreak = day.isBreak;
+            const isEmpty = day.isEmpty;
+
             grid.innerHTML += `
-                <div class="calendar-day border-b border-l border-gray-100 ${day.isShabbat ? 'shabbat-bg' : ''}">
-                    <div class="text-xs font-bold text-gray-400">${day.date.getDate()}</div>
-                    <div class="text-sm font-bold text-center mt-1 text-slate-800">${day.content}</div>
-                    <div class="mt-auto text-[10px] text-blue-600 font-bold">${day.pages} דף</div>
+                <div class="calendar-day border-b border-l border-gray-200 ${day.isShabbat ? 'shabbat-bg' : ''} ${isBreak ? 'bg-orange-50' : ''}">
+                    <div class="text-[10px] font-bold text-gray-400 flex justify-between">
+                        <span>${day.date.getDate()}</span>
+                        ${(!isBreak && !isEmpty) ? `<span class="text-blue-700">${day.masechet}</span>` : ''}
+                    </div>
+                    <div class="text-[11px] font-bold text-center mt-2 leading-tight 
+                        ${isBreak ? 'text-orange-600' : (isEmpty ? 'text-gray-300 font-normal italic' : 'text-slate-800')}">
+                        ${day.content}
+                    </div>
+                    ${(!isBreak && !isEmpty) ? `<div class="mt-auto text-[9px] text-gray-500 font-bold">${day.pages} דף</div>` : ''}
                 </div>`;
         });
 
