@@ -55,6 +55,9 @@ const gematriaMap = {
     'ק': 100, 'ר': 200, 'ש': 300, 'ת': 400
 };
 
+// 0 = Default, 1 = Force Break, 2 = Force Study
+let manualOverrides = {};
+
 // Load holiday days
 let holidaysData = {};
 
@@ -235,25 +238,39 @@ async function generate() {
         }
 
         // Study days per masechet
+        // Inside generate() loop:
         while (currentAmud < totalAmudim) {
             const dateString = currentDate.toISOString().split('T')[0];
             const holidayName = holidaysData[dateString];
             const isShabbat = currentDate.getDay() === 6;
             const includeHolidays = document.getElementById('includeHolidaysInput').checked;
+            const includeShabbat = document.getElementById('IncludeShabbatInput').checked;
 
-            const isNonStudyDay = (isShabbat && !includeShabbat) || (holidayName && !includeHolidays);
+            const overrideState = manualOverrides[dateString] || 0;
+
+            let isNonStudyDay;
+            if (overrideState === 1) {
+                isNonStudyDay = true;  // Forced Break
+            } else if (overrideState === 2) {
+                isNonStudyDay = false; // Forced Study
+            } else {
+                // Standard Logic
+                isNonStudyDay = (isShabbat && !includeShabbat) || (holidayName && !includeHolidays);
+            }
 
             const dayData = {
                 date: new Date(currentDate),
+                dateString: dateString,
                 masechet: masechetName,
                 isShabbat: isShabbat,
                 isHoliday: !!holidayName,
-                holidayTitle: holidayName, // Stores the holiday's name separately
-                isEmpty: isNonStudyDay
+                holidayTitle: holidayName,
+                isEmpty: isNonStudyDay,
+                override: overrideState
             };
 
             if (isNonStudyDay) {
-                dayData.content = isShabbat && !holidayName ? "שבת קודש" : "מנוחה";
+                dayData.content = holidayName || (isShabbat ? "שבת קודש" : "מנוחה");
                 dayData.pages = 0;
             } else {
                 let end = Math.min(currentAmud + paceAmudim, totalAmudim);
@@ -302,34 +319,54 @@ function renderCalendar(schedule) {
         }
 
         monthData.forEach(day => {
-            const isBreak = day.isBreak;
-            const isEmpty = day.isEmpty;
-            const isHoliday = day.isHoliday;
+            const state = day.override;
+            let statusClass = "";
+            let indicator = "";
+
+            if (state === 1) {
+                statusClass = "bg-red-50 ring-2 ring-red-300 ring-inset";
+                indicator = '<span class="absolute top-1 left-1 text-red-500 text-[14px] leading-none">✖</span>';
+            } else if (state === 2) {
+                statusClass = "bg-green-50 ring-2 ring-green-300 ring-inset";
+                indicator = '<span class="absolute top-1 left-1 text-green-500 text-[14px] leading-none">✔</span>';
+            }
 
             grid.innerHTML += `
-                <div class="calendar-day border-b border-l border-gray-200 
-                    ${isHoliday ? 'holiday-bg' : ''} 
-                    ${day.isShabbat ? 'shabbat-bg' : ''} 
-                    ${isBreak ? 'bg-orange-50' : ''}">
-                    
-                    <div class="text-[10px] font-bold text-gray-400 flex justify-between">
-                        <span>${day.date.getDate()}</span>
-                        ${!isBreak ? `<span class="text-blue-700">${day.masechet}</span>` : ''}
-                    </div>
-                    
-                    <div class="text-[11px] font-bold text-center mt-2 leading-tight 
-                        ${isBreak ? 'text-orange-600' : (isEmpty ? 'text-gray-400 font-normal italic' : 'text-slate-800')}">
-                        
-                        ${isHoliday ? `<span class="holiday-label-small">${day.holidayTitle}</span>` : ''}
-                        
-                        ${day.content}
-                    </div>
-                    
-                    ${(!isBreak && !isEmpty) ? `<div class="mt-auto text-[9px] text-gray-500 font-bold">${day.pages} דף</div>` : ''}
-                </div>`;
+            <div onclick="toggleDate('${day.dateString}')" 
+                class="calendar-day cursor-pointer relative ${statusClass} ${day.isShabbat ? 'shabbat-bg' : ''} ${day.isHoliday ? 'holiday-bg' : ''}">
+                
+                <div class="flex justify-between items-start pointer-events-none">
+                    <span class="text-[10px] font-bold text-gray-400">${day.date.getDate()}</span>
+                    <span class="text-[9px] text-blue-700 font-bold">${day.masechet}</span>
+                </div>
+                
+                ${indicator} <!-- Indicator is now absolute and won't push the title -->
+                
+                <div class="text-[11px] font-bold text-center mt-1 leading-tight pointer-events-none ${day.isEmpty ? 'text-gray-400 italic' : 'text-slate-800'}">
+                    ${day.isHoliday ? `<span class="holiday-label-small">${day.holidayTitle}</span>` : ''}
+                    ${day.content}
+                </div>
+                
+                <div class="mt-auto text-[9px] text-gray-400 text-right pointer-events-none">
+                    ${!day.isEmpty ? `${day.pages} דף` : ''}
+                </div>
+            </div>`;
         });
 
         monthWrapper.appendChild(grid);
         container.appendChild(monthWrapper);
     }
+}
+
+function toggleDate(dateString) {
+    // Cycle: 0 (default) -> 1 (force break) -> 2 (force study) -> 0...
+    if (!manualOverrides[dateString]) {
+        manualOverrides[dateString] = 1;
+    } else if (manualOverrides[dateString] === 1) {
+        manualOverrides[dateString] = 2;
+    } else {
+        delete manualOverrides[dateString];
+    }
+
+    generate();
 }
