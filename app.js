@@ -187,20 +187,21 @@ async function generate() {
     if (sequence.length === 0) return alert("נא להוסיף לפחות מסכת אחת למסלול");
 
     const includeShabbat = document.getElementById('IncludeShabbatInput').checked;
+    const includeHolidays = document.getElementById('includeHolidaysInput').checked;
     const breakDays = parseInt(document.getElementById('breakDaysInput').value) || 0;
     const method = document.getElementById('calcMethod').value;
-    schedule = [];
+
+    schedule = []; // איפוס המשתנה הגלובלי
 
     const startDateInput = document.getElementById('startDateInput').value;
     let currentDate = new Date(startDateInput);
     currentDate.setHours(0, 0, 0, 0);
 
-    // Fetches data for the relevant year (and the next one)  
     const startYear = currentDate.getFullYear();
     await fetchHolidays(startYear);
     await fetchHolidays(startYear + 1);
 
-    // Calculates the total net pages per track (for rate by deadline)
+    // 1. חישוב סך כל הדפים בנטו לכל המסלול
     let totalAmudimInSequence = 0;
     sequence.forEach((name, idx) => {
         let startIdx = 0;
@@ -214,20 +215,22 @@ async function generate() {
         totalAmudimInSequence += (getTotalAmudim(name) - startIdx);
     });
 
-    // Sets the study pace
+    // 2. קביעת קצב הלימוד
     let paceAmudim;
     if (method === 'targetDate') {
         const endDate = new Date(document.getElementById('targetDateInput').value);
         const totalDays = Math.ceil((endDate - currentDate) / (1000 * 60 * 60 * 24)) + 1;
-        // Calculate net study days (approximate for rate purposes)
-        const netStudyDays = totalDays - (breakDays * (sequence.length - 1));
+        // חישוב ימי לימוד נטו: סך הימים פחות ימי ההפסקה בין המסכתות
+        const totalBreakDays = breakDays * (sequence.length - 1);
+        const netStudyDays = totalDays - totalBreakDays;
         paceAmudim = Math.ceil(totalAmudimInSequence / Math.max(1, netStudyDays));
     } else {
         paceAmudim = Math.round(parseFloat(document.getElementById('paceInput').value) * 2);
     }
 
-    // Calendar creation
-    sequence.forEach((masechetName, mIdx) => {
+    // 3. בניית הלוח
+    for (let mIdx = 0; mIdx < sequence.length; mIdx++) {
+        const masechetName = sequence[mIdx];
         const totalAmudim = getTotalAmudim(masechetName);
         let currentAmud = 0;
 
@@ -239,26 +242,14 @@ async function generate() {
             }
         }
 
-        // Study days per masechet
-        // Inside generate() loop:
         while (currentAmud < totalAmudim) {
             const dateString = currentDate.toISOString().split('T')[0];
             const holidayName = holidaysData[dateString];
             const isShabbat = currentDate.getDay() === 6;
-            const includeHolidays = document.getElementById('includeHolidaysInput').checked;
-            const includeShabbat = document.getElementById('IncludeShabbatInput').checked;
-
             const overrideState = manualOverrides[dateString] || 0;
 
-            let isNonStudyDay;
-            if (overrideState === 1) {
-                isNonStudyDay = true;  // Forced Break
-            } else if (overrideState === 2) {
-                isNonStudyDay = false; // Forced Study
-            } else {
-                // Standard Logic
-                isNonStudyDay = (isShabbat && !includeShabbat) || (holidayName && !includeHolidays);
-            }
+            let isNonStudyDay = (overrideState === 1) ||
+                (overrideState !== 2 && ((isShabbat && !includeShabbat) || (holidayName && !includeHolidays)));
 
             const dayData = {
                 date: new Date(currentDate),
@@ -284,7 +275,27 @@ async function generate() {
             schedule.push(dayData);
             currentDate.setDate(currentDate.getDate() + 1);
         }
-    });
+
+        // 4. הוספת ימי הפסקה בין מסכתות (פרט למסכת האחרונה)
+        if (mIdx < sequence.length - 1 && breakDays > 0) {
+            for (let i = 0; i < breakDays; i++) {
+                const dateString = currentDate.toISOString().split('T')[0];
+                schedule.push({
+                    date: new Date(currentDate),
+                    dateString: dateString,
+                    masechet: "הפסקה",
+                    isShabbat: currentDate.getDay() === 6,
+                    isHoliday: !!holidaysData[dateString],
+                    holidayTitle: holidaysData[dateString],
+                    isEmpty: true,
+                    content: "מנוחה בין מסכתות",
+                    pages: 0,
+                    override: 0
+                });
+                currentDate.setDate(currentDate.getDate() + 1);
+            }
+        }
+    }
 
     renderCalendar(schedule);
     document.getElementById('printBtn').classList.remove('hidden');
