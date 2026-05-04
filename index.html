@@ -181,9 +181,16 @@
                 class="bg-gray-800 text-white px-10 py-4 rounded-full shadow-2xl hover:bg-black transition flex items-center gap-3">
                 <span>🖨️ הדפס תוכנית לימודים</span>
             </button>
+            <button onclick="exportBeautifulExcel()"
+                class="bg-green-600 text-white px-10 py-4 rounded-full shadow-2xl hover:bg-green-700 transition flex items-center gap-3">
+                <span>📊 הורדה כקובץ אקסל</span>
+            </button>
         </div>
     </div>
 
     <script src="app.js"></script>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.3.0/exceljs.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
 </body>
 </html>

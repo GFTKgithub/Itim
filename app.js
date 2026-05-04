@@ -55,6 +55,8 @@ const gematriaMap = {
     'ק': 100, 'ר': 200, 'ש': 300, 'ת': 400
 };
 
+let schedule = [];
+
 // 0 = Default, 1 = Force Break, 2 = Force Study
 let manualOverrides = {};
 
@@ -187,7 +189,7 @@ async function generate() {
     const includeShabbat = document.getElementById('IncludeShabbatInput').checked;
     const breakDays = parseInt(document.getElementById('breakDaysInput').value) || 0;
     const method = document.getElementById('calcMethod').value;
-    const schedule = [];
+    schedule = [];
 
     const startDateInput = document.getElementById('startDateInput').value;
     let currentDate = new Date(startDateInput);
@@ -369,4 +371,109 @@ function toggleDate(dateString) {
     }
 
     generate();
+}
+
+async function exportBeautifulExcel() {
+    if (!schedule || schedule.length === 0) return alert("יש ליצור לוח לימוד קודם");
+
+    const workbook = new ExcelJS.Workbook();
+    const worksheet = workbook.addWorksheet('תכנית לימוד', {
+        views: [{ rightToLeft: true }]
+    });
+
+    // תו בקרה לכיווניות ימין לשמאל (RTL Mark)
+    const RTL_MARK = '\u200F';
+
+    worksheet.columns = Array(7).fill({ width: 22 });
+
+    let currentRow = 1;
+
+    const months = {};
+    schedule.forEach(day => {
+        const monthName = day.date.toLocaleString('he-IL', { month: 'long', year: 'numeric' });
+        if (!months[monthName]) months[monthName] = [];
+        months[monthName].push(day);
+    });
+
+    for (const [monthName, days] of Object.entries(months)) {
+        // כותרת חודש
+        worksheet.mergeCells(currentRow, 1, currentRow, 7);
+        const titleCell = worksheet.getCell(currentRow, 1);
+        titleCell.value = RTL_MARK + monthName;
+        titleCell.font = { name: 'Arial', bold: true, size: 16, color: { argb: 'FFFFFFFF' } };
+        titleCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1E40AF' } };
+        titleCell.alignment = { vertical: 'middle', horizontal: 'center' };
+        worksheet.getRow(currentRow).height = 30;
+        currentRow++;
+
+        // ימי השבוע
+        const daysHeader = ['א', 'ב', 'ג', 'ד', 'ה', 'ו', 'ש'];
+        daysHeader.forEach((d, i) => {
+            const cell = worksheet.getCell(currentRow, i + 1);
+            cell.value = RTL_MARK + d;
+            cell.font = { bold: true };
+            cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF3F4F6' } };
+            cell.alignment = { horizontal: 'center' };
+            cell.border = { top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' } };
+        });
+        currentRow++;
+
+        let weekRow = currentRow;
+        const firstDay = days[0].date.getDay();
+        for (let i = 0; i < firstDay; i++) {
+            worksheet.getCell(weekRow, i + 1).border = { top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' } };
+            worksheet.getCell(weekRow, i + 1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF9FAFB' } };
+        }
+
+        days.forEach(day => {
+            const col = (day.date.getDay() + 1);
+            const cell = worksheet.getCell(weekRow, col);
+
+            // יצירת טקסט עם תו RTL בתחילת כל שורה כדי לשמור על סדר הפיסוק
+            let lines = [];
+            lines.push(RTL_MARK + day.date.getDate());
+
+            if (day.isEmpty) {
+                if (day.isHoliday) lines.push(RTL_MARK + day.holidayTitle);
+                lines.push(RTL_MARK + day.content);
+            } else {
+                lines.push(RTL_MARK + day.masechet);
+                lines.push(RTL_MARK + day.content);
+            }
+
+            cell.value = lines.join('\n');
+
+            // יישור טקסט: מרכז (לבקשתך) עם הגדרות כיווניות
+            cell.alignment = {
+                wrapText: true,
+                vertical: 'top',
+                horizontal: 'center', // ממרכז את הטקסט באמצע התא
+                readingOrder: 2      // אומר לאקסל שהכיוון הכללי הוא RTL
+            };
+
+            cell.border = { top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' } };
+
+            // צבעים
+            if (day.override === 1) {
+                cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFEBEE' } };
+            } else if (day.override === 2) {
+                cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE8F5E9' } };
+            } else if (day.isShabbat) {
+                cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFDBE6F3' } };
+            } else if (day.isHoliday) {
+                cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE9EFD5' } };
+            }
+
+            if (col === 7) {
+                worksheet.getRow(weekRow).height = 60;
+                weekRow++;
+            }
+        });
+
+        worksheet.getRow(weekRow).height = 60;
+        currentRow = weekRow + 2;
+    }
+
+    const buffer = await workbook.xlsx.writeBuffer();
+    saveAs(new Blob([buffer]), 'תכנית_לימוד_מעוצבת.xlsx');
 }
