@@ -32,7 +32,18 @@
             background-color: #1e40af; /* כחול כהה */
             color: white;
         }
-        .shabbat-bg { background-color: #f0f7ff; }
+
+        .holiday-bg { background-color: #efd8d5; border: 1px solid #fee2e2; }
+
+        .shabbat-bg { background-color: #dbe6f3; }
+        
+        .holiday-label-small {
+            display: block;
+            color: #b91c1c;
+            font-size: 9px;
+            font-weight: bold;
+            margin-bottom: 1px;
+        }
     </style>
 </head>
 <body class="bg-gray-100 font-sans text-gray-900 p-4 md:p-8">
@@ -148,6 +159,13 @@
                     <div class="flex items-center gap-2 pt-2 border-t">
                         <input type="checkbox" id="IncludeShabbatInput" checked>
                         <label for="IncludeShabbatInput" class="font-semibold text-sm">למד בשבת</label>
+                    </div>
+                    <div class="space-y-2 border-t pt-2 mt-2">
+                        <label class="flex items-center gap-2 cursor-pointer">
+                            <input type="checkbox" id="includeHolidaysInput" class="w-4 h-4">
+                            <span>לכלול חגים כימי לימוד</span>
+                        </label>
+                        <p class="text-[10px] text-gray-500 italic">ביטול הסימון ישאיר את ימי החג ריקים (בדומה לשבת).</p>
                     </div>
                 </div>
             </div>
