@@ -175,9 +175,9 @@ function clearSequence() {
 function updateSequenceUI() {
     const list = document.getElementById('sequenceList');
     list.innerHTML = sequence.map((m, i) => `
-        <li class="flex justify-between items-center bg-blue-100 px-3 py-1 rounded text-sm font-bold">
-            <span>${i + 1}. מסכת ${m}</span>
-            <button onclick="removeFromSequence(${i})" class="text-red-500 hover:text-red-700">✕</button>
+        <li class="flex justify-between items-center bg-white border border-blue-100 px-4 py-2 rounded-lg shadow-sm">
+            <span class="font-bold text-blue-900"><span class="text-slate-400 ml-2">${i + 1}.</span>מסכת ${m}</span>
+            <button onclick="removeFromSequence(${i})" class="text-red-400 hover:text-red-600 transition">✕</button>
         </li>
     `).join('');
 }
@@ -316,19 +316,19 @@ function renderCalendar(schedule) {
     for (const key in months) {
         const monthData = months[key];
         const monthWrapper = document.createElement('div');
-        monthWrapper.className = "calendar-month bg-white shadow rounded-lg overflow-hidden mb-8";
-        monthWrapper.innerHTML = `<div class="bg-blue-900 text-white p-3 text-center font-bold text-xl">${key}</div>`;
+        monthWrapper.className = "calendar-month bg-white shadow-xl rounded-2xl overflow-hidden border border-slate-200";
+        monthWrapper.innerHTML = `<div class="bg-slate-800 text-white p-4 text-center font-bold text-xl">${key}</div>`;
 
         const grid = document.createElement('div');
-        grid.className = "calendar-grid border-r border-t border-gray-200";
+        grid.className = "calendar-grid";
 
         ['א', 'ב', 'ג', 'ד', 'ה', 'ו', 'ש'].forEach(d => {
-            grid.innerHTML += `<div class="bg-gray-100 p-2 text-center text-[10px] font-bold border-b border-l border-gray-200">${d}</div>`;
+            grid.innerHTML += `<div class="bg-slate-50 p-2 text-center text-xs font-bold text-slate-500 border-b border-gray-200">${d}</div>`;
         });
 
         const firstDayOfWeek = monthData[0].date.getDay();
         for (let i = 0; i < firstDayOfWeek; i++) {
-            grid.innerHTML += `<div class="calendar-day bg-gray-50 border-b border-l border-gray-100"></div>`;
+            grid.innerHTML += `<div class="calendar-day bg-slate-50/50"></div>`;
         }
 
         monthData.forEach(day => {
@@ -336,31 +336,31 @@ function renderCalendar(schedule) {
             let statusClass = "";
             let indicator = "";
 
-            if (state === 1) {
-                statusClass = "bg-red-50 ring-2 ring-red-300 ring-inset";
-                indicator = '<span class="absolute top-1 left-1 text-red-500 text-[14px] leading-none">✖</span>';
-            } else if (state === 2) {
-                statusClass = "bg-green-50 ring-2 ring-green-300 ring-inset";
-                indicator = '<span class="absolute top-1 left-1 text-green-500 text-[14px] leading-none">✔</span>';
+            if (state === 1) { // מנוחה מאולצת
+                statusClass = "force-break";
+                indicator = '<span class="absolute top-1 left-1 text-red-500 font-bold">✕</span>';
+            } else if (state === 2) { // למידה מאולצת (כחול כפי שביקשת)
+                statusClass = "force-study";
+                indicator = '<span class="absolute top-1 left-1 text-blue-600 font-bold">✎</span>';
             }
 
             grid.innerHTML += `
             <div onclick="toggleDate('${day.dateString}')" 
-                class="calendar-day cursor-pointer relative ${statusClass} ${day.isShabbat ? 'shabbat-bg' : ''} ${day.isHoliday ? 'holiday-bg' : ''}">
+                class="calendar-day cursor-pointer relative ${statusClass} ${day.isShabbat ? 'shabbat-bg' : ''} ${day.isHoliday ? 'holiday-bg' : ''} border-b border-l border-gray-100">
                 
-                <div class="flex justify-between items-start pointer-events-none">
-                    <span class="text-[10px] font-bold text-gray-400">${day.date.getDate()}</span>
-                    <span class="text-[9px] text-blue-700 font-bold">${day.masechet}</span>
+                <div class="flex justify-between items-start mb-1">
+                    <span class="text-xs font-bold ${day.date.getDay() === 6 ? 'text-blue-700' : 'text-slate-400'}">${day.date.getDate()}</span>
+                    <span class="text-[10px] text-blue-800 font-bold truncate max-w-[50px]">${day.masechet}</span>
                 </div>
                 
-                ${indicator} <!-- Indicator is now absolute and won't push the title -->
+                ${indicator}
                 
-                <div class="text-[11px] font-bold text-center mt-1 leading-tight pointer-events-none ${day.isEmpty ? 'text-gray-400 italic' : 'text-slate-800'}">
+                <div class="text-[11px] font-bold text-center mt-1 leading-tight ${day.isEmpty ? 'text-slate-400 italic' : 'text-slate-800'}">
                     ${day.isHoliday ? `<span class="holiday-label-small">${day.holidayTitle}</span>` : ''}
                     ${day.content}
                 </div>
                 
-                <div class="mt-auto text-[9px] text-gray-400 text-right pointer-events-none">
+                <div class="mt-auto text-[9px] text-slate-400 text-left">
                     ${!day.isEmpty ? `${day.pages} דף` : ''}
                 </div>
             </div>`;
@@ -466,9 +466,9 @@ async function exportBeautifulExcel() {
 
             // צבעים
             if (day.override === 1) {
-                cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFEBEE' } };
+                cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFEBEE' } }; // אדום בהיר
             } else if (day.override === 2) {
-                cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE8F5E9' } };
+                cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFEBF5FF' } }; // כחול בהיר (במקום ירוק)
             } else if (day.isShabbat) {
                 cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFDBE6F3' } };
             } else if (day.isHoliday) {
