@@ -7,7 +7,7 @@
     <title>עיתים - מתכנן לימוד</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        /* --- SCREEN STYLES (Your original great look) --- */
+        /* --- SCREEN STYLES (Website) --- */
         .calendar-grid {
             display: grid;
             grid-template-columns: repeat(7, 1fr);
@@ -55,58 +55,94 @@
             border: 2px solid #ef4444 !important;
         }
     
-        /* --- PRINT STYLES (The Centering & Ghost-Page Fix) --- */
+        input:focus,
+        select:focus {
+            outline: none !important;
+            border-color: #1e40af !important;
+            box-shadow: 0 0 0 3px rgba(30, 64, 175, 0.1);
+        }
+    
+        /* --- PRINT STYLES (Strictly for Paper/PDF) --- */
         @media print {
+            @page {
+                margin: 0;
+                /* Let the container handle margins */
+                size: auto;
+            }
+    
             .no-print {
                 display: none !important;
             }
     
-            /* 1. Reset everything to prevent "leaking" boxes */
             html,
             body {
                 margin: 0 !important;
                 padding: 0 !important;
-                height: auto;
                 background: white !important;
+                height: auto !important;
+            }
+    
+            /* 1. Force remove all shadows and spacing that causes overflow */
+            * {
+                box-shadow: none !important;
+                text-shadow: none !important;
+            }
+    
+            /* 2. Container setup */
+            #calendarContainer {
+                margin: 0 !important;
+                padding: 0 !important;
+                width: 100% !important;
+            }
+    
+            /* 3. Each Month Page */
+            .calendar-month {
+                page-break-before: always;
+                break-before: page;
+                page-break-inside: avoid;
+                break-inside: avoid;
+    
+                /* Centering Logic */
+                display: flex !important;
+                flex-direction: column !important;
+                justify-content: center !important;
+                align-items: center !important;
+    
+                /* Sizing */
+                width: 100vw !important;
+                height: 100vh !important;
+
+                /* Forces each month to occupy the full page height */
+                box-sizing: border-box !important;
+                border: none !important;
+                margin: 0 !important;
+
+                /* Forces original background colors */
                 -webkit-print-color-adjust: exact;
                 print-color-adjust: exact;
             }
     
-            /* 2. The Month Wrapper */
-            .calendar-month {
-                page-break-before: always;
-                page-break-inside: avoid;
-    
-                /* Center the calendar */
-                display: flex !important;
-                flex-direction: column;
-                justify-content: center;
-                align-items: center;
-    
-                /* vh can be tricky; 96% of the page is safer */
-                min-height: 96vh;
-                width: 100%;
-    
-                /* CRITICAL: Remove these so they don't appear on blank pages */
-                border: none !important;
-                box-shadow: none !important;
-                margin: 0 !important;
-            }
-    
+            /* Kill break for the first month to prevent initial blank page */
             .calendar-month:first-child {
-                page-break-before: auto;
+                page-break-before: avoid;
+                break-before: avoid;
             }
     
-            /* 3. The actual calendar content (put borders here instead) */
+            /* 4. The actual calendar table/grid inside the month */
             .calendar-month>div {
-                width: 95%;
-                border: 1px solid #eee;
-                /* Light border around the actual table only */
-                padding: 10px;
+                width: 92% !important;
+                /* Leaves a small margin on sides */
+                margin: 0 auto !important;
+                /* Vertical Stretch: Slightly increase the size of the whole month */
+                transform: scaleY(1.02);
+                transform-origin: center;
             }
     
+            /* 5. Stretch the days vertically */
             .calendar-day {
-                min-height: 80px !important;
+                min-height: 120px !important;
+                border: 1px solid #e5e7eb !important;
+                padding: 6px !important;
             }
         }
     </style>
@@ -115,121 +151,186 @@
 <body class="bg-slate-50 font-sans text-gray-900 p-4 md:p-8">
     <div class="max-w-5xl mx-auto">
         <header class="text-center mb-10 no-print">
-            <h1 class="text-4xl font-extrabold text-slate-800 mb-2">עיתים</h1>
-            <p class="text-slate-600">תכנון ובניית מסלולי לימוד בהתאמה אישית</p>
+            <h1 class="text-5xl font-black text-slate-800 mb-3 tracking-tight">עיתים</h1>
+            <p class="text-lg text-slate-500 font-medium">תכנון ובניית מסלולי לימוד בהתאמה אישית</p>
         </header>
 
-        <div class="bg-white p-6 rounded-xl shadow-lg mb-8 no-print border-t-8 border-blue-800">
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
-                <!-- בחירת מסכת -->
-                <div class="space-y-4">
-                    <div class="bg-slate-50 p-4 rounded-lg border border-slate-200">
-                        <label class="block font-bold mb-2 text-slate-700">הוספת מסכת למסלול:</label>
-                        <div class="flex gap-2">
-                            <select id="masechetSelect"
-                                class="flex-1 border rounded-lg p-2 bg-white shadow-sm"></select>
-                            <button onclick="addToSequence()"
-                                class="bg-blue-800 text-white px-6 py-2 rounded-lg font-bold hover:bg-blue-900 transition">+</button>
-                        </div>
-                    </div>
+        <div class="bg-white rounded-2xl shadow-xl mb-8 no-print border border-slate-200 overflow-hidden">
+            <!-- Header Accent -->
+            <div class="h-2 bg-gradient-to-r from-blue-900 via-blue-700 to-blue-900"></div>
 
-                    <div>
-                        <div class="flex justify-between items-center mb-2">
-                            <label class="font-bold text-slate-700">סדר הלימוד המתוכנן:</label>
-                            <button onclick="clearSequence()" class="text-xs text-red-600 hover:underline">איפוס
-                                מסלול</button>
-                        </div>
-                        <ul id="sequenceList"
-                            class="space-y-2 max-h-48 overflow-y-auto bg-slate-50 p-3 rounded-lg border border-dashed border-slate-300 min-h-[60px]">
-                        </ul>
-                    </div>
-                </div>
+            <div class="p-6 md:p-8">
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-10">
 
-                <!-- הגדרות לוגיקה -->
-                <div class="grid grid-cols-1 gap-4">
-                    <div class="grid grid-cols-2 gap-4">
-                        <div>
-                            <label class="block text-sm font-bold mb-1">שיטת חישוב:</label>
-                            <select id="calcMethod" class="w-full border rounded p-2 bg-white"
-                                onchange="toggleInputs()">
-                                <option value="pace">קצב דפים קבוע</option>
-                                <option value="targetDate">יעד סיום סופי</option>
-                            </select>
-                        </div>
-                        <div>
-                            <label class="block text-sm font-bold mb-1">הפסקה בין מסכתות:</label>
-                            <input type="number" id="breakDaysInput" value="0" min="0" class="w-full border rounded p-2"
-                                placeholder="ימים">
-                        </div>
-                    </div>
-
-                    <div id="paceSection">
-                        <label class="block text-sm font-bold mb-1">דפים ליום:</label>
-                        <input type="number" id="paceInput" value="1" step="0.5" min="0.5"
-                            class="w-full border rounded p-2">
-                    </div>
-
-                    <div id="targetDateSection" class="hidden">
-                        <label class="block text-sm font-bold mb-1 text-red-700">תאריך יעד לסיום המסלול:</label>
-                        <input type="date" id="targetDateInput" class="w-full border rounded p-2 border-red-200">
-                    </div>
-
-                    <div class="grid grid-cols-2 gap-4">
-                        <div>
-                            <label class="block text-sm font-bold mb-1">תאריך התחלה:</label>
-                            <input type="date" id="startDateInput" class="w-full border rounded p-2">
-                        </div>
-                        <div>
-                            <label class="block text-sm font-bold mb-1 text-slate-500 italic">התחלה מדף:</label>
-                            <div class="flex gap-1">
-                                <input type="text" id="startDafInput" placeholder="דף"
-                                    class="w-2/3 border rounded p-2 text-center">
-                                <select id="startAmudSelect" class="w-1/3 border rounded p-2">
-                                    <option value="א">א</option>
-                                    <option value="ב">ב</option>
-                                </select>
+                    <!-- Right Column: Sequence Builder -->
+                    <div class="space-y-6">
+                        <div class="bg-slate-50 p-5 rounded-xl border border-slate-200">
+                            <label class="block font-bold mb-3 text-slate-700 flex items-center gap-2">
+                                <span
+                                    class="bg-blue-800 text-white w-6 h-6 rounded-full flex items-center justify-center text-xs">1</span>
+                                הוספת מסכת למסלול
+                            </label>
+                            <div class="flex gap-2">
+                                <select id="masechetSelect"
+                                    class="flex-1 border border-slate-300 rounded-lg p-3 bg-white shadow-sm font-medium"></select>
+                                <button onclick="addToSequence()"
+                                    class="bg-blue-800 text-white px-5 rounded-lg font-bold hover:bg-blue-900 transition-all shadow-md active:scale-95 flex items-center gap-1">
+                                    <span>הוסף</span>
+                                    <span class="text-xl leading-none">+</span>
+                                </button>
                             </div>
                         </div>
+
+                        <div>
+                            <div class="flex justify-between items-end mb-3">
+                                <label class="font-bold text-slate-700 flex items-center gap-2">
+                                    <span
+                                        class="bg-blue-800 text-white w-6 h-6 rounded-full flex items-center justify-center text-xs">2</span>
+                                    סדר הלימוד המתוכנן
+                                </label>
+                                <button onclick="clearSequence()"
+                                    class="text-sm text-red-500 hover:text-red-700 font-semibold transition-colors flex items-center gap-1">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none"
+                                        viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v2m3 3h7" />
+                                    </svg>
+                                    איפוס רשימה
+                                </button>
+                            </div>
+                            <ul id="sequenceList"
+                                class="space-y-2 max-h-56 overflow-y-auto bg-slate-50 p-4 rounded-xl border-2 border-dashed border-slate-300 min-h-[80px]">
+                                <!-- Items will be injected here -->
+                            </ul>
+                        </div>
                     </div>
 
-                    <div class="flex flex-col gap-2 p-3 bg-slate-50 rounded-lg border border-slate-200">
-                        <label class="flex items-center gap-2 cursor-pointer">
-                            <input type="checkbox" id="IncludeShabbatInput" class="w-4 h-4 text-blue-800" checked>
-                            <span class="text-sm font-semibold">כלול ימי שבת כלימוד</span>
+                    <!-- Left Column: Settings -->
+                    <div class="space-y-5">
+                        <label class="block font-bold text-slate-700 flex items-center gap-2 mb-1">
+                            <span
+                                class="bg-blue-800 text-white w-6 h-6 rounded-full flex items-center justify-center text-xs">3</span>
+                            הגדרות וקצב
                         </label>
-                        <label class="flex items-center gap-2 cursor-pointer">
-                            <input type="checkbox" id="includeHolidaysInput" class="w-4 h-4 text-blue-800">
-                            <span class="text-sm font-semibold">כלול חגים כלימוד</span>
-                        </label>
-                    </div>
-                    <div class="col-span-2 grid grid-cols-2 gap-4">
+
+                        <div class="grid grid-cols-2 gap-4">
+                            <div class="col-span-1">
+                                <label class="block text-xs font-bold text-slate-500 mb-1 mr-1">שיטת חישוב</label>
+                                <select id="calcMethod"
+                                    class="w-full border border-slate-300 rounded-lg p-2.5 bg-white font-medium"
+                                    onchange="toggleInputs()">
+                                    <option value="pace">קצב דפים קבוע</option>
+                                    <option value="targetDate">יעד סיום סופי</option>
+                                </select>
+                            </div>
+                            <div class="col-span-1">
+                                <label class="block text-xs font-bold text-slate-500 mb-1 mr-1">הפסקה (ימים)</label>
+                                <input type="number" id="breakDaysInput" value="0" min="0"
+                                    class="w-full border border-slate-300 rounded-lg p-2.5" placeholder="0">
+                            </div>
+                        </div>
+
+                        <div id="paceSection" class="bg-blue-50/50 p-3 rounded-lg border border-blue-100">
+                            <label class="block text-xs font-bold text-blue-800 mb-1 mr-1">דפים ליום לימוד</label>
+                            <input type="number" id="paceInput" value="1" step="0.5" min="0.5"
+                                class="w-full border border-blue-200 rounded-lg p-2.5 text-lg font-bold text-blue-900">
+                        </div>
+
+                        <div id="targetDateSection" class="hidden bg-red-50 p-3 rounded-lg border border-red-100">
+                            <label class="block text-xs font-bold text-red-800 mb-1 mr-1">תאריך יעד לסיום</label>
+                            <input type="date" id="targetDateInput"
+                                class="w-full border border-red-200 rounded-lg p-2.5">
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-xs font-bold text-slate-500 mb-1 mr-1">תאריך התחלה</label>
+                                <input type="date" id="startDateInput"
+                                    class="w-full border border-slate-300 rounded-lg p-2.5">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-slate-500 mb-1 mr-1">התחלה מדף</label>
+                                <div class="flex gap-1">
+                                    <input type="text" id="startDafInput" placeholder="דף"
+                                        class="w-2/3 border border-slate-300 rounded-lg p-2.5 text-center font-bold">
+                                    <select id="startAmudSelect"
+                                        class="w-1/3 border border-slate-300 rounded-lg p-2.5 font-bold">
+                                        <option value="א">א</option>
+                                        <option value="ב">ב</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div
+                            class="grid grid-cols-1 sm:grid-cols-2 gap-3 p-4 bg-slate-50 rounded-xl border border-slate-200">
+                            <label class="flex items-center gap-3 cursor-pointer group">
+                                <div class="relative">
+                                    <input type="checkbox" id="IncludeShabbatInput" class="peer hidden" checked>
+                                    <div
+                                        class="w-5 h-5 border-2 border-slate-300 rounded peer-checked:bg-blue-800 peer-checked:border-blue-800 transition-all">
+                                    </div>
+                                    <svg class="absolute top-1 right-1 w-3 h-3 text-white hidden peer-checked:block"
+                                        fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="4"
+                                            d="M5 13l4 4L19 7" />
+                                    </svg>
+                                </div>
+                                <span class="text-sm font-bold text-slate-600 group-hover:text-slate-900">ימי שבת</span>
+                            </label>
+                            <label class="flex items-center gap-3 cursor-pointer group">
+                                <div class="relative">
+                                    <input type="checkbox" id="includeHolidaysInput" class="peer hidden">
+                                    <div
+                                        class="w-5 h-5 border-2 border-slate-300 rounded peer-checked:bg-blue-800 peer-checked:border-blue-800 transition-all">
+                                    </div>
+                                    <svg class="absolute top-1 right-1 w-3 h-3 text-white hidden peer-checked:block"
+                                        fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="4"
+                                            d="M5 13l4 4L19 7" />
+                                    </svg>
+                                </div>
+                                <span class="text-sm font-bold text-slate-600 group-hover:text-slate-900">חגים
+                                    ומועדים</span>
+                            </label>
+                        </div>
+
                         <div>
-                            <label class="block text-sm font-bold mb-1">סוג לוח תצוגה:</label>
-                            <select id="calendarType" class="w-full border rounded p-2 bg-white" onchange="generate()">
+                            <label class="block text-xs font-bold text-slate-500 mb-1 mr-1">סוג לוח תצוגה</label>
+                            <select id="calendarType" class="w-full border border-slate-300 rounded-lg p-2.5 bg-white"
+                                onchange="generate()">
                                 <option value="hebrew">עברי (ראשי)</option>
                                 <option value="gregorian">לועזי (ראשי)</option>
                             </select>
                         </div>
                     </div>
                 </div>
-            </div>
 
-            <button onclick="generate()"
-                class="w-full mt-8 bg-slate-800 text-white py-4 rounded-xl font-bold hover:bg-black transition-all shadow-lg transform hover:-translate-y-1">
-                צור לוח לימוד מותאם אישית
-            </button>
+                <button onclick="generate()"
+                    class="w-full mt-10 bg-slate-900 text-white py-5 rounded-2xl font-black text-xl hover:bg-black transition-all shadow-xl hover:shadow-2xl transform hover:-translate-y-1 active:translate-y-0 flex items-center justify-center gap-3">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24"
+                        stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                    </svg>
+                    צור לוח לימוד מותאם אישית
+                </button>
+            </div>
         </div>
 
-        <div id="calendarContainer" class="space-y-12 mb-12"></div>
+        <div id="calendarContainer" class="space-y-12 mb-24"></div>
 
-        <div id="printBtn" class="fixed bottom-6 left-1/2 -translate-x-1/2 flex gap-4 hidden no-print">
+        <!-- Sticky Action Bar -->
+        <div id="printBtn" class="fixed bottom-8 left-1/2 -translate-x-1/2 flex gap-4 hidden no-print z-50">
             <button onclick="window.print()"
-                class="bg-white text-slate-800 px-8 py-3 rounded-full shadow-2xl border border-slate-200 font-bold hover:bg-slate-50 transition flex items-center gap-2">
-                <span>🖨️ הדפסה</span>
+                class="bg-white text-slate-800 px-8 py-4 rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.2)] border border-slate-200 font-bold hover:bg-slate-50 transition-all flex items-center gap-3 group">
+                <span class="text-xl group-hover:scale-120 transition-transform">🖨️</span>
+                <span>הדפסת הלוח</span>
             </button>
             <button onclick="exportToExcel()"
-                class="bg-green-600 text-white px-8 py-3 rounded-full shadow-2xl font-bold hover:bg-green-700 transition flex items-center gap-2">
-                <span>📊 ייצוא לאקסל</span>
+                class="bg-green-600 text-white px-8 py-4 rounded-2xl shadow-[0_20px_50px_rgba(22,163,74,0.3)] font-bold hover:bg-green-700 transition-all flex items-center gap-3 group">
+                <span class="text-xl group-hover:rotate-12 transition-transform">📊</span>
+                <span>ייצוא לאקסל</span>
             </button>
         </div>
     </div>

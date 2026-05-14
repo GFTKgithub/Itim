@@ -449,10 +449,10 @@ function renderCalendar(schedule) {
             let indicator = "";
             if (state === 1) {
                 statusClass = "force-break";
-                indicator = '<span class="absolute top-1 left-1 text-red-500 font-bold text-[10px]">✕</span>';
+                indicator = '<span class="absolute bottom-1 right-1 text-red-500 font-bold text-[10px]">✕</span>';
             } else if (state === 2) {
                 statusClass = "force-study";
-                indicator = '<span class="absolute top-1 left-1 text-blue-600 font-bold text-[10px]">✎</span>';
+                indicator = '<span class="absolute bottom-1 right-1 text-blue-600 font-bold text-[10px]">✎</span>';
             }
 
             // לוגיקת תאריכים (תיקון סעיף 1)
