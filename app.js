@@ -455,7 +455,6 @@ function renderCalendar(schedule) {
     schedule.forEach(day => {
         let monthKey;
         if (calendarType === 'hebrew') {
-            // שימוש בפונקציה החדשה לכותרת
             monthKey = formatHebrewMonthTitle(day.date);
         } else {
             monthKey = day.date.toLocaleString('he-IL', { month: 'long', year: 'numeric' });
@@ -467,21 +466,30 @@ function renderCalendar(schedule) {
     for (const key in months) {
         const monthData = months[key];
         const monthWrapper = document.createElement('div');
-        monthWrapper.className = "calendar-month bg-white shadow-xl rounded-2xl overflow-hidden border border-slate-200";
+        monthWrapper.className = "calendar-month bg-white shadow-xl rounded-2xl border border-slate-200 mb-10 overflow-hidden";
+
+        // Month Title
         monthWrapper.innerHTML = `<div class="bg-slate-800 text-white p-4 text-center font-bold text-xl">${key}</div>`;
+
+        // --- FIX: Add the Scroll Container Wrapper ---
+        const scrollWrapper = document.createElement('div');
+        scrollWrapper.className = "calendar-scroll-container";
 
         const grid = document.createElement('div');
         grid.className = "calendar-grid";
 
+        // Headers
         ['א', 'ב', 'ג', 'ד', 'ה', 'ו', 'ש'].forEach(d => {
             grid.innerHTML += `<div class="bg-slate-50 p-2 text-center text-xs font-bold text-slate-500 border-b border-gray-200">${d}</div>`;
         });
 
+        // Padding for start of month
         const firstDayOfWeek = monthData[0].date.getDay();
         for (let i = 0; i < firstDayOfWeek; i++) {
             grid.innerHTML += `<div class="calendar-day bg-slate-50/50"></div>`;
         }
 
+        // Days
         monthData.forEach(day => {
             const state = manualOverrides[day.dateString] || 0;
             let statusClass = "";
@@ -515,23 +523,25 @@ function renderCalendar(schedule) {
                         <span class="text-xs font-bold ${day.date.getDay() === 6 ? 'text-blue-700' : 'text-slate-800'}">${mainDateDisplay}</span>
                         <span class="text-[9px] text-slate-400 font-normal leading-none">${secondaryDateDisplay}</span>
                     </div>
-                    <span class="text-[10px] text-blue-800 font-bold truncate max-w-[50px]">${day.masechet}</span>
+                    <span class="text-[10px] text-blue-800 font-bold truncate max-w-[40px]">${day.masechet}</span>
                 </div>
                 
                 ${indicator}
                 
-                <div class="text-[11px] font-bold text-center mt-1 leading-tight ${day.isEmpty ? 'text-slate-400 italic' : 'text-slate-800'}">
+                <div class="text-[10px] font-bold text-center mt-1 leading-tight ${day.isEmpty ? 'text-slate-400 italic' : 'text-slate-800'}">
                     ${day.isHoliday ? `<span class="holiday-label-small">${day.holidayTitle}</span>` : ''}
                     ${day.content}
                 </div>
                 
-                <div class="mt-auto text-[9px] text-slate-400 text-left">
+                <div class="mt-auto text-[8px] text-slate-400 text-left">
                     ${!day.isEmpty ? `${day.pages} דף` : ''}
                 </div>
             </div>`;
         });
 
-        monthWrapper.appendChild(grid);
+        // Assemble
+        scrollWrapper.appendChild(grid);
+        monthWrapper.appendChild(scrollWrapper);
         container.appendChild(monthWrapper);
     }
 }

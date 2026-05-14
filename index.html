@@ -145,6 +145,78 @@
                 padding: 6px !important;
             }
         }
+
+        /* MOBILE STYLES */
+        @media (max-width: 768px) {
+            /* 1. The Container: Allows horizontal "glide" */
+            .calendar-scroll-container {
+                width: 100% !important;
+                overflow-x: auto !important;
+                -webkit-overflow-scrolling: touch; /* Smooth momentum scroll for iOS */
+                position: relative;
+                padding-bottom: 8px; /* Space for the scrollbar */
+            }
+
+            /* 2. The Grid: Forced width to create the scroll and "peeking" effect */
+            .calendar-grid {
+                display: grid !important;
+                grid-template-columns: repeat(7, 1fr) !important;
+                /* 180% width ensures cells look like squares and 
+                the edge of the table is visibly cut off as a scroll hint */
+                min-width: 180% !important; 
+                background-color: #e5e7eb;
+                gap: 1px;
+            }
+
+            /* 3. The Cells: Forcing square shape and adjusting font sizes */
+            .calendar-day {
+                aspect-ratio: 1 / 1 !important; /* This makes them perfectly square */
+                min-height: auto !important; 
+                padding: 4px !important;
+            }
+
+            /* 4. Visual Hint: Style the scrollbar so it acts as a "rail" indicator */
+            .calendar-scroll-container::-webkit-scrollbar {
+                height: 5px;
+                display: block !important;
+            }
+
+            .calendar-scroll-container::-webkit-scrollbar-track {
+                background: #f1f5f9; /* slate-100 */
+                border-radius: 10px;
+            }
+
+            .calendar-scroll-container::-webkit-scrollbar-thumb {
+                background: #cbd5e1; /* slate-300 */
+                border-radius: 10px;
+            }
+
+            /* 5. Cleanup: Ensure the main site doesn't wobble horizontally */
+            body, html {
+                overflow-x: hidden !important;
+            }
+
+            /* Smaller text for mobile content to fit the square cells */
+            .calendar-day span, 
+            .calendar-day div {
+                font-size: 0.85em; 
+                line-height: 1.1;
+            }
+        }
+
+        /* --- PRINT STYLES --- */
+        @media print {
+            /* Keep your existing print logic here to ensure 
+            it ignores the scroll-container width when on paper */
+            .calendar-scroll-container {
+                overflow: visible !important;
+                width: 100% !important;
+            }
+            .calendar-grid {
+                min-width: 100% !important;
+                width: 100% !important;
+            }
+        }
     </style>
 </head>
 
