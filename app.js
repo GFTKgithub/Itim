@@ -79,6 +79,20 @@ async function fetchHolidays(year) {
     }
 }
 
+function getHebrewDate(date) {
+    return new Intl.DateTimeFormat('he-IL-u-ca-hebrew', {
+        day: 'numeric',
+        month: 'long'
+    }).format(date);
+}
+
+function getGregorianDate(date) {
+    return new Intl.DateTimeFormat('he-IL', {
+        day: 'numeric',
+        month: 'long'
+    }).format(date);
+}
+
 // Convert Hebrew letter sequence into its gematria
 function hebrewToNumber(str) {
     let sum = 0;
@@ -98,6 +112,20 @@ function numberToHebrew(num) {
         while (num >= value) { result += char; num -= value; }
     }
     return result;
+}
+
+// Convert a Hebrew year number to gematria
+function formatHebrewMonthTitle(date) {
+    const monthName = new Intl.DateTimeFormat('he-IL-u-ca-hebrew', { month: 'long' }).format(date);
+    const hebrewYearFull = new Intl.DateTimeFormat('he-IL-u-ca-hebrew', { year: 'numeric' }).format(date);
+
+    // חילוץ המספר (למשל 5786)
+    const yearNum = parseInt(hebrewYearFull.replace(/\D/g, ''));
+    const yearWithoutThousands = yearNum % 1000; // ייתן 786
+
+    // בניית השנה: 'ה' (עבור האלפים) + הגימטריה של 786
+    // numberToHebrew(786) יחזיר "תשפו"
+    return `${monthName} ה${numberToHebrew(yearWithoutThousands)}`;
 }
 
 // Gets the number of total amudim from a masechet
@@ -190,18 +218,45 @@ async function generate() {
     const includeHolidays = document.getElementById('includeHolidaysInput').checked;
     const breakDays = parseInt(document.getElementById('breakDaysInput').value) || 0;
     const method = document.getElementById('calcMethod').value;
+    const calendarType = document.getElementById('calendarType').value;
 
-    schedule = []; // איפוס המשתנה הגלובלי
+    schedule = []; // איפוס המערך הגלובלי
 
-    const startDateInput = document.getElementById('startDateInput').value;
-    let currentDate = new Date(startDateInput);
-    currentDate.setHours(0, 0, 0, 0);
+    const startDateValue = document.getElementById('startDateInput').value;
+    if (!startDateValue) return alert("נא לבחור תאריך התחלה");
 
-    const startYear = currentDate.getFullYear();
-    await fetchHolidays(startYear);
-    await fetchHolidays(startYear + 1);
+    const startInputDate = new Date(startDateValue);
+    startInputDate.setHours(0, 0, 0, 0);
 
-    // 1. חישוב סך כל הדפים בנטו לכל המסלול
+    // טעינת חגים לשנה הרלוונטית
+    await fetchHolidays(startInputDate.getFullYear());
+
+    // --- שלב 1: השלמת תחילת החודש הראשון (Padding) ---
+    let tempDate = new Date(startInputDate);
+    if (calendarType === 'hebrew') {
+        // הולכים אחורה עד א' בחודש
+        while (parseInt(new Intl.DateTimeFormat('he-IL-u-ca-hebrew', { day: 'numeric' }).format(tempDate)) > 1) {
+            tempDate.setDate(tempDate.getDate() - 1);
+        }
+    } else {
+        // הולכים אחורה עד ה-1 לחודש
+        tempDate.setDate(1);
+    }
+
+    while (tempDate < startInputDate) {
+        schedule.push({
+            date: new Date(tempDate),
+            dateString: tempDate.toISOString().split('T')[0],
+            masechet: "-",
+            isEmpty: true,
+            content: "",
+            pages: 0,
+            override: 0
+        });
+        tempDate.setDate(tempDate.getDate() + 1);
+    }
+
+    // --- שלב 2: חישוב קצב הלימוד ---
     let totalAmudimInSequence = 0;
     sequence.forEach((name, idx) => {
         let startIdx = 0;
@@ -215,12 +270,12 @@ async function generate() {
         totalAmudimInSequence += (getTotalAmudim(name) - startIdx);
     });
 
-    // 2. קביעת קצב הלימוד
     let paceAmudim;
     if (method === 'targetDate') {
-        const endDate = new Date(document.getElementById('targetDateInput').value);
-        const totalDays = Math.ceil((endDate - currentDate) / (1000 * 60 * 60 * 24)) + 1;
-        // חישוב ימי לימוד נטו: סך הימים פחות ימי ההפסקה בין המסכתות
+        const targetDateInput = document.getElementById('targetDateInput').value;
+        if (!targetDateInput) return alert("נא לבחור תאריך יעד");
+        const endDate = new Date(targetDateInput);
+        const totalDays = Math.ceil((endDate - startInputDate) / (1000 * 60 * 60 * 24)) + 1;
         const totalBreakDays = breakDays * (sequence.length - 1);
         const netStudyDays = totalDays - totalBreakDays;
         paceAmudim = Math.ceil(totalAmudimInSequence / Math.max(1, netStudyDays));
@@ -228,7 +283,9 @@ async function generate() {
         paceAmudim = Math.round(parseFloat(document.getElementById('paceInput').value) * 2);
     }
 
-    // 3. בניית הלוח
+    // --- שלב 3: בניית רצף הלימוד (ללא השלמות באמצע) ---
+    let currentDate = new Date(startInputDate);
+
     for (let mIdx = 0; mIdx < sequence.length; mIdx++) {
         const masechetName = sequence[mIdx];
         const totalAmudim = getTotalAmudim(masechetName);
@@ -276,23 +333,70 @@ async function generate() {
             currentDate.setDate(currentDate.getDate() + 1);
         }
 
-        // 4. הוספת ימי הפסקה בין מסכתות (פרט למסכת האחרונה)
+        // הוספת ימי הפסקה בין מסכתות
         if (mIdx < sequence.length - 1 && breakDays > 0) {
             for (let i = 0; i < breakDays; i++) {
-                const dateString = currentDate.toISOString().split('T')[0];
+                const isShabbat = currentDate.getDay() === 6; // בדיקה אם יום המנוחה הוא שבת
                 schedule.push({
                     date: new Date(currentDate),
-                    dateString: dateString,
+                    dateString: currentDate.toISOString().split('T')[0],
                     masechet: "הפסקה",
-                    isShabbat: currentDate.getDay() === 6,
-                    isHoliday: !!holidaysData[dateString],
-                    holidayTitle: holidaysData[dateString],
+                    isShabbat: isShabbat, // הוספת המאפיין לצביעת הרקע
                     isEmpty: true,
-                    content: "מנוחה בין מסכתות",
+                    content: isShabbat ? "שבת קודש" : "מנוחה",
                     pages: 0,
                     override: 0
                 });
                 currentDate.setDate(currentDate.getDate() + 1);
+            }
+        }
+    }
+
+    // --- שלב 4: השלמה לסוף חודש מלא (גרסה סופית ויציבה) ---
+
+    // 1. פונקציית עזר לבדיקה
+    const isEndOfMonth = (d) => {
+        const nextDay = new Date(d);
+        nextDay.setDate(nextDay.getDate() + 1);
+        if (calendarType === 'hebrew') {
+            const m1 = new Intl.DateTimeFormat('he-IL-u-ca-hebrew', { month: 'numeric' }).format(d);
+            const m2 = new Intl.DateTimeFormat('he-IL-u-ca-hebrew', { month: 'numeric' }).format(nextDay);
+            return m1 !== m2;
+        } else {
+            return nextDay.getDate() === 1;
+        }
+    };
+
+    // 2. זיהוי היום האחרון שנוסף (סוף הלימוד)
+    let lastDay = schedule[schedule.length - 1];
+
+    if (lastDay) {
+        let runnerDate = new Date(lastDay.date);
+
+        // 3. רק אם היום האחרון הוא לא סוף חודש, נתחיל להוסיף ימים
+        if (!isEndOfMonth(runnerDate)) {
+            // מקדמים ליום הבא כדי להתחיל למלא
+            runnerDate.setDate(runnerDate.getDate() + 1);
+
+            while (true) {
+                const dateString = runnerDate.toISOString().split('T')[0];
+                const isShabbat = runnerDate.getDay() === 6;
+
+                schedule.push({
+                    date: new Date(runnerDate),
+                    dateString: dateString,
+                    masechet: "-",
+                    isShabbat: isShabbat,
+                    isEmpty: true,
+                    content: isShabbat ? "שבת קודש" : "",
+                    pages: 0,
+                    override: 0
+                });
+
+                // אם הגענו לסוף החודש - עוצרים מיד
+                if (isEndOfMonth(runnerDate)) break;
+
+                runnerDate.setDate(runnerDate.getDate() + 1);
             }
         }
     }
@@ -305,10 +409,17 @@ async function generate() {
 function renderCalendar(schedule) {
     const container = document.getElementById('calendarContainer');
     container.innerHTML = "";
+    const calendarType = document.getElementById('calendarType').value;
     const months = {};
 
     schedule.forEach(day => {
-        const monthKey = day.date.toLocaleString('he-IL', { month: 'long', year: 'numeric' });
+        let monthKey;
+        if (calendarType === 'hebrew') {
+            // שימוש בפונקציה החדשה לכותרת
+            monthKey = formatHebrewMonthTitle(day.date);
+        } else {
+            monthKey = day.date.toLocaleString('he-IL', { month: 'long', year: 'numeric' });
+        }
         if (!months[monthKey]) months[monthKey] = [];
         months[monthKey].push(day);
     });
@@ -332,16 +443,29 @@ function renderCalendar(schedule) {
         }
 
         monthData.forEach(day => {
-            const state = day.override;
+            // לוגיקת Override (תיקון סעיף 2)
+            const state = manualOverrides[day.dateString] || 0;
             let statusClass = "";
             let indicator = "";
-
-            if (state === 1) { // מנוחה מאולצת
+            if (state === 1) {
                 statusClass = "force-break";
-                indicator = '<span class="absolute top-1 left-1 text-red-500 font-bold">✕</span>';
-            } else if (state === 2) { // למידה מאולצת (כחול כפי שביקשת)
+                indicator = '<span class="absolute top-1 left-1 text-red-500 font-bold text-[10px]">✕</span>';
+            } else if (state === 2) {
                 statusClass = "force-study";
-                indicator = '<span class="absolute top-1 left-1 text-blue-600 font-bold">✎</span>';
+                indicator = '<span class="absolute top-1 left-1 text-blue-600 font-bold text-[10px]">✎</span>';
+            }
+
+            // לוגיקת תאריכים (תיקון סעיף 1)
+            let mainDateDisplay;
+            let secondaryDateDisplay;
+            const hebrewDayNum = parseInt(new Intl.DateTimeFormat('he-IL-u-ca-hebrew', { day: 'numeric' }).format(day.date));
+
+            if (calendarType === 'hebrew') {
+                mainDateDisplay = numberToHebrew(hebrewDayNum);
+                secondaryDateDisplay = day.date.getDate() + "." + (day.date.getMonth() + 1);
+            } else {
+                mainDateDisplay = day.date.getDate();
+                secondaryDateDisplay = numberToHebrew(hebrewDayNum);
             }
 
             grid.innerHTML += `
@@ -349,7 +473,10 @@ function renderCalendar(schedule) {
                 class="calendar-day cursor-pointer relative ${statusClass} ${day.isShabbat ? 'shabbat-bg' : ''} ${day.isHoliday ? 'holiday-bg' : ''} border-b border-l border-gray-100">
                 
                 <div class="flex justify-between items-start mb-1">
-                    <span class="text-xs font-bold ${day.date.getDay() === 6 ? 'text-blue-700' : 'text-slate-400'}">${day.date.getDate()}</span>
+                    <div class="flex flex-col">
+                        <span class="text-xs font-bold ${day.date.getDay() === 6 ? 'text-blue-700' : 'text-slate-800'}">${mainDateDisplay}</span>
+                        <span class="text-[9px] text-slate-400 font-normal leading-none">${secondaryDateDisplay}</span>
+                    </div>
                     <span class="text-[10px] text-blue-800 font-bold truncate max-w-[50px]">${day.masechet}</span>
                 </div>
                 
@@ -384,7 +511,7 @@ function toggleDate(dateString) {
     generate();
 }
 
-async function exportBeautifulExcel() {
+async function exportToExcel() {
     if (!schedule || schedule.length === 0) return alert("יש ליצור לוח לימוד קודם");
 
     const workbook = new ExcelJS.Workbook();
@@ -392,16 +519,21 @@ async function exportBeautifulExcel() {
         views: [{ rightToLeft: true }]
     });
 
-    // תו בקרה לכיווניות ימין לשמאל (RTL Mark)
+    const calendarType = document.getElementById('calendarType').value;
     const RTL_MARK = '\u200F';
-
-    worksheet.columns = Array(7).fill({ width: 22 });
+    worksheet.columns = Array(7).fill({ width: 25 });
 
     let currentRow = 1;
 
+    // קיבוץ לפי חודשים בהתאם לבחירת המשתמש
     const months = {};
     schedule.forEach(day => {
-        const monthName = day.date.toLocaleString('he-IL', { month: 'long', year: 'numeric' });
+        let monthName;
+        if (calendarType === 'hebrew') {
+            monthName = formatHebrewMonthTitle(day.date);
+        } else {
+            monthName = day.date.toLocaleString('he-IL', { month: 'long', year: 'numeric' });
+        }
         if (!months[monthName]) months[monthName] = [];
         months[monthName].push(day);
     });
@@ -417,7 +549,7 @@ async function exportBeautifulExcel() {
         worksheet.getRow(currentRow).height = 30;
         currentRow++;
 
-        // ימי השבוע
+        // כותרות ימי השבוע
         const daysHeader = ['א', 'ב', 'ג', 'ד', 'ה', 'ו', 'ש'];
         daysHeader.forEach((d, i) => {
             const cell = worksheet.getCell(currentRow, i + 1);
@@ -430,61 +562,70 @@ async function exportBeautifulExcel() {
         currentRow++;
 
         let weekRow = currentRow;
-        const firstDay = days[0].date.getDay();
-        for (let i = 0; i < firstDay; i++) {
-            worksheet.getCell(weekRow, i + 1).border = { top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' } };
-            worksheet.getCell(weekRow, i + 1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF9FAFB' } };
+
+        // מילוי ימים ריקים בתחילת החודש (Padding)
+        const firstDayInMonth = days[0].date.getDay();
+        for (let i = 0; i < firstDayInMonth; i++) {
+            const cell = worksheet.getCell(weekRow, i + 1);
+            cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF9FAFB' } };
+            cell.border = { top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' } };
         }
 
         days.forEach(day => {
             const col = (day.date.getDay() + 1);
             const cell = worksheet.getCell(weekRow, col);
 
-            // יצירת טקסט עם תו RTL בתחילת כל שורה כדי לשמור על סדר הפיסוק
-            let lines = [];
-            lines.push(RTL_MARK + day.date.getDate());
+            // חישוב תאריכים להצגה (ראשי ומשני)
+            let mainDate, secDate;
+            const hebrewDayNum = parseInt(new Intl.DateTimeFormat('he-IL-u-ca-hebrew', { day: 'numeric' }).format(day.date));
 
-            if (day.isEmpty) {
-                if (day.isHoliday) lines.push(RTL_MARK + day.holidayTitle);
-                lines.push(RTL_MARK + day.content);
+            if (calendarType === 'hebrew') {
+                mainDate = numberToHebrew(hebrewDayNum);
+                secDate = day.date.getDate() + "." + (day.date.getMonth() + 1);
             } else {
-                lines.push(RTL_MARK + day.masechet);
-                lines.push(RTL_MARK + day.content);
+                mainDate = day.date.getDate();
+                secDate = numberToHebrew(hebrewDayNum);
             }
 
-            cell.value = lines.join('\n');
+            // בניית תוכן התא
+            let cellContent = `${RTL_MARK}${mainDate} (${secDate})\n`;
 
-            // יישור טקסט: מרכז (לבקשתך) עם הגדרות כיווניות
-            cell.alignment = {
-                wrapText: true,
-                vertical: 'top',
-                horizontal: 'center', // ממרכז את הטקסט באמצע התא
-                readingOrder: 2      // אומר לאקסל שהכיוון הכללי הוא RTL
-            };
+            if (!day.isEmpty) {
+                cellContent += `${RTL_MARK}${day.masechet}\n${RTL_MARK}${day.content}`;
+            } else if (day.holidayTitle) {
+                cellContent += `${RTL_MARK}${day.holidayTitle}`;
+            } else if (day.isShabbat) {
+                cellContent += `${RTL_MARK}שבת קודש`;
+            } else if (day.content) {
+                cellContent += `${RTL_MARK}${day.content}`;
+            }
 
+            cell.value = cellContent;
+            cell.alignment = { wrapText: true, vertical: 'top', horizontal: 'center', readingOrder: 2 };
             cell.border = { top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' } };
 
-            // צבעים
+            // צביעת תאים
             if (day.override === 1) {
-                cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFEBEE' } }; // אדום בהיר
+                cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFEBEE' } };
             } else if (day.override === 2) {
-                cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFEBF5FF' } }; // כחול בהיר (במקום ירוק)
+                cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFEBF5FF' } };
             } else if (day.isShabbat) {
-                cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFDBE6F3' } };
+                cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFDBE6F3' } }; // כחול שבת
             } else if (day.isHoliday) {
                 cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE9EFD5' } };
             }
 
             if (col === 7) {
-                worksheet.getRow(weekRow).height = 60;
+                worksheet.getRow(weekRow).height = 65;
                 weekRow++;
             }
         });
 
-        worksheet.getRow(weekRow).height = 60;
+        // סגירת שורת השבוע האחרונה בחודש
+        worksheet.getRow(weekRow).height = 65;
         currentRow = weekRow + 2;
     }
 
     const buffer = await workbook.xlsx.writeBuffer();
-    saveAs(new Blob([buffer]), 'תכנית_לימוד_מעוצבת.xlsx');
+    saveAs(new Blob([buffer]), 'עיתים_תכנית_לימוד.xlsx');
 }
