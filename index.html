@@ -7,30 +7,14 @@
     <title>עיתים - מתכנן לימוד</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        @media print {
-            .no-print {
-                display: none !important;
-            }
-
-            body {
-                background: white;
-            }
-
-            .calendar-month {
-                page-break-inside: avoid;
-                margin-bottom: 20px;
-                border: 1px solid #ccc;
-                box-shadow: none !important;
-            }
-        }
-
+        /* --- SCREEN STYLES (Your original great look) --- */
         .calendar-grid {
             display: grid;
             grid-template-columns: repeat(7, 1fr);
             gap: 1px;
             background-color: #e5e7eb;
         }
-
+    
         .calendar-day {
             min-height: 95px;
             background: white;
@@ -39,20 +23,20 @@
             flex-direction: column;
             transition: all 0.2s;
         }
-
+    
         .calendar-day:hover {
             background-color: #f9fafb;
         }
-
+    
         .holiday-bg {
             background-color: #fefce8;
             border: 1px solid #fef08a;
         }
-
+    
         .shabbat-bg {
             background-color: #eff6ff;
         }
-
+    
         .holiday-label-small {
             display: block;
             color: #b91c1c;
@@ -60,16 +44,70 @@
             font-weight: bold;
             margin-bottom: 2px;
         }
-
-        /* צבעים למצבי דריסה */
+    
         .force-study {
             background-color: #f0f7ff !important;
             border: 2px solid #3b82f6 !important;
         }
-
+    
         .force-break {
             background-color: #fef2f2 !important;
             border: 2px solid #ef4444 !important;
+        }
+    
+        /* --- PRINT STYLES (The Centering & Ghost-Page Fix) --- */
+        @media print {
+            .no-print {
+                display: none !important;
+            }
+    
+            /* 1. Reset everything to prevent "leaking" boxes */
+            html,
+            body {
+                margin: 0 !important;
+                padding: 0 !important;
+                height: auto;
+                background: white !important;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+    
+            /* 2. The Month Wrapper */
+            .calendar-month {
+                page-break-before: always;
+                page-break-inside: avoid;
+    
+                /* Center the calendar */
+                display: flex !important;
+                flex-direction: column;
+                justify-content: center;
+                align-items: center;
+    
+                /* vh can be tricky; 96% of the page is safer */
+                min-height: 96vh;
+                width: 100%;
+    
+                /* CRITICAL: Remove these so they don't appear on blank pages */
+                border: none !important;
+                box-shadow: none !important;
+                margin: 0 !important;
+            }
+    
+            .calendar-month:first-child {
+                page-break-before: auto;
+            }
+    
+            /* 3. The actual calendar content (put borders here instead) */
+            .calendar-month>div {
+                width: 95%;
+                border: 1px solid #eee;
+                /* Light border around the actual table only */
+                padding: 10px;
+            }
+    
+            .calendar-day {
+                min-height: 80px !important;
+            }
         }
     </style>
 </head>
