@@ -103,14 +103,57 @@ function hebrewToNumber(str) {
 // Convert gematria into a Hebrew letter sequence
 function numberToHebrew(num) {
     if (num <= 0) return "";
+
+    // Handle thousands recursively
+    if (num >= 1000) {
+        return numberToHebrew(Math.floor(num / 1000)) + numberToHebrew(num % 1000);
+    }
+
+    // Special cases for 15 and 16
     if (num === 15) return "טו";
     if (num === 16) return "טז";
+
     let result = "";
-    const keys = Object.keys(gematriaMap).reverse();
+    const keys = Object.keys(gematriaMap).sort((a, b) => gematriaMap[b] - gematriaMap[a]);
+
     for (let char of keys) {
         let value = gematriaMap[char];
-        while (num >= value) { result += char; num -= value; }
+        while (num >= value) {
+            result += char;
+            num -= value;
+        }
     }
+    return result;
+}
+
+function formatGematria(num, rawHebrew) {
+    if (!rawHebrew) return "";
+
+    let result = rawHebrew;
+
+    // 1. Handle Thousands Apostrophe
+    // If > 1000, find the index where thousands end and rest begins
+    if (num >= 1000) {
+        const thousandPartLen = numberToHebrew(Math.floor(num / 1000)).length;
+        result = result.slice(0, thousandPartLen) + "׳" + result.slice(thousandPartLen);
+    }
+
+    // 2. Handle Gershayim (Double tick) or Geresh (Single tick) for the remainder
+    const remainder = num % 1000;
+    if (remainder > 0) {
+        // If the remainder is a single letter, add a single tick (e.g., 5000 + 3 = ה׳ג׳)
+        // If the remainder is multiple letters, add double tick before last letter (e.g., ה׳תשפ״ד)
+        const output = numberToHebrew(remainder);
+
+        if (output.length === 1) {
+            result += "׳";
+        } else {
+            // Insert " before the last character
+            const lastTickIndex = result.length - 1;
+            result = result.slice(0, lastTickIndex) + "״" + result.slice(lastTickIndex);
+        }
+    }
+
     return result;
 }
 
@@ -121,11 +164,8 @@ function formatHebrewMonthTitle(date) {
 
     // חילוץ המספר (למשל 5786)
     const yearNum = parseInt(hebrewYearFull.replace(/\D/g, ''));
-    const yearWithoutThousands = yearNum % 1000; // ייתן 786
 
-    // בניית השנה: 'ה' (עבור האלפים) + הגימטריה של 786
-    // numberToHebrew(786) יחזיר "תשפו"
-    return `${monthName} ה${numberToHebrew(yearWithoutThousands)}`;
+    return `${monthName} ${formatGematria(yearNum, numberToHebrew(yearNum))}`;
 }
 
 // Gets the number of total amudim from a masechet
@@ -443,7 +483,6 @@ function renderCalendar(schedule) {
         }
 
         monthData.forEach(day => {
-            // לוגיקת Override (תיקון סעיף 2)
             const state = manualOverrides[day.dateString] || 0;
             let statusClass = "";
             let indicator = "";
@@ -455,17 +494,16 @@ function renderCalendar(schedule) {
                 indicator = '<span class="absolute bottom-1 right-1 text-blue-600 font-bold text-[10px]">✎</span>';
             }
 
-            // לוגיקת תאריכים (תיקון סעיף 1)
             let mainDateDisplay;
             let secondaryDateDisplay;
             const hebrewDayNum = parseInt(new Intl.DateTimeFormat('he-IL-u-ca-hebrew', { day: 'numeric' }).format(day.date));
 
             if (calendarType === 'hebrew') {
-                mainDateDisplay = numberToHebrew(hebrewDayNum);
+                mainDateDisplay = formatGematria(hebrewDayNum, numberToHebrew(hebrewDayNum));
                 secondaryDateDisplay = day.date.getDate() + "." + (day.date.getMonth() + 1);
             } else {
                 mainDateDisplay = day.date.getDate();
-                secondaryDateDisplay = numberToHebrew(hebrewDayNum);
+                secondaryDateDisplay = formatGematria(hebrewDayNum, numberToHebrew(hebrewDayNum));
             }
 
             grid.innerHTML += `
