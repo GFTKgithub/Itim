@@ -332,7 +332,7 @@ async function generate() {
     // הזנת ימי ה-Padding של תחילת החודש (עכשיו כשנתוני החגים כבר נטענו)
     let paddingDate = new Date(tempDate);
     while (paddingDate < startInputDate) {
-        const dateString = formatDateToIL(currentDate);
+        const dateString = formatDateToIL(paddingDate);
         const holidayName = holidaysData[dateString];
         const isShabbat = paddingDate.getDay() === 6;
 
@@ -448,7 +448,7 @@ async function generate() {
             runnerDate.setDate(runnerDate.getDate() + 1);
 
             while (true) {
-                const dateString = runnerDate.toISOString().split('T')[0];
+                const dateString = formatDateToIL(runnerDate);
                 const holidayName = holidaysData[dateString];
                 const isShabbat = runnerDate.getDay() === 6;
 
