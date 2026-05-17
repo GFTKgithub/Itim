@@ -126,6 +126,7 @@ function numberToHebrew(num) {
     return result;
 }
 
+// Properly format a gematria string based on the syntactical rules
 function formatGematria(num, rawHebrew) {
     if (!rawHebrew) return "";
 
@@ -268,9 +269,6 @@ async function generate() {
     const startInputDate = new Date(startDateValue);
     startInputDate.setHours(0, 0, 0, 0);
 
-    // טעינת חגים לשנה הרלוונטית
-    await fetchHolidays(startInputDate.getFullYear());
-
     // --- שלב 1: השלמת תחילת החודש הראשון (Padding) ---
     let tempDate = new Date(startInputDate);
     if (calendarType === 'hebrew') {
@@ -322,6 +320,30 @@ async function generate() {
     } else {
         paceAmudim = Math.round(parseFloat(document.getElementById('paceInput').value) * 2);
     }
+
+    // Dynamically fetch holiday data
+    const startYear = startInputDate.getFullYear();
+    let endYear = startYear;
+
+    if (method === 'targetDate') {
+        const targetDateInput = document.getElementById('targetDateInput').value;
+        if (targetDateInput) {
+            endYear = new Date(targetDateInput).getFullYear();
+        }
+    } else {
+        // הערכת משך הזמן לפי קצב הלימוד ותוספת מרווח ביטחון של 60 יום עבור שבתות וחגים
+        const totalDaysEstimate = Math.ceil(totalAmudimInSequence / paceAmudim) + (breakDays * sequence.length);
+        const endEstimateDate = new Date(startInputDate);
+        endEstimateDate.setDate(endEstimateDate.getDate() + totalDaysEstimate + 60);
+        endYear = endEstimateDate.getFullYear();
+    }
+
+    // שליפת הנתונים במקביל למניעת חסימת קצב הריצה (עבור טווח השנים שנמצאו + שנה קדימה/אחורה לגיבוי)
+    const holidayPromises = [];
+    for (let y = startYear - 1; y <= endYear + 1; y++) {
+        holidayPromises.push(fetchHolidays(y));
+    }
+    await Promise.all(holidayPromises);
 
     // --- שלב 3: בניית רצף הלימוד (ללא השלמות באמצע) ---
     let currentDate = new Date(startInputDate);
