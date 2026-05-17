@@ -71,8 +71,19 @@ async function fetchHolidays(year) {
         const response = await fetch(`https://www.hebcal.com/hebcal?v=1&cfg=json&year=${year}&yt=G&i=on&maj=on&min=on&nx=on&mf=on&ss=on&mvch=off&mod=on&s=on&mm=0&lg=h&c=off&geo=none&zip=&geonameid=&b=18&M=on&td=&m=&ue=off&leyning=off`);
         const data = await response.json();
         data.items.forEach(item => {
-            // API returns date in YYYY-MM-DD format
-            holidaysData[item.date] = item.hebrew;
+            // Convert the API date to your local string format
+            const dateStr = formatDateToIL(new Date(item.date));
+            const category = item.category || "";
+
+            // 1. Filter out items that should NEVER clear the study schedule
+            const isMevarchim = category == "mevarchim";
+
+            if (isMevarchim) {
+                return; // Skip these completely. They won't be treated as schedule-clearing holidays.
+            }
+
+            // 2. Only major holidays/fasts make it past the filter and into holidaysData
+            holidaysData[dateStr] = item.hebrew;
         });
     } catch (e) {
         console.error("שגיאה בטעינת חגים", e);
