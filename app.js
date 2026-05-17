@@ -261,7 +261,7 @@ async function generate() {
     const method = document.getElementById('calcMethod').value;
     const calendarType = document.getElementById('calendarType').value;
 
-    schedule = []; // איפוס המערך הגלובלי
+    schedule = [];
 
     const startDateValue = document.getElementById('startDateInput').value;
     if (!startDateValue) return alert("נא לבחור תאריך התחלה");
@@ -269,18 +269,10 @@ async function generate() {
     const startInputDate = new Date(startDateValue);
     startInputDate.setHours(0, 0, 0, 0);
 
-    // --- שלב 1: השלמת תחילת החודש הראשון (Padding) ---
-    let tempDate = new Date(startInputDate);
-    if (calendarType === 'hebrew') {
-        while (parseInt(new Intl.DateTimeFormat('he-IL-u-ca-hebrew', { day: 'numeric' }).format(tempDate)) > 1) {
-            tempDate.setDate(tempDate.getDate() - 1);
-        }
-    } else {
-        tempDate.setDate(1);
-    }
-
-    // נחשב זמנית את סך העמודים כדי שהערכת השנים לחגים תעבוד במקרה של חישוב לפי קצב
+    // --- Step 1: Calculate Total Amudim ---
     let totalAmudimInSequence = 0;
+    let initialAmudOffset = 0;
+
     sequence.forEach((name, idx) => {
         let startIdx = 0;
         if (idx === 0) {
@@ -289,35 +281,75 @@ async function generate() {
                 startIdx = Math.max(0, (hebrewToNumber(startDafHeb) * 2) - 4);
                 if (document.getElementById('startAmudSelect').value === "ב") startIdx += 1;
             }
+            initialAmudOffset = startIdx;
         }
-        totalAmudimInSequence += (getTotalAmudim(name) - startIdx);
+        totalAmudimInSequence += (getTotalAmudim(name) - (idx === 0 ? startIdx : 0));
     });
 
+    // --- Step 2: Calculate Internal Pace (In Amudim) ---
     let paceAmudim;
     if (method === 'targetDate') {
         const targetDateInput = document.getElementById('targetDateInput').value;
-        if (targetDateInput) {
-            const endDate = new Date(targetDateInput);
-            const totalDays = Math.ceil((endDate - startInputDate) / (1000 * 60 * 60 * 24)) + 1;
-            const totalBreakDays = breakDays * (sequence.length - 1);
-            const netStudyDays = totalDays - totalBreakDays;
-            paceAmudim = Math.ceil(totalAmudimInSequence / Math.max(1, netStudyDays));
+        if (!targetDateInput) return alert("נא לבחור תאריך יעד");
+
+        const endDate = new Date(targetDateInput);
+        endDate.setHours(0, 0, 0, 0);
+
+        if (endDate < startInputDate) return alert("תאריך היעד אינו יכול להיות לפני תאריך ההתחלה");
+
+        // 1. Fetch holidays for the target range early to ensure accurate mapping
+        const startYear = startInputDate.getFullYear();
+        const endYear = endDate.getFullYear();
+        const holidayPromises = [];
+        for (let y = startYear - 1; y <= endYear + 1; y++) {
+            holidayPromises.push(fetchHolidays(y));
         }
+        await Promise.all(holidayPromises);
+
+        // 2. Loop through the exact date range to count actual, valid study days
+        let netStudyDays = 0;
+        let scanDate = new Date(startInputDate);
+
+        // Track how many tractate breaks will interrupt this period
+        const totalBreakDays = breakDays * (sequence.length - 1);
+
+        while (scanDate <= endDate) {
+            const dateString = formatDateToIL(scanDate);
+            const holidayName = holidaysData[dateString];
+            const isShabbat = scanDate.getDay() === 6;
+            const overrideState = manualOverrides[dateString] || 0;
+
+            // Determine if this day is a rest day based on UI settings and overrides
+            let isRestDay = (overrideState === 1) ||
+                (overrideState !== 2 && ((isShabbat && !includeShabbat) || (holidayName && !includeHolidays)));
+
+            if (!isRestDay) {
+                netStudyDays++;
+            }
+
+            scanDate.setDate(scanDate.getDate() + 1);
+        }
+
+        // Deduct the structural break days between tractates from the available study days
+        netStudyDays -= totalBreakDays;
+
+        if (netStudyDays <= 0) return alert("אין מספיק ימי לימוד בטווח התאריכים שהוגדר (כולל ימי מנוחה והפסקות)");
+
+        // 3. Divide total amudim by actual remaining study days
+        paceAmudim = Math.ceil(totalAmudimInSequence / netStudyDays);
     } else {
         paceAmudim = Math.round(parseFloat(document.getElementById('paceInput').value) * 2);
     }
 
-    // --- חישוב דינמי של השנים הנדרשות לשליפת חגים ---
+    // --- Step 3: Fetch Holidays Dynamically ---
     const startYear = startInputDate.getFullYear();
     let endYear = startYear;
 
     if (method === 'targetDate') {
         const targetDateInput = document.getElementById('targetDateInput').value;
-        if (targetDateInput) {
-            endYear = new Date(targetDateInput).getFullYear();
-        }
+        if (targetDateInput) endYear = new Date(targetDateInput).getFullYear();
     } else {
-        const totalDaysEstimate = Math.ceil(totalAmudimInSequence / (paceAmudim || 2)) + (breakDays * sequence.length);
+        const totalDaysEstimate = Math.ceil(totalAmudimInSequence / paceAmudim) + (breakDays * sequence.length);
         const endEstimateDate = new Date(startInputDate);
         endEstimateDate.setDate(endEstimateDate.getDate() + totalDaysEstimate + 60);
         endYear = endEstimateDate.getFullYear();
@@ -329,7 +361,16 @@ async function generate() {
     }
     await Promise.all(holidayPromises);
 
-    // הזנת ימי ה-Padding של תחילת החודש (עכשיו כשנתוני החגים כבר נטענו)
+    // --- Step 4: Calculate Calendar Front Padding ---
+    let tempDate = new Date(startInputDate);
+    if (calendarType === 'hebrew') {
+        while (parseInt(new Intl.DateTimeFormat('he-IL-u-ca-hebrew', { day: 'numeric' }).format(tempDate)) > 1) {
+            tempDate.setDate(tempDate.getDate() - 1);
+        }
+    } else {
+        tempDate.setDate(1);
+    }
+
     let paddingDate = new Date(tempDate);
     while (paddingDate < startInputDate) {
         const dateString = formatDateToIL(paddingDate);
@@ -346,26 +387,18 @@ async function generate() {
             isEmpty: true,
             content: isShabbat ? "שבת קודש" : "",
             pages: 0,
-            override: 0
+            override: manualOverrides[dateString] || 0
         });
         paddingDate.setDate(paddingDate.getDate() + 1);
     }
 
-    // --- שלב 3: בניית רצף הלימוד ---
+    // --- Step 5: Process Main Study Sequence ---
     let currentDate = new Date(startInputDate);
 
     for (let mIdx = 0; mIdx < sequence.length; mIdx++) {
         const masechetName = sequence[mIdx];
         const totalAmudim = getTotalAmudim(masechetName);
-        let currentAmud = 0;
-
-        if (mIdx === 0) {
-            const startDafHeb = document.getElementById('startDafInput').value.trim();
-            if (startDafHeb) {
-                currentAmud = Math.max(0, (hebrewToNumber(startDafHeb) * 2) - 4);
-                if (document.getElementById('startAmudSelect').value === "ב") currentAmud += 1;
-            }
-        }
+        let currentAmud = (mIdx === 0) ? initialAmudOffset : 0;
 
         while (currentAmud < totalAmudim) {
             const dateString = formatDateToIL(currentDate);
@@ -388,7 +421,6 @@ async function generate() {
             };
 
             if (isNonStudyDay) {
-                // תיקון באג שבתות מיוחדות: לא דוחפים את שם החג לתוך תוכן הלימוד אם הוא מוצג ככותרת
                 dayData.content = isShabbat ? "שבת קודש" : "מנוחה";
                 dayData.pages = 0;
             } else {
@@ -402,7 +434,7 @@ async function generate() {
             currentDate.setDate(currentDate.getDate() + 1);
         }
 
-        // הוספת ימי הפסקה בין מסכתות
+        // Add break days between tractates
         if (mIdx < sequence.length - 1 && breakDays > 0) {
             for (let i = 0; i < breakDays; i++) {
                 const dateString = formatDateToIL(currentDate);
@@ -419,14 +451,14 @@ async function generate() {
                     isEmpty: true,
                     content: isShabbat ? "שבת קודש" : "מנוחה",
                     pages: 0,
-                    override: 0
+                    override: manualOverrides[dateString] || 0
                 });
                 currentDate.setDate(currentDate.getDate() + 1);
             }
         }
     }
 
-    // --- שלב 4: השלמה לסוף חודש מלא ---
+    // --- Step 6: Calendar Back Padding ---
     const isEndOfMonth = (d) => {
         const nextDay = new Date(d);
         nextDay.setDate(nextDay.getDate() + 1);
@@ -440,34 +472,27 @@ async function generate() {
     };
 
     let lastDay = schedule[schedule.length - 1];
-
     if (lastDay) {
         let runnerDate = new Date(lastDay.date);
 
-        if (!isEndOfMonth(runnerDate)) {
+        while (!isEndOfMonth(runnerDate)) {
             runnerDate.setDate(runnerDate.getDate() + 1);
+            const dateString = formatDateToIL(runnerDate);
+            const holidayName = holidaysData[dateString];
+            const isShabbat = runnerDate.getDay() === 6;
 
-            while (true) {
-                const dateString = formatDateToIL(runnerDate);
-                const holidayName = holidaysData[dateString];
-                const isShabbat = runnerDate.getDay() === 6;
-
-                schedule.push({
-                    date: new Date(runnerDate),
-                    dateString: dateString,
-                    masechet: "-",
-                    isShabbat: isShabbat,
-                    isHoliday: !!holidayName,
-                    holidayTitle: holidayName,
-                    isEmpty: true,
-                    content: isShabbat ? "שבת קודש" : "",
-                    pages: 0,
-                    override: 0
-                });
-
-                if (isEndOfMonth(runnerDate)) break;
-                runnerDate.setDate(runnerDate.getDate() + 1);
-            }
+            schedule.push({
+                date: new Date(runnerDate),
+                dateString: dateString,
+                masechet: "-",
+                isShabbat: isShabbat,
+                isHoliday: !!holidayName,
+                holidayTitle: holidayName,
+                isEmpty: true,
+                content: isShabbat ? "שבת קודש" : "",
+                pages: 0,
+                override: manualOverrides[dateString] || 0
+            });
         }
     }
 
