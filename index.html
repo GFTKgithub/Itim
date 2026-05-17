@@ -302,17 +302,17 @@
                                 class="w-full border border-blue-200 rounded-lg p-2.5 text-lg font-bold text-blue-900">
                         </div>
 
-                        <div id="targetDateSection" class="hidden bg-red-50 p-3 rounded-lg border border-red-100">
-                            <label class="block text-xs font-bold text-red-800 mb-1 mr-1">תאריך יעד לסיום</label>
-                            <input type="date" id="targetDateInput"
-                                class="w-full border border-red-200 rounded-lg p-2.5">
+                        <div>
+                            <label for="targetDateInput">תאריך יעד לסיום:</label>
+                            <input type="date" id="targetDateInput" onchange="updateHebrewLabel(this, 'targetDateHebrewLabel')">
+                            <span id="targetDateHebrewLabel" style="margin-right: 10px; color: #555;"></span>
                         </div>
 
                         <div class="grid grid-cols-2 gap-4">
                             <div>
-                                <label class="block text-xs font-bold text-slate-500 mb-1 mr-1">תאריך התחלה</label>
-                                <input type="date" id="startDateInput"
-                                    class="w-full border border-slate-300 rounded-lg p-2.5">
+                                <label for="startDateInput">תאריך התחלה:</label>
+                                <input type="date" id="startDateInput" onchange="updateHebrewLabel(this, 'startDateHebrewLabel')">
+                                <span id="startDateHebrewLabel" style="margin-right: 10px; color: #555;"></span>
                             </div>
                             <div>
                                 <label class="block text-xs font-bold text-slate-500 mb-1 mr-1">התחלה מדף</label>
