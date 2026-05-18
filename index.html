@@ -14,7 +14,7 @@
             gap: 1px;
             background-color: #e5e7eb;
         }
-    
+
         .calendar-day {
             min-height: 95px;
             background: white;
@@ -23,20 +23,20 @@
             flex-direction: column;
             transition: all 0.2s;
         }
-    
+
         .calendar-day:hover {
             background-color: #f9fafb;
         }
-    
+
         .holiday-bg {
             background-color: #fefce8;
             border: 1px solid #fef08a;
         }
-    
+
         .shabbat-bg {
             background-color: #eff6ff;
         }
-    
+
         .holiday-label-small {
             display: block;
             color: #b91c1c;
@@ -44,36 +44,35 @@
             font-weight: bold;
             margin-bottom: 2px;
         }
-    
+
         .force-study {
             background-color: #f0f7ff !important;
             border: 2px solid #3b82f6 !important;
         }
-    
+
         .force-break {
             background-color: #fef2f2 !important;
             border: 2px solid #ef4444 !important;
         }
-    
+
         input:focus,
         select:focus {
             outline: none !important;
             border-color: #1e40af !important;
             box-shadow: 0 0 0 3px rgba(30, 64, 175, 0.1);
         }
-    
+
         /* --- PRINT STYLES (Strictly for Paper/PDF) --- */
         @media print {
             @page {
                 margin: 0;
-                /* Let the container handle margins */
                 size: auto;
             }
-    
+
             .no-print {
                 display: none !important;
             }
-    
+
             html,
             body {
                 margin: 0 !important;
@@ -81,64 +80,48 @@
                 background: white !important;
                 height: auto !important;
             }
-    
-            /* 1. Force remove all shadows and spacing that causes overflow */
+
             * {
                 box-shadow: none !important;
                 text-shadow: none !important;
             }
-    
-            /* 2. Container setup */
+
             #calendarContainer {
                 margin: 0 !important;
                 padding: 0 !important;
                 width: 100% !important;
             }
-    
-            /* 3. Each Month Page */
+
             .calendar-month {
                 page-break-before: always;
                 break-before: page;
                 page-break-inside: avoid;
                 break-inside: avoid;
-    
-                /* Centering Logic */
                 display: flex !important;
                 flex-direction: column !important;
                 justify-content: center !important;
                 align-items: center !important;
-    
-                /* Sizing */
                 width: 100vw !important;
                 height: 100vh !important;
-
-                /* Forces each month to occupy the full page height */
                 box-sizing: border-box !important;
                 border: none !important;
                 margin: 0 !important;
-
-                /* Forces original background colors */
                 -webkit-print-color-adjust: exact;
                 print-color-adjust: exact;
             }
-    
-            /* Kill break for the first month to prevent initial blank page */
+
             .calendar-month:first-child {
                 page-break-before: avoid;
                 break-before: avoid;
             }
-    
-            /* 4. The actual calendar table/grid inside the month */
+
             .calendar-month>div {
                 width: 92% !important;
-                /* Leaves a small margin on sides */
                 margin: 0 auto !important;
-                /* Vertical Stretch: Slightly increase the size of the whole month */
                 transform: scaleY(1.02);
                 transform-origin: center;
             }
-    
-            /* 5. Stretch the days vertically */
+
             .calendar-day {
                 min-height: 120px !important;
                 border: 1px solid #e5e7eb !important;
@@ -148,70 +131,61 @@
 
         /* MOBILE STYLES */
         @media (max-width: 768px) {
-            /* 1. The Container: Allows horizontal "glide" */
             .calendar-scroll-container {
                 width: 100% !important;
                 overflow-x: auto !important;
-                -webkit-overflow-scrolling: touch; /* Smooth momentum scroll for iOS */
+                -webkit-overflow-scrolling: touch;
                 position: relative;
-                padding-bottom: 8px; /* Space for the scrollbar */
+                padding-bottom: 8px;
             }
 
-            /* 2. The Grid: Forced width to create the scroll and "peeking" effect */
             .calendar-grid {
                 display: grid !important;
                 grid-template-columns: repeat(7, 1fr) !important;
-                /* 180% width ensures cells look like squares and 
-                the edge of the table is visibly cut off as a scroll hint */
-                min-width: 180% !important; 
+                min-width: 180% !important;
                 background-color: #e5e7eb;
                 gap: 1px;
             }
 
-            /* 3. The Cells: Forcing square shape and adjusting font sizes */
             .calendar-day {
-                aspect-ratio: 1 / 1 !important; /* This makes them perfectly square */
-                min-height: auto !important; 
+                aspect-ratio: 1 / 1 !important;
+                min-height: auto !important;
                 padding: 4px !important;
             }
 
-            /* 4. Visual Hint: Style the scrollbar so it acts as a "rail" indicator */
             .calendar-scroll-container::-webkit-scrollbar {
                 height: 5px;
                 display: block !important;
             }
 
             .calendar-scroll-container::-webkit-scrollbar-track {
-                background: #f1f5f9; /* slate-100 */
+                background: #f1f5f9;
                 border-radius: 10px;
             }
 
             .calendar-scroll-container::-webkit-scrollbar-thumb {
-                background: #cbd5e1; /* slate-300 */
+                background: #cbd5e1;
                 border-radius: 10px;
             }
 
-            /* 5. Cleanup: Ensure the main site doesn't wobble horizontally */
-            body, html {
+            body,
+            html {
                 overflow-x: hidden !important;
             }
 
-            /* Smaller text for mobile content to fit the square cells */
-            .calendar-day span, 
+            .calendar-day span,
             .calendar-day div {
-                font-size: 0.85em; 
+                font-size: 0.85em;
                 line-height: 1.1;
             }
         }
 
-        /* --- PRINT STYLES --- */
         @media print {
-            /* Keep your existing print logic here to ensure 
-            it ignores the scroll-container width when on paper */
             .calendar-scroll-container {
                 overflow: visible !important;
                 width: 100% !important;
             }
+
             .calendar-grid {
                 min-width: 100% !important;
                 width: 100% !important;
@@ -280,7 +254,7 @@
                         </label>
 
                         <div class="grid grid-cols-2 gap-4">
-                            <div class="col-span-1">
+                            <div>
                                 <label class="block text-xs font-bold text-slate-500 mb-1 mr-1">שיטת חישוב</label>
                                 <select id="calcMethod"
                                     class="w-full border border-slate-300 rounded-lg p-2.5 bg-white font-medium"
@@ -289,7 +263,7 @@
                                     <option value="targetDate">יעד סיום סופי</option>
                                 </select>
                             </div>
-                            <div class="col-span-1">
+                            <div>
                                 <label class="block text-xs font-bold text-slate-500 mb-1 mr-1">הפסקה (ימים)</label>
                                 <input type="number" id="breakDaysInput" value="0" min="0"
                                     class="w-full border border-slate-300 rounded-lg p-2.5" placeholder="0">
@@ -302,17 +276,28 @@
                                 class="w-full border border-blue-200 rounded-lg p-2.5 text-lg font-bold text-blue-900">
                         </div>
 
-                        <div>
-                            <label for="targetDateInput">תאריך יעד לסיום:</label>
-                            <input type="date" id="targetDateInput" onchange="updateHebrewLabel(this, 'targetDateHebrewLabel')">
-                            <span id="targetDateHebrewLabel" style="margin-right: 10px; color: #555;"></span>
+                        <div id="targetDateSection">
+                            <label class="block text-xs font-bold text-slate-500 mb-1 mr-1" for="targetDateInput">תאריך
+                                יעד לסיום</label>
+                            <div class="flex items-center gap-2">
+                                <input type="date" id="targetDateInput"
+                                    class="border border-slate-300 rounded-lg p-2 bg-white flex-1"
+                                    onchange="updateHebrewLabel(this, 'targetDateHebrewLabel')">
+                                <span id="targetDateHebrewLabel" class="text-sm text-slate-500 mr-2 font-medium"></span>
+                            </div>
                         </div>
 
                         <div class="grid grid-cols-2 gap-4">
                             <div>
-                                <label for="startDateInput">תאריך התחלה:</label>
-                                <input type="date" id="startDateInput" onchange="updateHebrewLabel(this, 'startDateHebrewLabel')">
-                                <span id="startDateHebrewLabel" style="margin-right: 10px; color: #555;"></span>
+                                <label class="block text-xs font-bold text-slate-500 mb-1 mr-1"
+                                    for="startDateInput">תאריך התחלה</label>
+                                <div class="flex items-center gap-2">
+                                    <input type="date" id="startDateInput"
+                                        class="w-full border border-slate-300 rounded-lg p-2 bg-white"
+                                        onchange="updateHebrewLabel(this, 'startDateHebrewLabel')">
+                                    <span id="startDateHebrewLabel"
+                                        class="text-sm text-slate-500 mr-2 font-medium"></span>
+                                </div>
                             </div>
                             <div>
                                 <label class="block text-xs font-bold text-slate-500 mb-1 mr-1">התחלה מדף</label>
@@ -363,7 +348,8 @@
 
                         <div>
                             <label class="block text-xs font-bold text-slate-500 mb-1 mr-1">סוג לוח תצוגה</label>
-                            <select id="calendarType" class="w-full border border-slate-300 rounded-lg p-2.5 bg-white"
+                            <select id="calendarType"
+                                class="w-full border border-slate-300 rounded-lg p-2.5 bg-white font-medium"
                                 onchange="generate()">
                                 <option value="hebrew">עברי (ראשי)</option>
                                 <option value="gregorian">לועזי (ראשי)</option>
