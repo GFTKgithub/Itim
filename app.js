@@ -311,7 +311,7 @@ function updateHebrewLabel(inputElement, labelId) {
 async function generate() {
     if (sequence.length === 0) return alert("נא להוסיף לפחות מסכת אחת למסלול");
 
-    const includeShabbat = document.getElementById('IncludeShabbatInput').checked;
+    const includeShabbat = document.getElementById('includeShabbatInput').checked;
     const includeHolidays = document.getElementById('includeHolidaysInput').checked;
     const breakDays = parseInt(document.getElementById('breakDaysInput').value) || 0;
     const method = document.getElementById('calcMethod').value;
