@@ -106,3 +106,17 @@ export function parseDateToIL(dateString) {
     const date = new Date(year, month - 1, day, 12, 0, 0);
     return date;
 }
+
+export function getHebrewDate(date) {
+    return new Intl.DateTimeFormat('he-IL-u-ca-hebrew', {
+        day: 'numeric',
+        month: 'long'
+    }).format(date);
+}
+
+export function getGregorianDate(date) {
+    return new Intl.DateTimeFormat('he-IL', {
+        day: 'numeric',
+        month: 'long'
+    }).format(date);
+}

@@ -146,20 +146,6 @@ function shouldDayBeRest(dateObj, includeShabbat, includeHolidays) {
     return false;
 }
 
-function getHebrewDate(date) {
-    return new Intl.DateTimeFormat('he-IL-u-ca-hebrew', {
-        day: 'numeric',
-        month: 'long'
-    }).format(date);
-}
-
-function getGregorianDate(date) {
-    return new Intl.DateTimeFormat('he-IL', {
-        day: 'numeric',
-        month: 'long'
-    }).format(date);
-}
-
 // Gets the number of total amudim from a masechet
 function getTotalAmudim(masechetName) {
     const masechet = masechtot.find(m => m.name === masechetName);
@@ -189,19 +175,6 @@ function countStudyDays(startDate, endDate, includeShabbat) {
 }
 
 let sequence = [];
-
-// Initiation of Masechet Select screen
-window.onload = () => {
-    const select = document.getElementById('masechetSelect');
-    masechtot.forEach(m => {
-        const opt = document.createElement('option');
-        opt.value = m.name;
-        opt.innerText = m.name;
-        select.appendChild(opt);
-    });
-    // Setting of Today as default
-    document.getElementById('startDateInput').valueAsDate = new Date();
-};
 
 // Adds the selected masechet into the Track list
 function addToSequence() {
@@ -756,6 +729,18 @@ async function exportToExcel() {
     saveAs(new Blob([buffer]), 'עיתים_תכנית_לימוד.xlsx');
 }
 
+// Initiation of Masechet Select screen
+window.onload = () => {
+    const select = document.getElementById('masechetSelect');
+    masechtot.forEach(m => {
+        const opt = document.createElement('option');
+        opt.value = m.name;
+        opt.innerText = m.name;
+        select.appendChild(opt);
+    });
+    // Setting of Today as default
+    document.getElementById('startDateInput').valueAsDate = new Date();
+};
 
 // Simple On-click Listeners
 document.getElementById('generateBtn').addEventListener('click', generate);
