@@ -499,7 +499,7 @@ async function generate() {
             isHoliday: !!holidayName,
             holidayTitle: holidayName,
             isEmpty: true,
-            content: isShabbat ? "שבת קודש" : "",
+            content: "", // FIXED: No default labels
             pages: 0,
             override: manualOverrides[dateString] || 0
         });
@@ -516,12 +516,11 @@ async function generate() {
 
         while (currentAmud < totalAmudim) {
             const dateString = formatDateToIL(currentDate);
-            const holidayName = holidaysData[dateString] || ""; // Plain text string ("פרשת חוקת")
+            const holidayName = holidaysData[dateString] || "";
             const isShabbat = currentDate.getDay() === 6;
             const overrideState = manualOverrides[dateString] || 0;
             const traits = dayTypesData[dateString] || {};
 
-            // Evaluate study/rest status using our exact 5 semantic rules
             let isNonStudyDay = (overrideState === 1) ||
                 (overrideState !== 2 && shouldDayBeRest(currentDate, includeShabbat, includeHolidays));
 
@@ -530,17 +529,15 @@ async function generate() {
                 dateString: dateString,
                 masechet: masechetName,
                 isShabbat: isShabbat || traits.isParasha,
-
-                // FIX: Ensure the template logic knows there is text to render in this cell!
                 isHoliday: holidayName !== "",
-                holidayTitle: holidayName,                 // This text will now explicitly appear on your calendar
-
+                holidayTitle: holidayName,
                 isEmpty: isNonStudyDay,
                 override: overrideState
             };
 
             if (isNonStudyDay) {
-                dayData.content = isShabbat ? "שבת קודש" : "מנוחה";
+                // FIXED: Explicitly outputs "מנוחה" only on manual forced override; otherwise blank
+                dayData.content = (overrideState === 1) ? "הפסקה" : "";
                 dayData.pages = 0;
             } else {
                 let end = Math.min(currentAmud + paceAmudim, totalAmudim);
@@ -559,6 +556,7 @@ async function generate() {
                 const dateString = formatDateToIL(currentDate);
                 const holidayName = holidaysData[dateString];
                 const isShabbat = currentDate.getDay() === 6;
+                const overrideState = manualOverrides[dateString] || 0;
 
                 schedule.push({
                     date: new Date(currentDate),
@@ -568,9 +566,9 @@ async function generate() {
                     isHoliday: !!holidayName,
                     holidayTitle: holidayName,
                     isEmpty: true,
-                    content: isShabbat ? "שבת קודש" : "מנוחה",
+                    content: (overrideState === 1) ? "הפסקה" : "",
                     pages: 0,
-                    override: manualOverrides[dateString] || 0
+                    override: overrideState
                 });
                 currentDate.setDate(currentDate.getDate() + 1);
             }
@@ -608,7 +606,7 @@ async function generate() {
                 isHoliday: !!holidayName,
                 holidayTitle: holidayName,
                 isEmpty: true,
-                content: isShabbat ? "שבת קודש" : "",
+                content: "", // FIXED: No default labels
                 pages: 0,
                 override: manualOverrides[dateString] || 0
             });
@@ -619,136 +617,136 @@ async function generate() {
     document.getElementById('printBtn').classList.remove('hidden');
 }
 
-function formatDateToIL(date) {
-    const formatter = new Intl.DateTimeFormat('en-CA', {
-        timeZone: 'Asia/Jerusalem',
-        year: 'numeric',
-        month: '2-digit',
-        day: '2-digit'
-    });
-    return formatter.format(date);
-}
-
-function parseDateToIL(dateString) {
-    const [year, month, day] = dateString.split('-').map(Number);
-    // יצירת התאריך לפי שעון מקומי ואיזון שעות אם נדרש
-    const date = new Date(year, month - 1, day, 12, 0, 0);
-    return date;
-}
-
-// Renders the calendar UI
-function renderCalendar(schedule) {
-    const container = document.getElementById('calendarContainer');
-    container.innerHTML = "";
-    const calendarType = document.getElementById('calendarType').value;
-    const months = {};
-
-    schedule.forEach(day => {
-        let monthKey;
-        if (calendarType === 'hebrew') {
-            monthKey = formatHebrewMonthTitle(day.date);
-        } else {
-            monthKey = day.date.toLocaleString('he-IL', { month: 'long', year: 'numeric' });
-        }
-        if (!months[monthKey]) months[monthKey] = [];
-        months[monthKey].push(day);
-    });
-
-    for (const key in months) {
-        const monthData = months[key];
-        const monthWrapper = document.createElement('div');
-        monthWrapper.className = "calendar-month bg-white shadow-xl rounded-2xl border border-slate-200 mb-10 overflow-hidden";
-
-        // Month Title
-        monthWrapper.innerHTML = `<div class="bg-slate-800 text-white p-4 text-center font-bold text-xl">${key}</div>`;
-
-        // --- FIX: Add the Scroll Container Wrapper ---
-        const scrollWrapper = document.createElement('div');
-        scrollWrapper.className = "calendar-scroll-container";
-
-        const grid = document.createElement('div');
-        grid.className = "calendar-grid";
-
-        // Headers
-        ['א', 'ב', 'ג', 'ד', 'ה', 'ו', 'ש'].forEach(d => {
-            grid.innerHTML += `<div class="bg-slate-50 p-2 text-center text-xs font-bold text-slate-500 border-b border-gray-200">${d}</div>`;
+    function formatDateToIL(date) {
+        const formatter = new Intl.DateTimeFormat('en-CA', {
+            timeZone: 'Asia/Jerusalem',
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit'
         });
+        return formatter.format(date);
+    }
 
-        // Padding for start of month
-        const firstDayOfWeek = monthData[0].date.getDay();
-        for (let i = 0; i < firstDayOfWeek; i++) {
-            grid.innerHTML += `<div class="calendar-day bg-slate-50/50"></div>`;
-        }
+    function parseDateToIL(dateString) {
+        const [year, month, day] = dateString.split('-').map(Number);
+        // יצירת התאריך לפי שעון מקומי ואיזון שעות אם נדרש
+        const date = new Date(year, month - 1, day, 12, 0, 0);
+        return date;
+    }
 
-        // Days
-        monthData.forEach(day => {
-            const state = manualOverrides[day.dateString] || 0;
-            let statusClass = "";
-            let indicator = "";
-            if (state === 1) {
-                statusClass = "force-break";
-                indicator = '<span class="absolute bottom-1 right-1 text-red-500 font-bold text-[10px]">✕</span>';
-            } else if (state === 2) {
-                statusClass = "force-study";
-                indicator = '<span class="absolute bottom-1 right-1 text-blue-600 font-bold text-[10px]">✎</span>';
-            }
+    // Renders the calendar UI
+    function renderCalendar(schedule) {
+        const container = document.getElementById('calendarContainer');
+        container.innerHTML = "";
+        const calendarType = document.getElementById('calendarType').value;
+        const months = {};
 
-            let mainDateDisplay;
-            let secondaryDateDisplay;
-            const hebrewDayNum = parseInt(new Intl.DateTimeFormat('he-IL-u-ca-hebrew', { day: 'numeric' }).format(day.date));
-
+        schedule.forEach(day => {
+            let monthKey;
             if (calendarType === 'hebrew') {
-                mainDateDisplay = formatGematria(hebrewDayNum, numberToHebrew(hebrewDayNum));
-                secondaryDateDisplay = day.date.getDate() + "." + (day.date.getMonth() + 1);
+                monthKey = formatHebrewMonthTitle(day.date);
             } else {
-                mainDateDisplay = day.date.getDate();
-                secondaryDateDisplay = formatGematria(hebrewDayNum, numberToHebrew(hebrewDayNum));
+                monthKey = day.date.toLocaleString('he-IL', { month: 'long', year: 'numeric' });
             }
-
-            grid.innerHTML += `
-            <div onclick="toggleDate('${day.dateString}')" 
-                class="calendar-day cursor-pointer relative ${statusClass} ${day.isShabbat ? 'shabbat-bg' : ''} ${day.isHoliday ? 'holiday-bg' : ''} border-b border-l border-gray-100">
-                
-                <div class="flex justify-between items-start mb-1">
-                    <div class="flex flex-col">
-                        <span class="text-xs font-bold ${day.date.getDay() === 6 ? 'text-blue-700' : 'text-slate-800'}">${mainDateDisplay}</span>
-                        <span class="text-[9px] text-slate-400 font-normal leading-none">${secondaryDateDisplay}</span>
-                    </div>
-                    <span class="text-[10px] text-blue-800 font-bold truncate max-w-[40px]">${day.masechet}</span>
-                </div>
-                
-                ${indicator}
-                
-                <div class="text-[10px] font-bold text-center mt-1 leading-tight ${day.isEmpty ? 'text-slate-400 italic' : 'text-slate-800'}">
-                    ${day.isHoliday ? `<span class="holiday-label-small">${day.holidayTitle}</span>` : ''}
-                    ${day.content}
-                </div>
-                
-                <div class="mt-auto text-[8px] text-slate-400 text-left">
-                    ${!day.isEmpty ? `${day.pages} דף` : ''}
-                </div>
-            </div>`;
+            if (!months[monthKey]) months[monthKey] = [];
+            months[monthKey].push(day);
         });
 
-        // Assemble
-        scrollWrapper.appendChild(grid);
-        monthWrapper.appendChild(scrollWrapper);
-        container.appendChild(monthWrapper);
-    }
-}
+        for (const key in months) {
+            const monthData = months[key];
+            const monthWrapper = document.createElement('div');
+            monthWrapper.className = "calendar-month bg-white shadow-xl rounded-2xl border border-slate-200 mb-10 overflow-hidden";
 
-function toggleDate(dateString) {
-    // Cycle: 0 (default) -> 1 (force break) -> 2 (force study) -> 0...
-    if (!manualOverrides[dateString]) {
-        manualOverrides[dateString] = 1;
-    } else if (manualOverrides[dateString] === 1) {
-        manualOverrides[dateString] = 2;
-    } else {
-        delete manualOverrides[dateString];
+            // Month Title
+            monthWrapper.innerHTML = `<div class="bg-slate-800 text-white p-4 text-center font-bold text-xl">${key}</div>`;
+
+            // --- FIX: Add the Scroll Container Wrapper ---
+            const scrollWrapper = document.createElement('div');
+            scrollWrapper.className = "calendar-scroll-container";
+
+            const grid = document.createElement('div');
+            grid.className = "calendar-grid";
+
+            // Headers
+            ['א', 'ב', 'ג', 'ד', 'ה', 'ו', 'ש'].forEach(d => {
+                grid.innerHTML += `<div class="bg-slate-50 p-2 text-center text-xs font-bold text-slate-500 border-b border-gray-200">${d}</div>`;
+            });
+
+            // Padding for start of month
+            const firstDayOfWeek = monthData[0].date.getDay();
+            for (let i = 0; i < firstDayOfWeek; i++) {
+                grid.innerHTML += `<div class="calendar-day bg-slate-50/50"></div>`;
+            }
+
+            // Days
+            monthData.forEach(day => {
+                const state = manualOverrides[day.dateString] || 0;
+                let statusClass = "";
+                let indicator = "";
+                if (state === 1) {
+                    statusClass = "force-break";
+                    indicator = '<span class="absolute bottom-1 right-1 text-red-500 font-bold text-[10px]">✕</span>';
+                } else if (state === 2) {
+                    statusClass = "force-study";
+                    indicator = '<span class="absolute bottom-1 right-1 text-blue-600 font-bold text-[10px]">✎</span>';
+                }
+
+                let mainDateDisplay;
+                let secondaryDateDisplay;
+                const hebrewDayNum = parseInt(new Intl.DateTimeFormat('he-IL-u-ca-hebrew', { day: 'numeric' }).format(day.date));
+
+                if (calendarType === 'hebrew') {
+                    mainDateDisplay = formatGematria(hebrewDayNum, numberToHebrew(hebrewDayNum));
+                    secondaryDateDisplay = day.date.getDate() + "." + (day.date.getMonth() + 1);
+                } else {
+                    mainDateDisplay = day.date.getDate();
+                    secondaryDateDisplay = formatGematria(hebrewDayNum, numberToHebrew(hebrewDayNum));
+                }
+
+                grid.innerHTML += `
+                <div onclick="toggleDate('${day.dateString}')" 
+                    class="calendar-day cursor-pointer relative ${statusClass} ${day.isShabbat ? 'shabbat-bg' : ''} ${day.isHoliday ? 'holiday-bg' : ''} border-b border-l border-gray-100">
+                    
+                    <div class="flex justify-between items-start mb-1">
+                        <div class="flex flex-col">
+                            <span class="text-xs font-bold ${day.date.getDay() === 6 ? 'text-blue-700' : 'text-slate-800'}">${mainDateDisplay}</span>
+                            <span class="text-[9px] text-slate-400 font-normal leading-none">${secondaryDateDisplay}</span>
+                        </div>
+                        <span class="text-[10px] text-blue-800 font-bold truncate max-w-[40px]">${day.masechet}</span>
+                    </div>
+                    
+                    ${indicator}
+                    
+                    <div class="text-[10px] font-bold text-center mt-1 leading-tight ${day.isEmpty ? 'text-slate-400 italic' : 'text-slate-800'}">
+                        ${day.isHoliday ? `<span class="holiday-label-small">${day.holidayTitle}</span>` : ''}
+                        ${day.content}
+                    </div>
+                    
+                    <div class="mt-auto text-[8px] text-slate-400 text-left">
+                        ${!day.isEmpty ? `${day.pages} דף` : ''}
+                    </div>
+                </div>`;
+            });
+
+            // Assemble
+            scrollWrapper.appendChild(grid);
+            monthWrapper.appendChild(scrollWrapper);
+            container.appendChild(monthWrapper);
+        }
     }
 
-    generate();
-}
+    function toggleDate(dateString) {
+        // Cycle: 0 (default) -> 1 (force break) -> 2 (force study) -> 0...
+        if (!manualOverrides[dateString]) {
+            manualOverrides[dateString] = 1;
+        } else if (manualOverrides[dateString] === 1) {
+            manualOverrides[dateString] = 2;
+        } else {
+            delete manualOverrides[dateString];
+        }
+
+        generate();
+    }
 
 async function exportToExcel() {
     if (!schedule || schedule.length === 0) return alert("יש ליצור לוח לימוד קודם");
@@ -764,7 +762,6 @@ async function exportToExcel() {
 
     let currentRow = 1;
 
-    // קיבוץ לפי חודשים בהתאם לבחירת המשתמש
     const months = {};
     schedule.forEach(day => {
         let monthName;
@@ -778,7 +775,6 @@ async function exportToExcel() {
     });
 
     for (const [monthName, days] of Object.entries(months)) {
-        // כותרת חודש
         worksheet.mergeCells(currentRow, 1, currentRow, 7);
         const titleCell = worksheet.getCell(currentRow, 1);
         titleCell.value = RTL_MARK + monthName;
@@ -788,7 +784,6 @@ async function exportToExcel() {
         worksheet.getRow(currentRow).height = 30;
         currentRow++;
 
-        // כותרות ימי השבוע
         const daysHeader = ['א', 'ב', 'ג', 'ד', 'ה', 'ו', 'ש'];
         daysHeader.forEach((d, i) => {
             const cell = worksheet.getCell(currentRow, i + 1);
@@ -802,7 +797,6 @@ async function exportToExcel() {
 
         let weekRow = currentRow;
 
-        // מילוי ימים ריקים בתחילת החודש (Padding)
         const firstDayInMonth = days[0].date.getDay();
         for (let i = 0; i < firstDayInMonth; i++) {
             const cell = worksheet.getCell(weekRow, i + 1);
@@ -814,7 +808,6 @@ async function exportToExcel() {
             const col = (day.date.getDay() + 1);
             const cell = worksheet.getCell(weekRow, col);
 
-            // חישוב תאריכים להצגה (ראשי ומשני)
             let mainDate, secDate;
             const hebrewDayNum = parseInt(new Intl.DateTimeFormat('he-IL-u-ca-hebrew', { day: 'numeric' }).format(day.date));
 
@@ -826,15 +819,14 @@ async function exportToExcel() {
                 secDate = numberToHebrew(hebrewDayNum);
             }
 
-            // בניית תוכן התא
             let cellContent = `${RTL_MARK}${mainDate} (${secDate})\n`;
 
             if (!day.isEmpty) {
                 cellContent += `${RTL_MARK}${day.masechet}\n${RTL_MARK}${day.content}`;
+            } else if (day.override === 1) {
+                cellContent += `${RTL_MARK}הפסקה`;
             } else if (day.holidayTitle) {
                 cellContent += `${RTL_MARK}${day.holidayTitle}`;
-            } else if (day.isShabbat) {
-                cellContent += `${RTL_MARK}שבת קודש`;
             } else if (day.content) {
                 cellContent += `${RTL_MARK}${day.content}`;
             }
@@ -843,13 +835,12 @@ async function exportToExcel() {
             cell.alignment = { wrapText: true, vertical: 'top', horizontal: 'center', readingOrder: 2 };
             cell.border = { top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' } };
 
-            // צביעת תאים
             if (day.override === 1) {
                 cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFEBEE' } };
             } else if (day.override === 2) {
                 cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFEBF5FF' } };
             } else if (day.isShabbat) {
-                cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFDBE6F3' } }; // כחול שבת
+                cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFDBE6F3' } };
             } else if (day.isHoliday) {
                 cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE9EFD5' } };
             }
@@ -860,7 +851,6 @@ async function exportToExcel() {
             }
         });
 
-        // סגירת שורת השבוע האחרונה בחודש
         worksheet.getRow(weekRow).height = 65;
         currentRow = weekRow + 2;
     }
