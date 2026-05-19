@@ -1,0 +1,108 @@
+const gematriaMap = {
+    'א': 1, 'ב': 2, 'ג': 3, 'ד': 4, 'ה': 5, 'ו': 6, 'ז': 7, 'ח': 8, 'ט': 9,
+    'י': 10, 'כ': 20, 'ל': 30, 'מ': 40, 'נ': 50, 'ס': 60, 'ע': 70, 'פ': 80, 'צ': 90,
+    'ק': 100, 'ר': 200, 'ש': 300, 'ת': 400
+};
+
+
+// Convert Hebrew letter sequence into its gematria
+export function hebrewToNumber(str) {
+    let sum = 0;
+    for (let char of str) { if (gematriaMap[char]) sum += gematriaMap[char]; }
+    return sum;
+}
+
+// Convert gematria into a Hebrew letter sequence
+export function numberToHebrew(num) {
+    if (num <= 0) return "";
+
+    // Handle thousands recursively
+    if (num >= 1000) {
+        return numberToHebrew(Math.floor(num / 1000)) + numberToHebrew(num % 1000);
+    }
+
+    // Special cases for 15 and 16
+    if (num === 15) return "טו";
+    if (num === 16) return "טז";
+
+    let result = "";
+    const keys = Object.keys(gematriaMap).sort((a, b) => gematriaMap[b] - gematriaMap[a]);
+
+    for (let char of keys) {
+        let value = gematriaMap[char];
+        while (num >= value) {
+            result += char;
+            num -= value;
+        }
+    }
+    return result;
+}
+
+// Properly format a gematria string based on the syntactical rules
+export function formatGematria(num, rawHebrew) {
+    if (!rawHebrew) return "";
+
+    let result = rawHebrew;
+
+    // 1. Handle Thousands Apostrophe
+    // If > 1000, find the index where thousands end and rest begins
+    if (num >= 1000) {
+        const thousandPartLen = numberToHebrew(Math.floor(num / 1000)).length;
+        result = result.slice(0, thousandPartLen) + "׳" + result.slice(thousandPartLen);
+    }
+
+    // 2. Handle Gershayim (Double tick) or Geresh (Single tick) for the remainder
+    const remainder = num % 1000;
+    if (remainder > 0) {
+        // If the remainder is a single letter, add a single tick (e.g., 5000 + 3 = ה׳ג׳)
+        // If the remainder is multiple letters, add double tick before last letter (e.g., ה׳תשפ״ד)
+        const output = numberToHebrew(remainder);
+
+        if (output.length === 1) {
+            result += "׳";
+        } else {
+            // Insert " before the last character
+            const lastTickIndex = result.length - 1;
+            result = result.slice(0, lastTickIndex) + "״" + result.slice(lastTickIndex);
+        }
+    }
+
+    return result;
+}
+
+// Takes an amud index and converts it to a Daf and Amud string
+export function indexToDaf(index) {
+    const dafNum = Math.floor(index / 2) + 2;
+    const amud = (index % 2 === 0) ? "." : ":";
+    return `${numberToHebrew(dafNum)}${amud}`;
+}
+
+// Convert a Hebrew year number to gematria
+export function formatHebrewMonthTitle(date) {
+    const monthName = new Intl.DateTimeFormat('he-IL-u-ca-hebrew', { month: 'long' }).format(date);
+    const hebrewYearFull = new Intl.DateTimeFormat('he-IL-u-ca-hebrew', { year: 'numeric' }).format(date);
+
+    // חילוץ המספר (למשל 5786)
+    const yearNum = parseInt(hebrewYearFull.replace(/\D/g, ''));
+
+    return `${monthName} ${formatGematria(yearNum, numberToHebrew(yearNum))}`;
+}
+
+// Formats a date to 'YYYY-MM-DD' based on the Asia/Jerusalem timezone.
+export function formatDateToIL(date) {
+    const formatter = new Intl.DateTimeFormat('en-CA', {
+        timeZone: 'Asia/Jerusalem',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit'
+    });
+    return formatter.format(date);
+}
+
+
+export function parseDateToIL(dateString) {
+    const [year, month, day] = dateString.split('-').map(Number);
+    // יצירת התאריך לפי שעון מקומי ואיזון שעות אם נדרש
+    const date = new Date(year, month - 1, day, 12, 0, 0);
+    return date;
+}

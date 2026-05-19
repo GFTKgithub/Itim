@@ -225,7 +225,7 @@
                             <div class="flex gap-2">
                                 <select id="masechetSelect"
                                     class="flex-1 border border-slate-300 rounded-lg p-3 bg-white shadow-sm font-medium"></select>
-                                <button onclick="addToSequence()"
+                                <button id="addToSequenceBtn"
                                     class="bg-blue-800 text-white px-5 rounded-lg font-bold hover:bg-blue-900 transition-all shadow-md active:scale-95 flex items-center gap-1">
                                     <span>הוסף</span>
                                     <span class="text-xl leading-none">+</span>
@@ -238,7 +238,7 @@
                                 <label class="font-bold text-slate-700 flex items-center gap-2">
                                     סדר הלימוד המתוכנן
                                 </label>
-                                <button onclick="clearSequence()"
+                                <button id="clearSequenceBtn"
                                     class="text-sm text-red-500 hover:text-red-700 font-semibold transition-colors flex items-center gap-1">
                                     <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none"
                                         viewBox="0 0 24 24" stroke="currentColor">
@@ -264,9 +264,8 @@
                         <div class="grid grid-cols-2 gap-4">
                             <div>
                                 <label class="block text-xs font-bold text-slate-500 mb-1 mr-1">שיטת חישוב</label>
-                                <select id="calcMethod"
-                                    class="w-full border border-slate-300 rounded-lg p-2.5 bg-white font-medium"
-                                    onchange="toggleInputs()">
+                                <select id="calcMethod" 
+                                    class="w-full border border-slate-300 rounded-lg p-2.5 bg-white font-medium">
                                     <option value="pace">קצב דפים קבוע</option>
                                     <option value="targetDate">יעד סיום סופי</option>
                                 </select>
@@ -288,9 +287,8 @@
                             <label class="block text-xs font-bold text-slate-500 mb-1 mr-1" for="targetDateInput">תאריך
                                 יעד לסיום</label>
                             <div class="flex items-center gap-2">
-                                <input type="date" id="targetDateInput"
-                                    class="border border-slate-300 rounded-lg p-2 bg-white flex-1"
-                                    onchange="updateHebrewLabel(this, 'targetDateHebrewLabel')">
+                                <input type="date" id="targetDateInput" 
+                                    class="border border-slate-300 rounded-lg p-2 bg-white flex-1">
                                 <span id="targetDateHebrewLabel" class="text-sm text-slate-500 mr-2 font-medium"></span>
                             </div>
                         </div>
@@ -300,9 +298,8 @@
                                 <label class="block text-xs font-bold text-slate-500 mb-1 mr-1"
                                     for="startDateInput">תאריך התחלה</label>
                                 <div class="flex items-center gap-2">
-                                    <input type="date" id="startDateInput"
-                                        class="w-full border border-slate-300 rounded-lg p-2 bg-white"
-                                        onchange="updateHebrewLabel(this, 'startDateHebrewLabel')">
+                                    <input type="date" id="startDateInput" 
+                                        class="w-full border border-slate-300 rounded-lg p-2 bg-white">
                                     <span id="startDateHebrewLabel"
                                         class="text-sm text-slate-500 mr-2 font-medium"></span>
                                 </div>
@@ -312,10 +309,10 @@
                                 <div class="flex gap-1">
                                     <input type="text" id="startDafInput" placeholder="דף"
                                         class="w-2/3 border border-slate-300 rounded-lg p-2.5 text-center font-bold">
-                                    <select id="startAmudSelect"
-                                        class="w-1/3 border border-slate-300 rounded-lg p-2.5 font-bold">
-                                        <option value="א">א</option>
-                                        <option value="ב">ב</option>
+                                    <select id="calendarType" 
+                                        class="w-full border border-slate-300 rounded-lg p-2.5 bg-white font-medium">
+                                        <option value="hebrew">עברי (ראשי)</option>
+                                        <option value="gregorian">לועזי (ראשי)</option>
                                     </select>
                                 </div>
                             </div>
@@ -366,7 +363,7 @@
                     </div>
                 </div>
 
-                <button onclick="generate()"
+                <button id="generateBtn"
                     class="w-full mt-10 bg-slate-900 text-white py-5 rounded-2xl font-black text-xl hover:bg-black transition-all shadow-xl hover:shadow-2xl transform hover:-translate-y-1 active:translate-y-0 flex items-center justify-center gap-3">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24"
                         stroke="currentColor">
@@ -381,13 +378,13 @@
         <div id="calendarContainer" class="space-y-12 mb-24"></div>
 
         <!-- Sticky Action Bar -->
-        <div id="printBtn" class="fixed bottom-8 left-1/2 -translate-x-1/2 flex gap-4 hidden no-print z-50">
-            <button onclick="window.print()"
+        <div id="output" class="fixed bottom-8 left-1/2 -translate-x-1/2 flex gap-4 hidden no-print z-50">
+            <button id="printBtn"
                 class="bg-white text-slate-800 px-8 py-4 rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.2)] border border-slate-200 font-bold hover:bg-slate-50 transition-all flex items-center gap-3 group">
                 <span class="text-xl group-hover:scale-120 transition-transform">🖨️</span>
                 <span>הדפסת הלוח</span>
             </button>
-            <button onclick="exportToExcel()"
+            <button id="exportBtn"
                 class="bg-green-600 text-white px-8 py-4 rounded-2xl shadow-[0_20px_50px_rgba(22,163,74,0.3)] font-bold hover:bg-green-700 transition-all flex items-center gap-3 group">
                 <span class="text-xl group-hover:rotate-12 transition-transform">📊</span>
                 <span>ייצוא לאקסל</span>
@@ -397,7 +394,7 @@
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.3.0/exceljs.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
-    <script src="app.js"></script>
+    <script type="module" src="app.js"></script>
 </body>
 
 </html>

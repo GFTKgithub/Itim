@@ -1,3 +1,5 @@
+import { hebrewToNumber, numberToHebrew, formatGematria, formatHebrewMonthTitle, indexToDaf, formatDateToIL } from './utils.js';
+
 const masechtot = [
     // Zeraim
     { name: "ברכות", end: { daf: "סד", amud: "א" } },
@@ -48,12 +50,6 @@ const masechtot = [
     // Tahorot
     { name: "נדה", end: { daf: "עג", amud: "א" } }
 ];
-
-const gematriaMap = {
-    'א': 1, 'ב': 2, 'ג': 3, 'ד': 4, 'ה': 5, 'ו': 6, 'ז': 7, 'ח': 8, 'ט': 9,
-    'י': 10, 'כ': 20, 'ל': 30, 'מ': 40, 'נ': 50, 'ס': 60, 'ע': 70, 'פ': 80, 'צ': 90,
-    'ק': 100, 'ר': 200, 'ש': 300, 'ת': 400
-};
 
 let schedule = [];
 
@@ -164,82 +160,6 @@ function getGregorianDate(date) {
     }).format(date);
 }
 
-// Convert Hebrew letter sequence into its gematria
-function hebrewToNumber(str) {
-    let sum = 0;
-    for (let char of str) { if (gematriaMap[char]) sum += gematriaMap[char]; }
-    return sum;
-}
-
-// Convert gematria into a Hebrew letter sequence
-function numberToHebrew(num) {
-    if (num <= 0) return "";
-
-    // Handle thousands recursively
-    if (num >= 1000) {
-        return numberToHebrew(Math.floor(num / 1000)) + numberToHebrew(num % 1000);
-    }
-
-    // Special cases for 15 and 16
-    if (num === 15) return "טו";
-    if (num === 16) return "טז";
-
-    let result = "";
-    const keys = Object.keys(gematriaMap).sort((a, b) => gematriaMap[b] - gematriaMap[a]);
-
-    for (let char of keys) {
-        let value = gematriaMap[char];
-        while (num >= value) {
-            result += char;
-            num -= value;
-        }
-    }
-    return result;
-}
-
-// Properly format a gematria string based on the syntactical rules
-function formatGematria(num, rawHebrew) {
-    if (!rawHebrew) return "";
-
-    let result = rawHebrew;
-
-    // 1. Handle Thousands Apostrophe
-    // If > 1000, find the index where thousands end and rest begins
-    if (num >= 1000) {
-        const thousandPartLen = numberToHebrew(Math.floor(num / 1000)).length;
-        result = result.slice(0, thousandPartLen) + "׳" + result.slice(thousandPartLen);
-    }
-
-    // 2. Handle Gershayim (Double tick) or Geresh (Single tick) for the remainder
-    const remainder = num % 1000;
-    if (remainder > 0) {
-        // If the remainder is a single letter, add a single tick (e.g., 5000 + 3 = ה׳ג׳)
-        // If the remainder is multiple letters, add double tick before last letter (e.g., ה׳תשפ״ד)
-        const output = numberToHebrew(remainder);
-
-        if (output.length === 1) {
-            result += "׳";
-        } else {
-            // Insert " before the last character
-            const lastTickIndex = result.length - 1;
-            result = result.slice(0, lastTickIndex) + "״" + result.slice(lastTickIndex);
-        }
-    }
-
-    return result;
-}
-
-// Convert a Hebrew year number to gematria
-function formatHebrewMonthTitle(date) {
-    const monthName = new Intl.DateTimeFormat('he-IL-u-ca-hebrew', { month: 'long' }).format(date);
-    const hebrewYearFull = new Intl.DateTimeFormat('he-IL-u-ca-hebrew', { year: 'numeric' }).format(date);
-
-    // חילוץ המספר (למשל 5786)
-    const yearNum = parseInt(hebrewYearFull.replace(/\D/g, ''));
-
-    return `${monthName} ${formatGematria(yearNum, numberToHebrew(yearNum))}`;
-}
-
 // Gets the number of total amudim from a masechet
 function getTotalAmudim(masechetName) {
     const masechet = masechtot.find(m => m.name === masechetName);
@@ -248,13 +168,6 @@ function getTotalAmudim(masechetName) {
     let total = (dafNum * 2) - 2;
     if (masechet.end.amud === "א") total -= 1;
     return total;
-}
-
-// Takes an amud index and converts it to a Daf and Amud string
-function indexToDaf(index) {
-    const dafNum = Math.floor(index / 2) + 2;
-    const amud = (index % 2 === 0) ? "." : ":";
-    return `${numberToHebrew(dafNum)}${amud}`;
 }
 
 // Toggles from Deadline goal to Daily Study
@@ -317,7 +230,7 @@ function updateSequenceUI() {
     list.innerHTML = sequence.map((m, i) => `
         <li class="flex justify-between items-center bg-white border border-blue-100 px-4 py-2 rounded-lg shadow-sm">
             <span class="font-bold text-blue-900"><span class="text-slate-400 ml-2">${i + 1}.</span>מסכת ${m}</span>
-            <button onclick="removeFromSequence(${i})" class="text-red-400 hover:text-red-600 transition">✕</button>
+            <button data-index="${i}" class="remove-btn text-red-400 hover:text-red-600 transition">✕</button>
         </li>
     `).join('');
 }
@@ -614,139 +527,123 @@ async function generate() {
     }
 
     renderCalendar(schedule);
-    document.getElementById('printBtn').classList.remove('hidden');
+    document.getElementById('output').classList.remove('hidden');
 }
 
-    function formatDateToIL(date) {
-        const formatter = new Intl.DateTimeFormat('en-CA', {
-            timeZone: 'Asia/Jerusalem',
-            year: 'numeric',
-            month: '2-digit',
-            day: '2-digit'
-        });
-        return formatter.format(date);
-    }
+// Renders the calendar UI
+function renderCalendar(schedule) {
+    const container = document.getElementById('calendarContainer');
+    container.innerHTML = "";
+    const calendarType = document.getElementById('calendarType').value;
+    const months = {};
 
-    function parseDateToIL(dateString) {
-        const [year, month, day] = dateString.split('-').map(Number);
-        // יצירת התאריך לפי שעון מקומי ואיזון שעות אם נדרש
-        const date = new Date(year, month - 1, day, 12, 0, 0);
-        return date;
-    }
-
-    // Renders the calendar UI
-    function renderCalendar(schedule) {
-        const container = document.getElementById('calendarContainer');
-        container.innerHTML = "";
-        const calendarType = document.getElementById('calendarType').value;
-        const months = {};
-
-        schedule.forEach(day => {
-            let monthKey;
-            if (calendarType === 'hebrew') {
-                monthKey = formatHebrewMonthTitle(day.date);
-            } else {
-                monthKey = day.date.toLocaleString('he-IL', { month: 'long', year: 'numeric' });
-            }
-            if (!months[monthKey]) months[monthKey] = [];
-            months[monthKey].push(day);
-        });
-
-        for (const key in months) {
-            const monthData = months[key];
-            const monthWrapper = document.createElement('div');
-            monthWrapper.className = "calendar-month bg-white shadow-xl rounded-2xl border border-slate-200 mb-10 overflow-hidden";
-
-            // Month Title
-            monthWrapper.innerHTML = `<div class="bg-slate-800 text-white p-4 text-center font-bold text-xl">${key}</div>`;
-
-            // --- FIX: Add the Scroll Container Wrapper ---
-            const scrollWrapper = document.createElement('div');
-            scrollWrapper.className = "calendar-scroll-container";
-
-            const grid = document.createElement('div');
-            grid.className = "calendar-grid";
-
-            // Headers
-            ['א', 'ב', 'ג', 'ד', 'ה', 'ו', 'ש'].forEach(d => {
-                grid.innerHTML += `<div class="bg-slate-50 p-2 text-center text-xs font-bold text-slate-500 border-b border-gray-200">${d}</div>`;
-            });
-
-            // Padding for start of month
-            const firstDayOfWeek = monthData[0].date.getDay();
-            for (let i = 0; i < firstDayOfWeek; i++) {
-                grid.innerHTML += `<div class="calendar-day bg-slate-50/50"></div>`;
-            }
-
-            // Days
-            monthData.forEach(day => {
-                const state = manualOverrides[day.dateString] || 0;
-                let statusClass = "";
-                let indicator = "";
-                if (state === 1) {
-                    statusClass = "force-break";
-                    indicator = '<span class="absolute bottom-1 right-1 text-red-500 font-bold text-[10px]">✕</span>';
-                } else if (state === 2) {
-                    statusClass = "force-study";
-                    indicator = '<span class="absolute bottom-1 right-1 text-blue-600 font-bold text-[10px]">✎</span>';
-                }
-
-                let mainDateDisplay;
-                let secondaryDateDisplay;
-                const hebrewDayNum = parseInt(new Intl.DateTimeFormat('he-IL-u-ca-hebrew', { day: 'numeric' }).format(day.date));
-
-                if (calendarType === 'hebrew') {
-                    mainDateDisplay = formatGematria(hebrewDayNum, numberToHebrew(hebrewDayNum));
-                    secondaryDateDisplay = day.date.getDate() + "." + (day.date.getMonth() + 1);
-                } else {
-                    mainDateDisplay = day.date.getDate();
-                    secondaryDateDisplay = formatGematria(hebrewDayNum, numberToHebrew(hebrewDayNum));
-                }
-
-                grid.innerHTML += `
-                <div onclick="toggleDate('${day.dateString}')" 
-                    class="calendar-day cursor-pointer relative ${statusClass} ${day.isShabbat ? 'shabbat-bg' : ''} ${day.isHoliday ? 'holiday-bg' : ''} border-b border-l border-gray-100">
-                    
-                    <div class="flex justify-between items-start mb-1">
-                        <div class="flex flex-col">
-                            <span class="text-xs font-bold ${day.date.getDay() === 6 ? 'text-blue-700' : 'text-slate-800'}">${mainDateDisplay}</span>
-                            <span class="text-[9px] text-slate-400 font-normal leading-none">${secondaryDateDisplay}</span>
-                        </div>
-                        <span class="text-[10px] text-blue-800 font-bold truncate max-w-[40px]">${day.masechet}</span>
-                    </div>
-                    
-                    ${indicator}
-                    
-                    <div class="text-[10px] font-bold text-center mt-1 leading-tight ${day.isEmpty ? 'text-slate-400 italic' : 'text-slate-800'}">
-                        ${day.isHoliday ? `<span class="holiday-label-small">${day.holidayTitle}</span>` : ''}
-                        ${day.content}
-                    </div>
-                    
-                    <div class="mt-auto text-[8px] text-slate-400 text-left">
-                        ${!day.isEmpty ? `${day.pages} דף` : ''}
-                    </div>
-                </div>`;
-            });
-
-            // Assemble
-            scrollWrapper.appendChild(grid);
-            monthWrapper.appendChild(scrollWrapper);
-            container.appendChild(monthWrapper);
-        }
-    }
-
-    function toggleDate(dateString) {
-        // Cycle: 0 (default) -> 1 (force break) -> 2 (force study) -> 0...
-        if (!manualOverrides[dateString]) {
-            manualOverrides[dateString] = 1;
-        } else if (manualOverrides[dateString] === 1) {
-            manualOverrides[dateString] = 2;
+    schedule.forEach(day => {
+        let monthKey;
+        if (calendarType === 'hebrew') {
+            monthKey = formatHebrewMonthTitle(day.date);
         } else {
-            delete manualOverrides[dateString];
+            monthKey = day.date.toLocaleString('he-IL', { month: 'long', year: 'numeric' });
+        }
+        if (!months[monthKey]) months[monthKey] = [];
+        months[monthKey].push(day);
+    });
+
+    for (const key in months) {
+        const monthData = months[key];
+        const monthWrapper = document.createElement('div');
+        monthWrapper.className = "calendar-month bg-white shadow-xl rounded-2xl border border-slate-200 mb-10 overflow-hidden";
+
+        // Month Title
+        monthWrapper.innerHTML = `<div class="bg-slate-800 text-white p-4 text-center font-bold text-xl">${key}</div>`;
+
+        // --- FIX: Add the Scroll Container Wrapper ---
+        const scrollWrapper = document.createElement('div');
+        scrollWrapper.className = "calendar-scroll-container";
+
+        const grid = document.createElement('div');
+        grid.className = "calendar-grid";
+
+        // Headers
+        ['א', 'ב', 'ג', 'ד', 'ה', 'ו', 'ש'].forEach(d => {
+            grid.innerHTML += `<div class="bg-slate-50 p-2 text-center text-xs font-bold text-slate-500 border-b border-gray-200">${d}</div>`;
+        });
+
+        // Padding for start of month
+        const firstDayOfWeek = monthData[0].date.getDay();
+        for (let i = 0; i < firstDayOfWeek; i++) {
+            grid.innerHTML += `<div class="calendar-day bg-slate-50/50"></div>`;
         }
 
-        generate();
+        // Days
+        monthData.forEach(day => {
+            const state = manualOverrides[day.dateString] || 0;
+            let statusClass = "";
+            let indicator = "";
+            if (state === 1) {
+                statusClass = "force-break";
+                indicator = '<span class="absolute bottom-1 right-1 text-red-500 font-bold text-[10px]">✕</span>';
+            } else if (state === 2) {
+                statusClass = "force-study";
+                indicator = '<span class="absolute bottom-1 right-1 text-blue-600 font-bold text-[10px]">✎</span>';
+            }
+
+            let mainDateDisplay;
+            let secondaryDateDisplay;
+            const hebrewDayNum = parseInt(new Intl.DateTimeFormat('he-IL-u-ca-hebrew', { day: 'numeric' }).format(day.date));
+
+            if (calendarType === 'hebrew') {
+                mainDateDisplay = formatGematria(hebrewDayNum, numberToHebrew(hebrewDayNum));
+                secondaryDateDisplay = day.date.getDate() + "." + (day.date.getMonth() + 1);
+            } else {
+                mainDateDisplay = day.date.getDate();
+                secondaryDateDisplay = formatGematria(hebrewDayNum, numberToHebrew(hebrewDayNum));
+            }
+
+            // Changed: Replaced onclick with data-date
+            grid.innerHTML += `
+            <div data-date="${day.dateString}" 
+                class="calendar-day cursor-pointer relative ${statusClass} ${day.isShabbat ? 'shabbat-bg' : ''} ${day.isHoliday ? 'holiday-bg' : ''} border-b border-l border-gray-100">
+                
+                <div class="flex justify-between items-start mb-1">
+                    <div class="flex flex-col">
+                        <span class="text-xs font-bold ${day.date.getDay() === 6 ? 'text-blue-700' : 'text-slate-800'}">${mainDateDisplay}</span>
+                        <span class="text-[9px] text-slate-400 font-normal leading-none">${secondaryDateDisplay}</span>
+                    </div>
+                    <span class="text-[10px] text-blue-800 font-bold truncate max-w-[40px]">${day.masechet}</span>
+                </div>
+                
+                ${indicator}
+                
+                <div class="text-[10px] font-bold text-center mt-1 leading-tight ${day.isEmpty ? 'text-slate-400 italic' : 'text-slate-800'}">
+                    ${day.isHoliday ? `<span class="holiday-label-small">${day.holidayTitle}</span>` : ''}
+                    ${day.content}
+                </div>
+                
+                <div class="mt-auto text-[8px] text-slate-400 text-left">
+                    ${!day.isEmpty ? `${day.pages} דף` : ''}
+                </div>
+            </div>`;
+        });
+
+        // Assemble
+        scrollWrapper.appendChild(grid);
+        monthWrapper.appendChild(scrollWrapper);
+        container.appendChild(monthWrapper);
     }
+}
+
+function toggleDate(dateString) {
+    // Cycle: 0 (default) -> 1 (force break) -> 2 (force study) -> 0...
+    if (!manualOverrides[dateString]) {
+        manualOverrides[dateString] = 1;
+    } else if (manualOverrides[dateString] === 1) {
+        manualOverrides[dateString] = 2;
+    } else {
+        delete manualOverrides[dateString];
+    }
+
+    generate();
+}
 
 async function exportToExcel() {
     if (!schedule || schedule.length === 0) return alert("יש ליצור לוח לימוד קודם");
@@ -858,3 +755,55 @@ async function exportToExcel() {
     const buffer = await workbook.xlsx.writeBuffer();
     saveAs(new Blob([buffer]), 'עיתים_תכנית_לימוד.xlsx');
 }
+
+
+// Simple On-click Listeners
+document.getElementById('generateBtn').addEventListener('click', generate);
+document.getElementById('addToSequenceBtn').addEventListener('click', addToSequence);
+document.getElementById('clearSequenceBtn').addEventListener('click', clearSequence);
+document.getElementById('exportBtn').addEventListener('click', exportToExcel);
+document.getElementById('printBtn').addEventListener('click', () => {
+    window.print();
+});
+
+// Other On-click Listeners
+
+// Handle removing from sequence
+document.getElementById('sequenceList').addEventListener('click', (event) => {
+    // Check if the clicked element (or its parent) is our remove button
+    const removeBtn = event.target.closest('.remove-btn');
+
+    if (removeBtn) {
+        // Grab the index from the data attribute (comes as string, convert to Number)
+        const index = Number(removeBtn.dataset.index);
+        removeFromSequence(index);
+    }
+});
+
+// Calendar grid onClick
+document.getElementById('calendarContainer').addEventListener('click', (event) => {
+    // Look for the closest element with the 'calendar-day' class
+    const calendarDay = event.target.closest('.calendar-day');
+
+    if (calendarDay && calendarDay.dataset.date) {
+        const dateString = calendarDay.dataset.date;
+        toggleDate(dateString);
+    }
+});
+
+// On-change Listeners
+document.getElementById('calcMethod').addEventListener('change', () => {
+    toggleInputs();
+});
+
+document.getElementById('targetDateInput').addEventListener('change', (event) => {
+    updateHebrewLabel(event.target, 'targetDateHebrewLabel');
+});
+
+document.getElementById('startDateInput').addEventListener('change', (event) => {
+    updateHebrewLabel(event.target, 'startDateHebrewLabel');
+});
+
+document.getElementById('calendarType').addEventListener('change', () => {
+    generate();
+});
