@@ -731,6 +731,7 @@ async function exportToExcel() {
 
 // Initiation of Masechet Select screen
 window.onload = () => {
+    // 1. Populate Masechet dropdown select element
     const select = document.getElementById('masechetSelect');
     masechtot.forEach(m => {
         const opt = document.createElement('option');
@@ -738,8 +739,38 @@ window.onload = () => {
         opt.innerText = m.name;
         select.appendChild(opt);
     });
-    // Setting of Today as default
-    document.getElementById('startDateInput').valueAsDate = new Date();
+
+    // 2. Set Today as default starting date
+    const startDateInput = document.getElementById('startDateInput');
+    startDateInput.valueAsDate = new Date();
+
+    // Fix 1: Fire the label generator function immediately for the initial state
+    updateHebrewLabel(startDateInput, 'startDateHebrewLabel');
+
+    // 3. Attach standard Change Events for real-time label updates
+    startDateInput.addEventListener('input', () => {
+        updateHebrewLabel(startDateInput, 'startDateHebrewLabel');
+    });
+
+    const targetDateInput = document.getElementById('targetDateInput');
+    targetDateInput.addEventListener('input', () => {
+        updateHebrewLabel(targetDateInput, 'targetDateHebrewLabel');
+    });
+
+    // Fix 2: Toggling logic ensuring UI blocks clean up nicely
+    const calcMethod = document.getElementById('calcMethod');
+    const paceSection = document.getElementById('paceSection');
+    const targetDateSection = document.getElementById('targetDateSection');
+
+    calcMethod.addEventListener('change', () => {
+        if (calcMethod.value === 'pace') {
+            paceSection.classList.remove('hidden');
+            targetDateSection.classList.add('hidden');
+        } else {
+            paceSection.classList.add('hidden');
+            targetDateSection.classList.remove('hidden');
+        }
+    });
 };
 
 // Simple On-click Listeners
