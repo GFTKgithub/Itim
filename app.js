@@ -60,34 +60,94 @@ let schedule = [];
 // 0 = Default, 1 = Force Break, 2 = Force Study
 let manualOverrides = {};
 
-// Load holiday days
-let holidaysData = {};
+
+let holidaysData = {}; // Keeps titles intact for rendering
+let dayTypesData = {};  // Holds structural traits for schedule calculations
 
 async function fetchHolidays(year) {
-    // Skip loading current year if it's already loaded
     if (Object.keys(holidaysData).some(key => key.startsWith(year))) return;
 
     try {
         const response = await fetch(`https://www.hebcal.com/hebcal?v=1&cfg=json&year=${year}&yt=G&i=on&maj=on&min=on&nx=on&mf=on&ss=on&mvch=off&mod=on&s=on&mm=0&lg=h&c=off&geo=none&zip=&geonameid=&b=18&M=on&td=&m=&ue=off&leyning=off`);
         const data = await response.json();
+
         data.items.forEach(item => {
-            // Convert the API date to your local string format
             const dateStr = formatDateToIL(new Date(item.date));
             const category = item.category || "";
+            const subcat = item.subcat || "";
+            const hebrewName = item.hebrew || "";
 
-            // 1. Filter out items that should NEVER clear the study schedule
-            const isMevarchim = category == "mevarchim";
-
-            if (isMevarchim) {
-                return; // Skip these completely. They won't be treated as schedule-clearing holidays.
+            // Initialize day logic traits for this date if not already present
+            if (!dayTypesData[dateStr]) {
+                dayTypesData[dateStr] = {
+                    isParasha: false,
+                    isRoshChodesh: false,
+                    isChag: false,
+                    isModernException: false
+                };
             }
 
-            // 2. Only major holidays/fasts make it past the filter and into holidaysData
-            holidaysData[dateStr] = item.hebrew;
+            // --- Define Structuring Rules ---
+
+            // Rule 1: Normal Weekly Torah Portions
+            if (category === "parashat") {
+                dayTypesData[dateStr].isParasha = true;
+            }
+
+            // Rule 3: Rosh Chodesh
+            if (category === "roshchodesh") {
+                dayTypesData[dateStr].isRoshChodesh = true;
+            }
+
+            // Rule 5: Modern Day Exceptions List
+            const exceptions = [
+                "יום השפה העברית", "יום העליה", "יום הרצל", "יום ז׳בוטינסקי",
+                "שמירת בית הספר ליום העליה", "יום הזכרון ליצחק רבין",
+                "חג הסיגד", "יום בן־גוריון", "יום המשפחה"
+            ];
+            const isException = exceptions.some(name => hebrewName.includes(name));
+
+            if (subcat === "modern" && isException) {
+                dayTypesData[dateStr].isModernException = true;
+            }
+            // Rule 4: Standard Chagim (Major, Minor, Fast, or standard Modern days not in exception list)
+            else if (category === "holiday") {
+                if(subcat === "shabbat")
+                    dayTypesData[dateStr].isSpecialShabbat = true;
+                else dayTypesData[dateStr].isChag = true;
+            }
+
+            // Populate text layout normally (keeps multiple labels visible e.g. "ראש חודש / פרשת...")
+            if (holidaysData[dateStr]) {
+                holidaysData[dateStr] += " / " + hebrewName;
+            } else {
+                holidaysData[dateStr] = hebrewName;
+            }
         });
     } catch (e) {
         console.error("שגיאה בטעינת חגים", e);
     }
+}
+
+function shouldDayBeRest(dateObj, includeShabbat, includeHolidays) {
+    const dateString = formatDateToIL(dateObj);
+    const traits = dayTypesData[dateString] || {};
+    const isShabbatDay = dateObj.getDay() === 6;
+
+    // Rule 4: Standard Chagim -> Controlled by includeHolidays setting
+    if (traits.isChag && !includeHolidays) return true;
+    
+    // Rule 1: Shabbat or Parashat dates -> Controlled by includeShabbat setting
+    if ((isShabbatDay || traits.isParasha) && !includeShabbat) return true;
+
+    // Rule 3: Rosh Chodesh -> Always Study (Never Rest)
+    if (traits.isRoshChodesh) return false;
+
+    // Rule 5: Modern Exceptions -> Always Study (Never Rest)
+    if (traits.isModernException) return false;
+    
+    // Default catch-all: Keep studying
+    return false;
 }
 
 function getHebrewDate(date) {
@@ -371,13 +431,11 @@ async function generate() {
 
         while (scanDate <= endDate) {
             const dateString = formatDateToIL(scanDate);
-            const holidayName = holidaysData[dateString];
-            const isShabbat = scanDate.getDay() === 6;
             const overrideState = manualOverrides[dateString] || 0;
 
-            // Determine if this day is a rest day based on UI settings and overrides
+            // Evaluate rest status using the new rules engine
             let isRestDay = (overrideState === 1) ||
-                (overrideState !== 2 && ((isShabbat && !includeShabbat) || (holidayName && !includeHolidays)));
+                (overrideState !== 2 && shouldDayBeRest(scanDate, includeShabbat, includeHolidays));
 
             if (!isRestDay) {
                 netStudyDays++;
@@ -458,20 +516,25 @@ async function generate() {
 
         while (currentAmud < totalAmudim) {
             const dateString = formatDateToIL(currentDate);
-            const holidayName = holidaysData[dateString];
+            const holidayName = holidaysData[dateString] || ""; // Plain text string ("פרשת חוקת")
             const isShabbat = currentDate.getDay() === 6;
             const overrideState = manualOverrides[dateString] || 0;
+            const traits = dayTypesData[dateString] || {};
 
+            // Evaluate study/rest status using our exact 5 semantic rules
             let isNonStudyDay = (overrideState === 1) ||
-                (overrideState !== 2 && ((isShabbat && !includeShabbat) || (holidayName && !includeHolidays)));
+                (overrideState !== 2 && shouldDayBeRest(currentDate, includeShabbat, includeHolidays));
 
             const dayData = {
                 date: new Date(currentDate),
                 dateString: dateString,
                 masechet: masechetName,
-                isShabbat: isShabbat,
-                isHoliday: !!holidayName,
-                holidayTitle: holidayName,
+                isShabbat: isShabbat || traits.isParasha,
+
+                // FIX: Ensure the template logic knows there is text to render in this cell!
+                isHoliday: holidayName !== "",
+                holidayTitle: holidayName,                 // This text will now explicitly appear on your calendar
+
                 isEmpty: isNonStudyDay,
                 override: overrideState
             };
