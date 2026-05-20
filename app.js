@@ -162,17 +162,6 @@ function toggleInputs() {
     document.getElementById('targetDateSection').classList.toggle('hidden', method === 'pace');
 }
 
-// Counts the amount of study days between a start and end date
-function countStudyDays(startDate, endDate, includeShabbat) {
-    let count = 0;
-    let curr = new Date(startDate);
-    while (curr <= endDate) {
-        if (includeShabbat || curr.getDay() !== 6) count++;
-        curr.setDate(curr.getDate() + 1);
-    }
-    return count;
-}
-
 /*
     Handling of masechet sequence list logic
 */ 
