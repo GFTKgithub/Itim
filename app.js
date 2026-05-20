@@ -729,8 +729,65 @@ async function exportToExcel() {
     saveAs(new Blob([buffer]), 'עיתים_תכנית_לימוד.xlsx');
 }
 
-// Initiation of Masechet Select screen
-window.onload = () => {
+/* 
+    Page initiation logic
+*/
+
+// Setups all event listeners in the page
+function setupEventListeners() {
+    // Simple On-click Listeners
+    document.getElementById('generateBtn').addEventListener('click', generate);
+    document.getElementById('addToSequenceBtn').addEventListener('click', addToSequence);
+    document.getElementById('clearSequenceBtn').addEventListener('click', clearSequence);
+    document.getElementById('exportBtn').addEventListener('click', exportScheduleToExcel);
+    document.getElementById('printBtn').addEventListener('click', () => {
+        window.print();
+    });
+
+    // Other On-click Listeners
+    // Handle removing from sequence
+    document.getElementById('sequenceList').addEventListener('click', (event) => {
+        // Check if the clicked element (or its parent) is our remove button
+        const removeBtn = event.target.closest('.remove-btn');
+
+        if (removeBtn) {
+            // Grab the index from the data attribute (comes as string, convert to Number)
+            const index = Number(removeBtn.dataset.index);
+            removeFromSequence(index);
+        }
+    });
+
+    // Calendar grid onClick
+    document.getElementById('calendarContainer').addEventListener('click', (event) => {
+        // Look for the closest element with the 'calendar-day' class
+        const calendarDay = event.target.closest('.calendar-day');
+
+        if (calendarDay && calendarDay.dataset.date) {
+            const dateString = calendarDay.dataset.date;
+            cycleDateOverride(dateString);
+        }
+    });
+
+    // On-change Listeners
+    document.getElementById('calcMethod').addEventListener('change', () => {
+        toggleInputs();
+    });
+
+    document.getElementById('targetDateInput').addEventListener('change', (event) => {
+        updateHebrewLabel(event.target, 'targetDateHebrewLabel');
+    });
+
+    document.getElementById('startDateInput').addEventListener('change', (event) => {
+        updateHebrewLabel(event.target, 'startDateHebrewLabel');
+    });
+
+    document.getElementById('calendarType').addEventListener('change', () => {
+        generate();
+    });
+}
+
+// Initiate calendar configuration control panel
+function initUserConfigPanel() {
     // 1. Populate Masechet dropdown select element
     const select = document.getElementById('masechetSelect');
     masechtot.forEach(m => {
@@ -771,55 +828,16 @@ window.onload = () => {
             targetDateSection.classList.remove('hidden');
         }
     });
-};
+}
 
-// Simple On-click Listeners
-document.getElementById('generateBtn').addEventListener('click', generate);
-document.getElementById('addToSequenceBtn').addEventListener('click', addToSequence);
-document.getElementById('clearSequenceBtn').addEventListener('click', clearSequence);
-document.getElementById('exportBtn').addEventListener('click', exportToExcel);
-document.getElementById('printBtn').addEventListener('click', () => {
-    window.print();
-});
+// Main page initiation function
+function init() {
+    console.log("HTML page initialized succesfully");
 
-// Other On-click Listeners
+    setupEventListeners();
 
-// Handle removing from sequence
-document.getElementById('sequenceList').addEventListener('click', (event) => {
-    // Check if the clicked element (or its parent) is our remove button
-    const removeBtn = event.target.closest('.remove-btn');
+    window.addEventListener('load', initUserConfigPanel);
+}
 
-    if (removeBtn) {
-        // Grab the index from the data attribute (comes as string, convert to Number)
-        const index = Number(removeBtn.dataset.index);
-        removeFromSequence(index);
-    }
-});
-
-// Calendar grid onClick
-document.getElementById('calendarContainer').addEventListener('click', (event) => {
-    // Look for the closest element with the 'calendar-day' class
-    const calendarDay = event.target.closest('.calendar-day');
-
-    if (calendarDay && calendarDay.dataset.date) {
-        const dateString = calendarDay.dataset.date;
-        toggleDate(dateString);
-    }
-});
-
-// On-change Listeners
-document.getElementById('calcMethod').addEventListener('change', () => {
-    toggleInputs();
-});
-
-document.getElementById('targetDateInput').addEventListener('change', (event) => {
-    updateHebrewLabel(event.target, 'targetDateHebrewLabel');
-});
-
-document.getElementById('startDateInput').addEventListener('change', (event) => {
-    updateHebrewLabel(event.target, 'startDateHebrewLabel');
-});
-
-document.getElementById('calendarType').addEventListener('change', () => {
-    generate();
-});
+// Executes main initiation function upon page load
+document.addEventListener('DOMContentLoaded', init);
