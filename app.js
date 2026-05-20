@@ -1,5 +1,6 @@
 import { hebrewToNumber, numberToHebrew, formatGematria, formatHebrewMonthTitle, indexToDaf, formatDateToIL } from './utils.js';
 
+// Data for all masechtot
 const masechtot = [
     // Zeraim
     { name: "ברכות", end: { daf: "סד", amud: "א" } },
@@ -51,17 +52,14 @@ const masechtot = [
     { name: "נדה", end: { daf: "עג", amud: "א" } }
 ];
 
-let schedule = [];
-
-// 0 = Default, 1 = Force Break, 2 = Force Study
-let manualOverrides = {};
-
-
-let holidaysData = {}; // Keeps titles intact for rendering
+let schedule = []; // Keeps the data of the entire schedule
+let manualOverrides = {}; // Keeps track of all manual overrides of calendar days (0 = Default, 1 = Force Break, 2 = Force Study)
+let calendarEventsData = {}; // Keeps titles intact for rendering
 let dayTypesData = {};  // Holds structural traits for schedule calculations
 
-async function fetchHolidays(year) {
-    if (Object.keys(holidaysData).some(key => key.startsWith(year))) return;
+// Fetches calendar event data of a given year from Hebcal API
+async function fetchCalendarEvents(year) {
+    if (Object.keys(calendarEventsData).some(key => key.startsWith(year))) return;
 
     try {
         const response = await fetch(`https://www.hebcal.com/hebcal?v=1&cfg=json&year=${year}&yt=G&i=on&maj=on&min=on&nx=on&mf=on&ss=on&mvch=off&mod=on&s=on&mm=0&lg=h&c=off&geo=none&zip=&geonameid=&b=18&M=on&td=&m=&ue=off&leyning=off`);
@@ -114,10 +112,10 @@ async function fetchHolidays(year) {
             }
 
             // Populate text layout normally (keeps multiple labels visible e.g. "ראש חודש / פרשת...")
-            if (holidaysData[dateStr]) {
-                holidaysData[dateStr] += " / " + hebrewName;
+            if (calendarEventsData[dateStr]) {
+                calendarEventsData[dateStr] += " / " + hebrewName;
             } else {
-                holidaysData[dateStr] = hebrewName;
+                calendarEventsData[dateStr] = hebrewName;
             }
         });
     } catch (e) {
@@ -125,6 +123,7 @@ async function fetchHolidays(year) {
     }
 }
 
+// Calculates if a given date should be rest or study (pre-override)
 function shouldDayBeRest(dateObj, includeShabbat, includeHolidays) {
     const dateString = formatDateToIL(dateObj);
     const traits = dayTypesData[dateString] || {};
@@ -174,6 +173,10 @@ function countStudyDays(startDate, endDate, includeShabbat) {
     return count;
 }
 
+/*
+    Handling of masechet sequence list logic
+*/ 
+
 let sequence = [];
 
 // Adds the selected masechet into the Track list
@@ -208,6 +211,7 @@ function updateSequenceUI() {
     `).join('');
 }
 
+// Updates a Hebrew date label based on a gregorian date element
 function updateHebrewLabel(inputElement, labelId) {
     const label = document.getElementById(labelId);
     if (!label) return;
@@ -304,7 +308,7 @@ async function generate() {
         const endYear = endDate.getFullYear();
         const holidayPromises = [];
         for (let y = startYear - 1; y <= endYear + 1; y++) {
-            holidayPromises.push(fetchHolidays(y));
+            holidayPromises.push(fetchCalendarEvents(y));
         }
         await Promise.all(holidayPromises);
 
@@ -357,7 +361,7 @@ async function generate() {
 
     const holidayPromises = [];
     for (let y = startYear - 1; y <= endYear + 1; y++) {
-        holidayPromises.push(fetchHolidays(y));
+        holidayPromises.push(fetchCalendarEvents(y));
     }
     await Promise.all(holidayPromises);
 
@@ -374,7 +378,7 @@ async function generate() {
     let paddingDate = new Date(tempDate);
     while (paddingDate < startInputDate) {
         const dateString = formatDateToIL(paddingDate);
-        const holidayName = holidaysData[dateString];
+        const holidayName = calendarEventsData[dateString];
         const isShabbat = paddingDate.getDay() === 6;
 
         schedule.push({
@@ -402,7 +406,7 @@ async function generate() {
 
         while (currentAmud < totalAmudim) {
             const dateString = formatDateToIL(currentDate);
-            const holidayName = holidaysData[dateString] || "";
+            const holidayName = calendarEventsData[dateString] || "";
             const isShabbat = currentDate.getDay() === 6;
             const overrideState = manualOverrides[dateString] || 0;
             const traits = dayTypesData[dateString] || {};
@@ -440,7 +444,7 @@ async function generate() {
         if (mIdx < sequence.length - 1 && breakDays > 0) {
             for (let i = 0; i < breakDays; i++) {
                 const dateString = formatDateToIL(currentDate);
-                const holidayName = holidaysData[dateString];
+                const holidayName = calendarEventsData[dateString];
                 const isShabbat = currentDate.getDay() === 6;
                 const overrideState = manualOverrides[dateString] || 0;
 
@@ -481,7 +485,7 @@ async function generate() {
         while (!isEndOfMonth(runnerDate)) {
             runnerDate.setDate(runnerDate.getDate() + 1);
             const dateString = formatDateToIL(runnerDate);
-            const holidayName = holidaysData[dateString];
+            const holidayName = calendarEventsData[dateString];
             const isShabbat = runnerDate.getDay() === 6;
 
             schedule.push({
@@ -605,7 +609,8 @@ function renderCalendar(schedule) {
     }
 }
 
-function toggleDate(dateString) {
+// Cycles the date's manual schedule override: Default -> Force Break -> Force Study -> Reset.
+function cycleDateOverride(dateString) {
     // Cycle: 0 (default) -> 1 (force break) -> 2 (force study) -> 0...
     if (!manualOverrides[dateString]) {
         manualOverrides[dateString] = 1;
@@ -618,7 +623,8 @@ function toggleDate(dateString) {
     generate();
 }
 
-async function exportToExcel() {
+// Generates an RTL grid-structured workbook and downloads the schedule as an Excel file.
+async function exportScheduleToExcel() {
     if (!schedule || schedule.length === 0) return alert("יש ליצור לוח לימוד קודם");
 
     const workbook = new ExcelJS.Workbook();
@@ -632,19 +638,20 @@ async function exportToExcel() {
 
     let currentRow = 1;
 
+    // Group schedule array records by their formatted Hebrew or Gregorian month string tokens
     const months = {};
     schedule.forEach(day => {
-        let monthName;
-        if (calendarType === 'hebrew') {
-            monthName = formatHebrewMonthTitle(day.date);
-        } else {
-            monthName = day.date.toLocaleString('he-IL', { month: 'long', year: 'numeric' });
-        }
+        let monthName = (calendarType === 'hebrew')
+            ? formatHebrewMonthTitle(day.date)
+            : day.date.toLocaleString('he-IL', { month: 'long', year: 'numeric' });
+
         if (!months[monthName]) months[monthName] = [];
         months[monthName].push(day);
     });
 
+    // Build the structural grid UI month-by-month inside the spreadsheet
     for (const [monthName, days] of Object.entries(months)) {
+        // 1. Render Top Banner Header Box
         worksheet.mergeCells(currentRow, 1, currentRow, 7);
         const titleCell = worksheet.getCell(currentRow, 1);
         titleCell.value = RTL_MARK + monthName;
@@ -654,6 +661,7 @@ async function exportToExcel() {
         worksheet.getRow(currentRow).height = 30;
         currentRow++;
 
+        // 2. Render Weekdays Sub-header Bar (Sunday -> Saturday)
         const daysHeader = ['א', 'ב', 'ג', 'ד', 'ה', 'ו', 'ש'];
         daysHeader.forEach((d, i) => {
             const cell = worksheet.getCell(currentRow, i + 1);
@@ -667,6 +675,7 @@ async function exportToExcel() {
 
         let weekRow = currentRow;
 
+        // 3. Render Empty Padding Cells for Offset Leading Days
         const firstDayInMonth = days[0].date.getDay();
         for (let i = 0; i < firstDayInMonth; i++) {
             const cell = worksheet.getCell(weekRow, i + 1);
@@ -674,6 +683,7 @@ async function exportToExcel() {
             cell.border = { top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' } };
         }
 
+        // 4. Populate Matrix Grid Content Items
         days.forEach(day => {
             const col = (day.date.getDay() + 1);
             const cell = worksheet.getCell(weekRow, col);
@@ -705,24 +715,31 @@ async function exportToExcel() {
             cell.alignment = { wrapText: true, vertical: 'top', horizontal: 'center', readingOrder: 2 };
             cell.border = { top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' } };
 
+            // Apply contextual color highlights based on scheduling type overrides
             if (day.override === 1) {
-                cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFEBEE' } };
+                cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFEBEE' } }; // Force Break
             } else if (day.override === 2) {
-                cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFEBF5FF' } };
+                cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFEBF5FF' } }; // Force Study
             } else if (day.isShabbat) {
-                cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFDBE6F3' } };
+                cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFDBE6F3' } }; // Shabbat
             } else if (day.isHoliday) {
-                cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE9EFD5' } };
+                cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE9EFD5' } }; // Holidays
             }
 
+            // Set default cell grid row bounds dimension structure mapping safely
+            worksheet.getRow(weekRow).height = 65;
+
             if (col === 7) {
-                worksheet.getRow(weekRow).height = 65;
                 weekRow++;
             }
         });
 
-        worksheet.getRow(weekRow).height = 65;
-        currentRow = weekRow + 2;
+        // FIX: If the month ended on any day except Saturday, ensure we push the pointer to the next row anyway
+        if (days[days.length - 1].date.getDay() !== 6) {
+            weekRow++;
+        }
+
+        currentRow = weekRow + 2; // Leave spacing before starting the next calendar block layout
     }
 
     const buffer = await workbook.xlsx.writeBuffer();
