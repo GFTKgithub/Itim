@@ -1,127 +1,125 @@
 import { hebrewToNumber, numberToHebrew, formatGematria, formatHebrewMonthTitle, indexToDaf, formatDateToIL } from './utils.js';
+import { masechtot, getTotalAmudim } from './data.js';
+import { fetchCalendarEvents } from './api.js';
 
-// Data for all masechtot
-const masechtot = [
-    // Zeraim
-    { name: "ברכות", end: { daf: "סד", amud: "א" } },
-
-    // Moed
-    { name: "שבת", end: { daf: "קנז", amud: "ב" } },
-    { name: "עירובין", end: { daf: "קה", amud: "א" } },
-    { name: "פסחים", end: { daf: "קכא", amud: "א" } },
-    { name: "יומא", end: { daf: "פח", amud: "א" } },
-    { name: "סוכה", end: { daf: "נו", amud: "א" } },
-    { name: "ביצה", end: { daf: "מ", amud: "א" } },
-    { name: "ראש השנה", end: { daf: "לה", amud: "א" } },
-    { name: "תענית", end: { daf: "לא", amud: "א" } },
-    { name: "מגילה", end: { daf: "לב", amud: "א" } },
-    { name: "מועד קטן", end: { daf: "כח", amud: "ב" } },
-    { name: "חגיגה", end: { daf: "כז", amud: "א" } },
-
-    // Nashim
-    { name: "יבמות", end: { daf: "קכב", amud: "א" } },
-    { name: "כתובות", end: { daf: "קיב", amud: "ב" } },
-    { name: "נדרים", end: { daf: "צא", amud: "א" } },
-    { name: "נזיר", end: { daf: "סו", amud: "ב" } },
-    { name: "סוטה", end: { daf: "מט", amud: "א" } },
-    { name: "גיטין", end: { daf: "צ", amud: "א" } },
-    { name: "קידושין", end: { daf: "פב", amud: "א" } },
-
-    // Nezikin
-    { name: "בבא קמא", end: { daf: "קיט", amud: "א" } },
-    { name: "בבא מציעא", end: { daf: "קיט", amud: "א" } },
-    { name: "בבא בתרא", end: { daf: "קעו", amud: "א" } },
-    { name: "סנהדרין", end: { daf: "קיג", amud: "א" } },
-    { name: "מכות", end: { daf: "כד", amud: "א" } },
-    { name: "שבועות", end: { daf: "מט", amud: "א" } },
-    { name: "עבודה זרה", end: { daf: "עו", amud: "א" } },
-    { name: "הוריות", end: { daf: "יד", amud: "א" } },
-
-    // Kodashim
-    { name: "זבחים", end: { daf: "קכ", amud: "א" } },
-    { name: "מנחות", end: { daf: "קי", amud: "א" } },
-    { name: "חולין", end: { daf: "קמב", amud: "א" } },
-    { name: "בכורות", end: { daf: "סא", amud: "א" } },
-    { name: "ערכין", end: { daf: "לד", amud: "א" } },
-    { name: "תמורה", end: { daf: "לד", amud: "א" } },
-    { name: "כריתות", end: { daf: "כח", amud: "א" } },
-    { name: "מעילה", end: { daf: "כב", amud: "א" } },
-    { name: "תמיד", end: { daf: "לג", amud: "ב" } },
-
-    // Tahorot
-    { name: "נדה", end: { daf: "עג", amud: "א" } }
-];
-
+let sequence = []; // Keeps the masechet sequence list
 let schedule = []; // Keeps the data of the entire schedule
 let manualOverrides = {}; // Keeps track of all manual overrides of calendar days (0 = Default, 1 = Force Break, 2 = Force Study)
 let calendarEventsData = {}; // Keeps titles intact for rendering
 let dayTypesData = {};  // Holds structural traits for schedule calculations
 
-// Fetches calendar event data of a given year from Hebcal API
-async function fetchCalendarEvents(year) {
-    if (Object.keys(calendarEventsData).some(key => key.startsWith(year))) return;
+/* 
+    Page initiation logic
+*/
 
-    try {
-        const response = await fetch(`https://www.hebcal.com/hebcal?v=1&cfg=json&year=${year}&yt=G&i=on&maj=on&min=on&nx=on&mf=on&ss=on&mvch=off&mod=on&s=on&mm=0&lg=h&c=off&geo=none&zip=&geonameid=&b=18&M=on&td=&m=&ue=off&leyning=off`);
-        const data = await response.json();
+// Setups all event listeners in the page
+function setupEventListeners() {
+    // Simple On-click Listeners
+    document.getElementById('generateBtn').addEventListener('click', generate);
+    document.getElementById('addToSequenceBtn').addEventListener('click', addToSequence);
+    document.getElementById('clearSequenceBtn').addEventListener('click', clearSequence);
+    document.getElementById('exportBtn').addEventListener('click', exportScheduleToExcel);
+    document.getElementById('printBtn').addEventListener('click', () => {
+        window.print();
+    });
 
-        data.items.forEach(item => {
-            const dateStr = formatDateToIL(new Date(item.date));
-            const category = item.category || "";
-            const subcat = item.subcat || "";
-            const hebrewName = item.hebrew || "";
+    // Other On-click Listeners
+    // Handle removing from sequence
+    document.getElementById('sequenceList').addEventListener('click', (event) => {
+        // Check if the clicked element (or its parent) is our remove button
+        const removeBtn = event.target.closest('.remove-btn');
 
-            // Initialize day logic traits for this date if not already present
-            if (!dayTypesData[dateStr]) {
-                dayTypesData[dateStr] = {
-                    isParasha: false,
-                    isRoshChodesh: false,
-                    isChag: false,
-                    isModernException: false
-                };
-            }
+        if (removeBtn) {
+            // Grab the index from the data attribute (comes as string, convert to Number)
+            const index = Number(removeBtn.dataset.index);
+            removeFromSequence(index);
+        }
+    });
 
-            // --- Define Structuring Rules ---
+    // Calendar grid onClick
+    document.getElementById('calendarContainer').addEventListener('click', (event) => {
+        // Look for the closest element with the 'calendar-day' class
+        const calendarDay = event.target.closest('.calendar-day');
 
-            // Rule 1: Normal Weekly Torah Portions
-            if (category === "parashat") {
-                dayTypesData[dateStr].isParasha = true;
-            }
+        if (calendarDay && calendarDay.dataset.date) {
+            const dateString = calendarDay.dataset.date;
+            cycleDateOverride(dateString);
+        }
+    });
 
-            // Rule 3: Rosh Chodesh
-            if (category === "roshchodesh") {
-                dayTypesData[dateStr].isRoshChodesh = true;
-            }
+    // On-change Listeners
+    document.getElementById('calcMethod').addEventListener('change', () => {
+        toggleInputs();
+    });
 
-            // Rule 5: Modern Day Exceptions List
-            const exceptions = [
-                "יום השפה העברית", "יום העליה", "יום הרצל", "יום ז׳בוטינסקי",
-                "שמירת בית הספר ליום העליה", "יום הזכרון ליצחק רבין",
-                "חג הסיגד", "יום בן־גוריון", "יום המשפחה"
-            ];
-            const isException = exceptions.some(name => hebrewName.includes(name));
+    document.getElementById('targetDateInput').addEventListener('change', (event) => {
+        updateHebrewLabel(event.target, 'targetDateHebrewLabel');
+    });
 
-            if (subcat === "modern" && isException) {
-                dayTypesData[dateStr].isModernException = true;
-            }
-            // Rule 4: Standard Chagim (Major, Minor, Fast, or standard Modern days not in exception list)
-            else if (category === "holiday") {
-                if(subcat === "shabbat")
-                    dayTypesData[dateStr].isSpecialShabbat = true;
-                else dayTypesData[dateStr].isChag = true;
-            }
+    document.getElementById('startDateInput').addEventListener('change', (event) => {
+        updateHebrewLabel(event.target, 'startDateHebrewLabel');
+    });
 
-            // Populate text layout normally (keeps multiple labels visible e.g. "ראש חודש / פרשת...")
-            if (calendarEventsData[dateStr]) {
-                calendarEventsData[dateStr] += " / " + hebrewName;
-            } else {
-                calendarEventsData[dateStr] = hebrewName;
-            }
-        });
-    } catch (e) {
-        console.error("שגיאה בטעינת חגים", e);
-    }
+    document.getElementById('calendarType').addEventListener('change', () => {
+        generate();
+    });
 }
+
+// Initiate calendar configuration control panel
+function initUserConfigPanel() {
+    // 1. Populate Masechet dropdown select element
+    const select = document.getElementById('masechetSelect');
+    masechtot.forEach(m => {
+        const opt = document.createElement('option');
+        opt.value = m.name;
+        opt.innerText = m.name;
+        select.appendChild(opt);
+    });
+
+    // 2. Set Today as default starting date
+    const startDateInput = document.getElementById('startDateInput');
+    startDateInput.valueAsDate = new Date();
+
+    // Fix 1: Fire the label generator function immediately for the initial state
+    updateHebrewLabel(startDateInput, 'startDateHebrewLabel');
+
+    // 3. Attach standard Change Events for real-time label updates
+    startDateInput.addEventListener('input', () => {
+        updateHebrewLabel(startDateInput, 'startDateHebrewLabel');
+    });
+
+    const targetDateInput = document.getElementById('targetDateInput');
+    targetDateInput.addEventListener('input', () => {
+        updateHebrewLabel(targetDateInput, 'targetDateHebrewLabel');
+    });
+
+    // Fix 2: Toggling logic ensuring UI blocks clean up nicely
+    const calcMethod = document.getElementById('calcMethod');
+    const paceSection = document.getElementById('paceSection');
+    const targetDateSection = document.getElementById('targetDateSection');
+
+    calcMethod.addEventListener('change', () => {
+        if (calcMethod.value === 'pace') {
+            paceSection.classList.remove('hidden');
+            targetDateSection.classList.add('hidden');
+        } else {
+            paceSection.classList.add('hidden');
+            targetDateSection.classList.remove('hidden');
+        }
+    });
+}
+
+// Main page initiation function
+function init() {
+    console.log("HTML page initialized succesfully");
+
+    setupEventListeners();
+
+    window.addEventListener('load', initUserConfigPanel);
+}
+
+// Executes main initiation function upon page load
+document.addEventListener('DOMContentLoaded', init);
 
 // Calculates if a given date should be rest or study (pre-override)
 function shouldDayBeRest(dateObj, includeShabbat, includeHolidays) {
@@ -145,16 +143,6 @@ function shouldDayBeRest(dateObj, includeShabbat, includeHolidays) {
     return false;
 }
 
-// Gets the number of total amudim from a masechet
-function getTotalAmudim(masechetName) {
-    const masechet = masechtot.find(m => m.name === masechetName);
-    if (!masechet) return 0;
-    const dafNum = hebrewToNumber(masechet.end.daf);
-    let total = (dafNum * 2) - 2;
-    if (masechet.end.amud === "א") total -= 1;
-    return total;
-}
-
 // Toggles from Deadline goal to Daily Study
 function toggleInputs() {
     const method = document.getElementById('calcMethod').value;
@@ -166,22 +154,20 @@ function toggleInputs() {
     Handling of masechet sequence list logic
 */ 
 
-let sequence = [];
-
-// Adds the selected masechet into the Track list
+// Adds the selected masechet into the Track's masechet sequence list
 function addToSequence() {
     const val = document.getElementById('masechetSelect').value;
     sequence.push(val);
     updateSequenceUI();
 }
 
-// Removes the selected masechet from the Track list
+// Removes the selected masechet from the Track's masechet sequence list
 function removeFromSequence(index) {
     sequence.splice(index, 1);
     updateSequenceUI();
 }
 
-// Clears the entire sequence of masechtot from the Track
+// Clears the entire sequence of masechtot from the Track's masechet sequence list
 function clearSequence() {
     if (confirm("האם למחוק את כל המסכתות מהמסלול?")) {
         sequence = [];
@@ -295,7 +281,7 @@ async function generate() {
         const startYear = startInputDate.getFullYear();
         const endYear = endDate.getFullYear();
         for (let y = startYear - 1; y <= endYear + 1; y++) {
-            await fetchCalendarEvents(y);
+            await fetchCalendarEvents(y, calendarEventsData, dayTypesData);
         }
 
         let scanDate = new Date(startInputDate);
@@ -668,116 +654,3 @@ async function exportScheduleToExcel() {
     const buffer = await workbook.xlsx.writeBuffer();
     saveAs(new Blob([buffer]), 'עיתים_תכנית_לימוד.xlsx');
 }
-
-/* 
-    Page initiation logic
-*/
-
-// Setups all event listeners in the page
-function setupEventListeners() {
-    // Simple On-click Listeners
-    document.getElementById('generateBtn').addEventListener('click', generate);
-    document.getElementById('addToSequenceBtn').addEventListener('click', addToSequence);
-    document.getElementById('clearSequenceBtn').addEventListener('click', clearSequence);
-    document.getElementById('exportBtn').addEventListener('click', exportScheduleToExcel);
-    document.getElementById('printBtn').addEventListener('click', () => {
-        window.print();
-    });
-
-    // Other On-click Listeners
-    // Handle removing from sequence
-    document.getElementById('sequenceList').addEventListener('click', (event) => {
-        // Check if the clicked element (or its parent) is our remove button
-        const removeBtn = event.target.closest('.remove-btn');
-
-        if (removeBtn) {
-            // Grab the index from the data attribute (comes as string, convert to Number)
-            const index = Number(removeBtn.dataset.index);
-            removeFromSequence(index);
-        }
-    });
-
-    // Calendar grid onClick
-    document.getElementById('calendarContainer').addEventListener('click', (event) => {
-        // Look for the closest element with the 'calendar-day' class
-        const calendarDay = event.target.closest('.calendar-day');
-
-        if (calendarDay && calendarDay.dataset.date) {
-            const dateString = calendarDay.dataset.date;
-            cycleDateOverride(dateString);
-        }
-    });
-
-    // On-change Listeners
-    document.getElementById('calcMethod').addEventListener('change', () => {
-        toggleInputs();
-    });
-
-    document.getElementById('targetDateInput').addEventListener('change', (event) => {
-        updateHebrewLabel(event.target, 'targetDateHebrewLabel');
-    });
-
-    document.getElementById('startDateInput').addEventListener('change', (event) => {
-        updateHebrewLabel(event.target, 'startDateHebrewLabel');
-    });
-
-    document.getElementById('calendarType').addEventListener('change', () => {
-        generate();
-    });
-}
-
-// Initiate calendar configuration control panel
-function initUserConfigPanel() {
-    // 1. Populate Masechet dropdown select element
-    const select = document.getElementById('masechetSelect');
-    masechtot.forEach(m => {
-        const opt = document.createElement('option');
-        opt.value = m.name;
-        opt.innerText = m.name;
-        select.appendChild(opt);
-    });
-
-    // 2. Set Today as default starting date
-    const startDateInput = document.getElementById('startDateInput');
-    startDateInput.valueAsDate = new Date();
-
-    // Fix 1: Fire the label generator function immediately for the initial state
-    updateHebrewLabel(startDateInput, 'startDateHebrewLabel');
-
-    // 3. Attach standard Change Events for real-time label updates
-    startDateInput.addEventListener('input', () => {
-        updateHebrewLabel(startDateInput, 'startDateHebrewLabel');
-    });
-
-    const targetDateInput = document.getElementById('targetDateInput');
-    targetDateInput.addEventListener('input', () => {
-        updateHebrewLabel(targetDateInput, 'targetDateHebrewLabel');
-    });
-
-    // Fix 2: Toggling logic ensuring UI blocks clean up nicely
-    const calcMethod = document.getElementById('calcMethod');
-    const paceSection = document.getElementById('paceSection');
-    const targetDateSection = document.getElementById('targetDateSection');
-
-    calcMethod.addEventListener('change', () => {
-        if (calcMethod.value === 'pace') {
-            paceSection.classList.remove('hidden');
-            targetDateSection.classList.add('hidden');
-        } else {
-            paceSection.classList.add('hidden');
-            targetDateSection.classList.remove('hidden');
-        }
-    });
-}
-
-// Main page initiation function
-function init() {
-    console.log("HTML page initialized succesfully");
-
-    setupEventListeners();
-
-    window.addEventListener('load', initUserConfigPanel);
-}
-
-// Executes main initiation function upon page load
-document.addEventListener('DOMContentLoaded', init);
