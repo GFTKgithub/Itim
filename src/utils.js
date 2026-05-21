@@ -5,14 +5,14 @@ const gematriaMap = {
 };
 
 
-// Convert Hebrew letter sequence into its gematria
+// Converts Hebrew numeral into its corresponding gematria
 export function hebrewToNumber(str) {
     let sum = 0;
     for (let char of str) { if (gematriaMap[char]) sum += gematriaMap[char]; }
     return sum;
 }
 
-// Convert gematria into a Hebrew letter sequence
+// Converts a number into its corresponding Hebrew numeral
 export function numberToHebrew(num) {
     if (num <= 0) return "";
 
@@ -38,7 +38,7 @@ export function numberToHebrew(num) {
     return result;
 }
 
-// Properly format a gematria string based on the syntactical rules
+// Formats a Hebrew numeral based on the syntactical rules
 export function formatGematria(num, rawHebrew) {
     if (!rawHebrew) return "";
 
@@ -77,7 +77,7 @@ export function indexToDaf(index) {
     return `${numberToHebrew(dafNum)}${amud}`;
 }
 
-// Convert a Hebrew year number to gematria
+// Converts a Hebrew year number into its corresponding Hebrew numeral year string
 export function formatHebrewMonthTitle(date) {
     const monthName = new Intl.DateTimeFormat('he-IL-u-ca-hebrew', { month: 'long' }).format(date);
     const hebrewYearFull = new Intl.DateTimeFormat('he-IL-u-ca-hebrew', { year: 'numeric' }).format(date);
@@ -88,7 +88,7 @@ export function formatHebrewMonthTitle(date) {
     return `${monthName} ${formatGematria(yearNum, numberToHebrew(yearNum))}`;
 }
 
-// Formats a date to 'YYYY-MM-DD' based on the Asia/Jerusalem timezone.
+// Formats a date to 'YYYY-MM-DD' based on the Asia/Jerusalem timezone
 export function formatDateToIL(date) {
     const formatter = new Intl.DateTimeFormat('en-CA', {
         timeZone: 'Asia/Jerusalem',
@@ -99,7 +99,7 @@ export function formatDateToIL(date) {
     return formatter.format(date);
 }
 
-
+// Converts a 'YYYY-MM-DD' string into a local Date object set to noon
 export function parseDateToIL(dateString) {
     const [year, month, day] = dateString.split('-').map(Number);
     // יצירת התאריך לפי שעון מקומי ואיזון שעות אם נדרש
@@ -107,6 +107,7 @@ export function parseDateToIL(dateString) {
     return date;
 }
 
+// Formats a Date object into a Hebrew calendar string (Day + Month) in Hebrew
 export function getHebrewDate(date) {
     return new Intl.DateTimeFormat('he-IL-u-ca-hebrew', {
         day: 'numeric',
@@ -114,6 +115,7 @@ export function getHebrewDate(date) {
     }).format(date);
 }
 
+// Formats a Date object into a Gregorian calendar string (Day + Month) in Hebrew
 export function getGregorianDate(date) {
     return new Intl.DateTimeFormat('he-IL', {
         day: 'numeric',
