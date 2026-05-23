@@ -3,11 +3,18 @@ import { masechtot, getTotalAmudim } from './data.js';
 import { fetchCalendarEvents } from './api.js';
 import { updateSequenceUI, toggleInputs, updateHebrewLabel, renderCalendar } from './ui.js';
 
-let sequence = []; // Keeps the masechet sequence list
-let schedule = []; // Keeps the data of the entire schedule
-let manualOverrides = {}; // Keeps track of all manual overrides of calendar days (0 = Default, 1 = Force Break, 2 = Force Study)
-let calendarEventsData = {}; // Keeps titles intact for rendering
-let dayTypesData = {};  // Holds structural traits for schedule calculations
+let AppState = {
+    sequence: [], // Keeps the masechet sequence list
+    schedule: [], // Keeps the data of the entire schedule
+    manualOverrides: {}, // Keeps all manual overrides of calendar days study status (0 = Default, 1 = Force Break, 2 = Force Study)
+    calendarData: {} // Keeps data of special calendar events (DD.YY.MM)
+}
+
+let sequence = []; 
+let schedule = []; 
+let manualOverrides = {}; 
+let calendarEventsData = {}; 
+let dayTypesData = {};  
 
 /* 
     Page initiation logic
@@ -127,23 +134,35 @@ document.addEventListener('DOMContentLoaded', init);
 
 // Calculates if a given date should be rest or study (pre-override)
 function shouldDayBeRest(dateObj, includeShabbat, includeHolidays) {
+
     const dateString = formatDateToIL(dateObj);
-    const traits = dayTypesData[dateString] || {};
+
+    const day = AppState.calendarData[dateString];
+
+    const traits = day?.traits || {};
+
     const isShabbatDay = dateObj.getDay() === 6;
 
-    // Rule 4: Standard Chagim -> Controlled by includeHolidays setting
-    if (traits.isChag && !includeHolidays) return true;
-    
-    // Rule 1: Shabbat or Parashat dates -> Controlled by includeShabbat setting
-    if ((isShabbatDay || traits.isParasha) && !includeShabbat) return true;
+    // Standard Chagim
+    if (traits.isChag && !includeHolidays) {
+        return true;
+    }
 
-    // Rule 3: Rosh Chodesh -> Always Study (Never Rest)
-    if (traits.isRoshChodesh) return false;
+    // Shabbat / Parasha
+    if ((isShabbatDay || traits.isParasha) && !includeShabbat) {
+        return true;
+    }
 
-    // Rule 5: Modern Exceptions -> Always Study (Never Rest)
-    if (traits.isModernException) return false;
-    
-    // Default catch-all: Keep studying
+    // Always study on Rosh Chodesh
+    if (traits.isRoshChodesh) {
+        return false;
+    }
+
+    // Always study on modern exceptions
+    if (traits.isModernException) {
+        return false;
+    }
+
     return false;
 }
 
@@ -239,7 +258,7 @@ async function generate() {
 
     // Pad fetching by 1 year on both sides to prevent any timezone/boundary overlap issues
     for (let y = startYear - 1; y <= endYear + 1; y++) {
-        await fetchCalendarEvents(y, calendarEventsData, dayTypesData);
+        await fetchCalendarEvents(y, AppState.calendarData);;
     }
 
     // --- Step 3: Handle Target Date Mode Map Allocation ---
@@ -309,8 +328,8 @@ async function generate() {
         const dStr = formatDateToIL(paddingDate);
         schedule.push({
             date: new Date(paddingDate), dateString: dStr, masechet: "-",
-            isShabbat: paddingDate.getDay() === 6, isHoliday: !!calendarEventsData[dStr],
-            holidayTitle: calendarEventsData[dStr], isEmpty: true, content: "", pages: 0
+            isShabbat: paddingDate.getDay() === 6, isHoliday: !!AppState.calendarData[dStr]?.displayText,
+            holidayTitle: AppState.calendarData[dStr]?.displayText, isEmpty: true, content: "", pages: 0
         });
         paddingDate.setDate(paddingDate.getDate() + 1);
     }
@@ -328,13 +347,13 @@ async function generate() {
             const dateString = formatDateToIL(currentDate);
             const isShabbat = currentDate.getDay() === 6;
             const overrideState = manualOverrides[dateString] || 0;
-            const traits = dayTypesData[dateString] || {};
+            const traits = AppState.calendarData[dateString]?.traits || {};
             let isNonStudyDay = (overrideState === 1) || (overrideState !== 2 && shouldDayBeRest(currentDate, includeShabbat, includeHolidays));
 
             const dayData = {
                 date: new Date(currentDate), dateString: dateString, masechet: masechetName,
-                isShabbat: isShabbat || traits.isParasha, isHoliday: !!calendarEventsData[dateString],
-                holidayTitle: calendarEventsData[dateString] || "", isEmpty: isNonStudyDay, override: overrideState
+                isShabbat: isShabbat || traits.isParasha, isHoliday: !!AppState.calendarData[dateString]?.displayText,
+                holidayTitle: AppState.calendarData[dateString]?.displayText || "", isEmpty: isNonStudyDay, override: overrideState
             };
 
             if (isNonStudyDay) {
@@ -375,8 +394,8 @@ async function generate() {
 
                 schedule.push({
                     date: new Date(currentDate), dateString: dStr, masechet: "הפסקה",
-                    isShabbat: currentDate.getDay() === 6, isHoliday: !!calendarEventsData[dStr],
-                    holidayTitle: calendarEventsData[dStr] || "", isEmpty: true, content: "", pages: 0
+                    isShabbat: currentDate.getDay() === 6, isHoliday: !!AppState.calendarData[dStr]?.displayText,
+                    holidayTitle: AppState.calendarData[dStr]?.displayText || "", isEmpty: true, content: "", pages: 0
                 });
                 currentDate.setDate(currentDate.getDate() + 1);
             }
@@ -403,8 +422,8 @@ async function generate() {
             const ds = formatDateToIL(runnerDate);
             schedule.push({
                 date: new Date(runnerDate), dateString: ds, masechet: "-",
-                isShabbat: runnerDate.getDay() === 6, isHoliday: !!calendarEventsData[ds],
-                holidayTitle: calendarEventsData[ds], isEmpty: true, content: "", pages: 0
+                isShabbat: runnerDate.getDay() === 6, isHoliday: !!AppState.calendarData[ds]?.displayText,
+                holidayTitle: AppState.calendarData[ds]?.displayText, isEmpty: true, content: "", pages: 0
             });
         }
     }
