@@ -10,12 +10,6 @@ let AppState = {
     calendarData: {} // Keeps data of special calendar events (DD.YY.MM)
 }
 
-let sequence = []; 
-let schedule = []; 
-let manualOverrides = {}; 
-let calendarEventsData = {}; 
-let dayTypesData = {};  
-
 /* 
     Page initiation logic
 */
@@ -173,27 +167,27 @@ function shouldDayBeRest(dateObj, includeShabbat, includeHolidays) {
 // Adds the selected masechet into the Track's masechet sequence list
 function addToSequence() {
     const val = document.getElementById('masechetSelect').value;
-    sequence.push(val);
-    updateSequenceUI(sequence);
+    AppState.sequence.push(val);
+    updateSequenceUI(AppState.sequence);
 }
 
 // Removes the selected masechet from the Track's masechet sequence list
 function removeFromSequence(index) {
-    sequence.splice(index, 1);
-    updateSequenceUI(sequence);
+    AppState.sequence.splice(index, 1);
+    updateSequenceUI(AppState.sequence);
 }
 
 // Clears the entire sequence of masechtot from the Track's masechet sequence list
 function clearSequence() {
     if (confirm("האם למחוק את כל המסכתות מהמסלול?")) {
-        sequence = [];
+        AppState.sequence = [];
         updateSequenceUI([]);
     }
 }
 
 // Generates the Track's study calendar
 async function generate() {
-    if (sequence.length === 0) return alert("נא להוסיף לפחות מסכת אחת למסלול");
+    if (AppState.sequence.length === 0) return alert("נא להוסיף לפחות מסכת אחת למסלול");
 
     const includeShabbat = document.getElementById('includeShabbatInput').checked;
     const includeHolidays = document.getElementById('includeHolidaysInput').checked;
@@ -201,7 +195,7 @@ async function generate() {
     const method = document.getElementById('calcMethod').value;
     const calendarType = document.getElementById('calendarType').value;
 
-    schedule = [];
+    AppState.schedule = [];
 
     const startDateValue = document.getElementById('startDateInput').value;
     if (!startDateValue) return alert("נא לבחור תאריך התחלה");
@@ -213,7 +207,7 @@ async function generate() {
     let totalAmudimInSequence = 0;
     let initialAmudOffset = 0;
 
-    sequence.forEach((name, idx) => {
+    AppState.sequence.forEach((name, idx) => {
         let startIdx = 0;
         if (idx === 0) {
             const startDafHeb = document.getElementById('startDafInput').value.trim();
@@ -242,7 +236,7 @@ async function generate() {
             const estimatedStudyDays = Math.ceil(totalAmudimInSequence / dailyAmudimPace);
 
             // Factor in structural break days between tractates
-            const totalStructuralBreakDays = breakDays * (sequence.length - 1);
+            const totalStructuralBreakDays = breakDays * (AppState.sequence.length - 1);
 
             // Rough multiplier (e.g., 1.4) to account for skipped Shabbats/Holidays inflating the timeline
             const totalProjectedDays = (estimatedStudyDays + totalStructuralBreakDays) * 1.4;
@@ -275,7 +269,7 @@ async function generate() {
         let scanDate = new Date(startInputDate);
         while (scanDate <= endDate) {
             const dateString = formatDateToIL(scanDate);
-            const overrideState = manualOverrides[dateString] || 0;
+            const overrideState = AppState.manualOverrides[dateString] || 0;
             let isRestDay = (overrideState === 1) || (overrideState !== 2 && shouldDayBeRest(scanDate, includeShabbat, includeHolidays));
 
             if (!isRestDay) {
@@ -288,7 +282,7 @@ async function generate() {
         }
 
         // Account for structural inter-masechet break days by removing them from total study pooling
-        const totalBreakDays = breakDays * (sequence.length - 1);
+        const totalBreakDays = breakDays * (AppState.sequence.length - 1);
         let actualStudyDaysCount = studyDaysSequence.length - totalBreakDays;
 
         if (actualStudyDaysCount <= 0) return alert("אין מספיק ימי לימוד בטווח התאריכים המבוקש");
@@ -326,7 +320,7 @@ async function generate() {
     let paddingDate = new Date(tempDate);
     while (paddingDate < startInputDate) {
         const dStr = formatDateToIL(paddingDate);
-        schedule.push({
+        AppState.schedule.push({
             date: new Date(paddingDate), dateString: dStr, masechet: "-",
             isShabbat: paddingDate.getDay() === 6, isHoliday: !!AppState.calendarData[dStr]?.displayText,
             holidayTitle: AppState.calendarData[dStr]?.displayText, isEmpty: true, content: "", pages: 0
@@ -338,15 +332,15 @@ async function generate() {
     let currentDate = new Date(startInputDate);
     let studyDayPointer = 0;
 
-    for (let mIdx = 0; mIdx < sequence.length; mIdx++) {
-        const masechetName = sequence[mIdx];
+    for (let mIdx = 0; mIdx < AppState.sequence.length; mIdx++) {
+        const masechetName = AppState.sequence[mIdx];
         const totalMasechetAmudim = getTotalAmudim(masechetName);
         let currentAmud = (mIdx === 0) ? initialAmudOffset : 0;
 
         while (currentAmud < totalMasechetAmudim) {
             const dateString = formatDateToIL(currentDate);
             const isShabbat = currentDate.getDay() === 6;
-            const overrideState = manualOverrides[dateString] || 0;
+            const overrideState = AppState.manualOverrides[dateString] || 0;
             const traits = AppState.calendarData[dateString]?.traits || {};
             let isNonStudyDay = (overrideState === 1) || (overrideState !== 2 && shouldDayBeRest(currentDate, includeShabbat, includeHolidays));
 
@@ -376,15 +370,15 @@ async function generate() {
                 currentAmud = end;
             }
 
-            schedule.push(dayData);
+            AppState.schedule.push(dayData);
             currentDate.setDate(currentDate.getDate() + 1);
         }
 
         // Inter-masechet breaks allocation tracking
-        if (mIdx < sequence.length - 1 && breakDays > 0) {
+        if (mIdx < AppState.sequence.length - 1 && breakDays > 0) {
             for (let i = 0; i < breakDays; i++) {
                 const dStr = formatDateToIL(currentDate);
-                const overrideState = manualOverrides[dStr] || 0;
+                const overrideState = AppState.manualOverrides[dStr] || 0;
                 let isRestDay = (overrideState === 1) || (overrideState !== 2 && shouldDayBeRest(currentDate, includeShabbat, includeHolidays));
 
                 // If a break day falls on a natural non-study day anyway, don't waste an active pointer index count on it
@@ -392,7 +386,7 @@ async function generate() {
                     studyDayPointer++;
                 }
 
-                schedule.push({
+                AppState.schedule.push({
                     date: new Date(currentDate), dateString: dStr, masechet: "הפסקה",
                     isShabbat: currentDate.getDay() === 6, isHoliday: !!AppState.calendarData[dStr]?.displayText,
                     holidayTitle: AppState.calendarData[dStr]?.displayText || "", isEmpty: true, content: "", pages: 0
@@ -414,13 +408,13 @@ async function generate() {
         return nextDay.getDate() === 1;
     };
 
-    let lastDay = schedule[schedule.length - 1];
+    let lastDay = AppState.schedule[AppState.schedule.length - 1];
     if (lastDay) {
         let runnerDate = new Date(lastDay.date);
         while (!isEndOfMonth(runnerDate)) {
             runnerDate.setDate(runnerDate.getDate() + 1);
             const ds = formatDateToIL(runnerDate);
-            schedule.push({
+            AppState.schedule.push({
                 date: new Date(runnerDate), dateString: ds, masechet: "-",
                 isShabbat: runnerDate.getDay() === 6, isHoliday: !!AppState.calendarData[ds]?.displayText,
                 holidayTitle: AppState.calendarData[ds]?.displayText, isEmpty: true, content: "", pages: 0
@@ -428,30 +422,33 @@ async function generate() {
         }
     }
 
-    renderCalendar('calendarContainer', schedule, {
+    renderCalendar('calendarContainer', AppState.schedule, {
         calendarType: calendarType,
-        overrides: manualOverrides
+        overrides: AppState.manualOverrides
     });
     document.getElementById('output').classList.remove('hidden');
 }
 
 // Cycles the date's manual schedule override: Default -> Force Break -> Force Study -> Reset.
 function cycleDateOverride(dateString) {
-    // Cycle: 0 (default) -> 1 (force break) -> 2 (force study) -> 0...
-    if (!manualOverrides[dateString]) {
-        manualOverrides[dateString] = 1;
-    } else if (manualOverrides[dateString] === 1) {
-        manualOverrides[dateString] = 2;
+    const current = AppState.manualOverrides[dateString] || 0;
+
+    // Cycle logic: 0 -> 1 -> 2 -> 0
+    const next = (current + 1) % 3;
+
+    if (next === 0) {
+        delete AppState.manualOverrides[dateString];
     } else {
-        delete manualOverrides[dateString];
+        AppState.manualOverrides[dateString] = next;
     }
 
     generate();
 }
 
+
 // Generates an RTL grid-structured workbook and downloads the schedule as an Excel file.
 async function exportScheduleToExcel() {
-    if (!schedule || schedule.length === 0) return alert("יש ליצור לוח לימוד קודם");
+    if (!AppState.schedule || AppState.schedule.length === 0) return alert("יש ליצור לוח לימוד קודם");
 
     const workbook = new ExcelJS.Workbook();
     const worksheet = workbook.addWorksheet('תכנית לימוד', {
@@ -466,7 +463,7 @@ async function exportScheduleToExcel() {
 
     // Group schedule array records by their formatted Hebrew or Gregorian month string tokens
     const months = {};
-    schedule.forEach(day => {
+    AppState.schedule.forEach(day => {
         let monthName = (calendarType === 'hebrew')
             ? formatHebrewMonthTitle(day.date)
             : day.date.toLocaleString('he-IL', { month: 'long', year: 'numeric' });
