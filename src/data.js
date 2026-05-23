@@ -52,9 +52,8 @@ export const masechtot = [
     { name: "נדה", end: { daf: "עג", amud: "א" } }
 ];
 
-export 
 // Gets the number of total amudim from a masechet
-function getTotalAmudim(masechetName) {
+export function getTotalAmudim(masechetName) {
     const masechet = masechtot.find(m => m.name === masechetName);
     if (!masechet) return 0;
     const dafNum = hebrewToNumber(masechet.end.daf);
