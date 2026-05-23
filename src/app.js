@@ -207,43 +207,92 @@ async function generate() {
         totalAmudimInSequence += (getTotalAmudim(name) - (idx === 0 ? startIdx : 0));
     });
 
-    // --- Step 2: Determine Study Days & Distribution Strategy ---
-    let baseAmudimPerDay = 0;
-    let leftoverAmudim = 0;
-    let totalStudyDaysCount = 0;
+    // --- Step 2: Fetch Calendar Events dynamically based on actual schedule span ---
+    const startYear = startInputDate.getFullYear();
+    let endYear = startYear;
 
     if (method === 'targetDate') {
         const targetDateInput = document.getElementById('targetDateInput').value;
         if (!targetDateInput) return alert("נא לבחור תאריך יעד");
+        endYear = new Date(targetDateInput).getFullYear();
+    } else {
+        const dailyAmudimPace = Math.round(parseFloat(document.getElementById('paceInput').value) * 2);
+
+        if (dailyAmudimPace > 0) {
+            // Est. study days needed (total amudim / daily pace)
+            const estimatedStudyDays = Math.ceil(totalAmudimInSequence / dailyAmudimPace);
+
+            // Factor in structural break days between tractates
+            const totalStructuralBreakDays = breakDays * (sequence.length - 1);
+
+            // Rough multiplier (e.g., 1.4) to account for skipped Shabbats/Holidays inflating the timeline
+            const totalProjectedDays = (estimatedStudyDays + totalStructuralBreakDays) * 1.4;
+
+            // Calculate project end date object to extract its calendar year
+            const projectedEndDate = new Date(startInputDate);
+            projectedEndDate.setDate(projectedEndDate.getDate() + Math.ceil(totalProjectedDays));
+            endYear = projectedEndDate.getFullYear();
+        } else {
+            endYear = startYear + 1; // Fallback safety
+        }
+    }
+
+    // Pad fetching by 1 year on both sides to prevent any timezone/boundary overlap issues
+    for (let y = startYear - 1; y <= endYear + 1; y++) {
+        await fetchCalendarEvents(y, calendarEventsData, dayTypesData);
+    }
+
+    // --- Step 3: Handle Target Date Mode Map Allocation ---
+    let studyDaysSequence = []; // Will hold an object for every valid study day
+
+    if (method === 'targetDate') {
+        const targetDateInput = document.getElementById('targetDateInput').value;
         const endDate = new Date(targetDateInput);
         endDate.setHours(0, 0, 0, 0);
 
-        const startYear = startInputDate.getFullYear();
-        const endYear = endDate.getFullYear();
-        for (let y = startYear - 1; y <= endYear + 1; y++) {
-            await fetchCalendarEvents(y, calendarEventsData, dayTypesData);
-        }
+        if (endDate < startInputDate) return alert("תאריך היעד חייב להיות אחרי תאריך ההתחלה");
 
+        // 1st Pass: Discover every calendar date that qualifies for study
         let scanDate = new Date(startInputDate);
-        const totalBreakDays = breakDays * (sequence.length - 1);
         while (scanDate <= endDate) {
             const dateString = formatDateToIL(scanDate);
             const overrideState = manualOverrides[dateString] || 0;
             let isRestDay = (overrideState === 1) || (overrideState !== 2 && shouldDayBeRest(scanDate, includeShabbat, includeHolidays));
-            if (!isRestDay) totalStudyDaysCount++;
+
+            if (!isRestDay) {
+                studyDaysSequence.push({
+                    dateString: dateString,
+                    amudimToLearn: 0 // Will fill this in a second
+                });
+            }
             scanDate.setDate(scanDate.getDate() + 1);
         }
-        totalStudyDaysCount -= totalBreakDays;
 
-        if (totalStudyDaysCount <= 0) return alert("אין מספיק ימי לימוד בטווח התאריכים");
+        // Account for structural inter-masechet break days by removing them from total study pooling
+        const totalBreakDays = breakDays * (sequence.length - 1);
+        let actualStudyDaysCount = studyDaysSequence.length - totalBreakDays;
 
-        // Strategy: Everyone learns at least Floor(Total/Days). 
-        // The Modulo (remainder) is added to the LAST few days.
-        baseAmudimPerDay = Math.floor(totalAmudimInSequence / totalStudyDaysCount);
-        leftoverAmudim = totalAmudimInSequence % totalStudyDaysCount;
-    } else {
-        baseAmudimPerDay = Math.round(parseFloat(document.getElementById('paceInput').value) * 2);
-        leftoverAmudim = 0; // Fixed pace doesn't use target distribution
+        if (actualStudyDaysCount <= 0) return alert("אין מספיק ימי לימוד בטווח התאריכים המבוקש");
+
+        // Mathematical Distribution Strategy (Matches your exact logic)
+        let baseAmudimPerDay = Math.floor(totalAmudimInSequence / actualStudyDaysCount);
+        let leftoverAmudim = totalAmudimInSequence % actualStudyDaysCount;
+
+        // Populate study array from left to right with base floor rate
+        // Skip trailing slots that will be overwritten as inter-masechet breaks during generation pass
+        let assignCount = 0;
+        for (let i = 0; i < studyDaysSequence.length; i++) {
+            studyDaysSequence[i].amudimToLearn = baseAmudimPerDay;
+        }
+
+        // Add 1 amud to the endmost available study days for the remainder distribution
+        // This spreads the remainder safely backward from the final target day
+        let distributedLeftovers = 0;
+        for (let i = studyDaysSequence.length - 1; i >= 0; i--) {
+            if (distributedLeftovers >= leftoverAmudim) break;
+            studyDaysSequence[i].amudimToLearn += 1;
+            distributedLeftovers++;
+        }
     }
 
     // --- Step 4: Front Padding ---
@@ -266,9 +315,9 @@ async function generate() {
         paddingDate.setDate(paddingDate.getDate() + 1);
     }
 
-    // --- Step 5: Process Main Sequence ---
+    // --- Step 5: Process Main Sequence Mapping ---
     let currentDate = new Date(startInputDate);
-    let studyDayIndex = 0; // Track which study day we are on (1 to totalStudyDaysCount)
+    let studyDayPointer = 0;
 
     for (let mIdx = 0; mIdx < sequence.length; mIdx++) {
         const masechetName = sequence[mIdx];
@@ -292,14 +341,14 @@ async function generate() {
                 dayData.content = (overrideState === 1) ? "הפסקה" : "";
                 dayData.pages = 0;
             } else {
-                studyDayIndex++;
-                let amudimToLearnToday = baseAmudimPerDay;
+                let amudimToLearnToday = 0;
 
-                // DISTRIBUTION LOGIC:
-                // If we have 10 leftover amudim and 100 study days, 
-                // we only give +1 amud to studyDayIndex 91 through 100.
-                if (method === 'targetDate' && (totalStudyDaysCount - studyDayIndex) < leftoverAmudim) {
-                    amudimToLearnToday += 1;
+                if (method === 'targetDate') {
+                    // Extract precalculated distribution array value 
+                    amudimToLearnToday = studyDaysSequence[studyDayPointer] ? studyDaysSequence[studyDayPointer].amudimToLearn : 0;
+                    studyDayPointer++;
+                } else {
+                    amudimToLearnToday = Math.round(parseFloat(document.getElementById('paceInput').value) * 2);
                 }
 
                 let end = Math.min(currentAmud + amudimToLearnToday, totalMasechetAmudim);
@@ -312,10 +361,18 @@ async function generate() {
             currentDate.setDate(currentDate.getDate() + 1);
         }
 
-        // Breaks between masechtot
+        // Inter-masechet breaks allocation tracking
         if (mIdx < sequence.length - 1 && breakDays > 0) {
             for (let i = 0; i < breakDays; i++) {
                 const dStr = formatDateToIL(currentDate);
+                const overrideState = manualOverrides[dStr] || 0;
+                let isRestDay = (overrideState === 1) || (overrideState !== 2 && shouldDayBeRest(currentDate, includeShabbat, includeHolidays));
+
+                // If a break day falls on a natural non-study day anyway, don't waste an active pointer index count on it
+                if (!isRestDay && method === 'targetDate') {
+                    studyDayPointer++;
+                }
+
                 schedule.push({
                     date: new Date(currentDate), dateString: dStr, masechet: "הפסקה",
                     isShabbat: currentDate.getDay() === 6, isHoliday: !!calendarEventsData[dStr],
