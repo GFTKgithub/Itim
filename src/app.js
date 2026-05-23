@@ -203,8 +203,8 @@ async function generate() {
     const startInputDate = new Date(startDateValue);
     startInputDate.setHours(0, 0, 0, 0);
 
-    // --- Step 1: Calculate Total Amudim ---
-    let totalAmudimInSequence = 0;
+    // --- Step 1: Flatten All Amudim Into a Single Master Pool ---
+    let masterAmudPool = [];
     let initialAmudOffset = 0;
 
     AppState.sequence.forEach((name, idx) => {
@@ -217,10 +217,14 @@ async function generate() {
             }
             initialAmudOffset = startIdx;
         }
-        totalAmudimInSequence += (getTotalAmudim(name) - (idx === 0 ? startIdx : 0));
+
+        const totalAmudim = getTotalAmudim(name);
+        for (let i = startIdx; i < totalAmudim; i++) {
+            masterAmudPool.push({ masechet: name, amudIdx: i });
+        }
     });
 
-    // --- Step 2: Fetch Calendar Events dynamically based on actual schedule span ---
+    // --- Step 2: Fetch Calendar Events ---
     const startYear = startInputDate.getFullYear();
     let endYear = startYear;
 
@@ -230,85 +234,24 @@ async function generate() {
         endYear = new Date(targetDateInput).getFullYear();
     } else {
         const dailyAmudimPace = Math.round(parseFloat(document.getElementById('paceInput').value) * 2);
-
         if (dailyAmudimPace > 0) {
-            // Est. study days needed (total amudim / daily pace)
-            const estimatedStudyDays = Math.ceil(totalAmudimInSequence / dailyAmudimPace);
-
-            // Factor in structural break days between tractates
+            const estimatedStudyDays = Math.ceil(masterAmudPool.length / dailyAmudimPace);
             const totalStructuralBreakDays = breakDays * (AppState.sequence.length - 1);
-
-            // Rough multiplier (e.g., 1.4) to account for skipped Shabbats/Holidays inflating the timeline
             const totalProjectedDays = (estimatedStudyDays + totalStructuralBreakDays) * 1.4;
 
-            // Calculate project end date object to extract its calendar year
             const projectedEndDate = new Date(startInputDate);
             projectedEndDate.setDate(projectedEndDate.getDate() + Math.ceil(totalProjectedDays));
             endYear = projectedEndDate.getFullYear();
         } else {
-            endYear = startYear + 1; // Fallback safety
+            endYear = startYear + 1;
         }
     }
 
-    // Pad fetching by 1 year on both sides to prevent any timezone/boundary overlap issues
     for (let y = startYear - 1; y <= endYear + 1; y++) {
-        await fetchCalendarEvents(y, AppState.calendarData);;
+        await fetchCalendarEvents(y, AppState.calendarData);
     }
 
-    // --- Step 3: Handle Target Date Mode Map Allocation ---
-    let studyDaysSequence = []; // Will hold an object for every valid study day
-
-    if (method === 'targetDate') {
-        const targetDateInput = document.getElementById('targetDateInput').value;
-        const endDate = new Date(targetDateInput);
-        endDate.setHours(0, 0, 0, 0);
-
-        if (endDate < startInputDate) return alert("תאריך היעד חייב להיות אחרי תאריך ההתחלה");
-
-        // 1st Pass: Discover every calendar date that qualifies for study
-        let scanDate = new Date(startInputDate);
-        while (scanDate <= endDate) {
-            const dateString = formatDateToIL(scanDate);
-            const overrideState = AppState.manualOverrides[dateString] || 0;
-            let isRestDay = (overrideState === 1) || (overrideState !== 2 && shouldDayBeRest(scanDate, includeShabbat, includeHolidays));
-
-            if (!isRestDay) {
-                studyDaysSequence.push({
-                    dateString: dateString,
-                    amudimToLearn: 0 // Will fill this in a second
-                });
-            }
-            scanDate.setDate(scanDate.getDate() + 1);
-        }
-
-        // Account for structural inter-masechet break days by removing them from total study pooling
-        const totalBreakDays = breakDays * (AppState.sequence.length - 1);
-        let actualStudyDaysCount = studyDaysSequence.length - totalBreakDays;
-
-        if (actualStudyDaysCount <= 0) return alert("אין מספיק ימי לימוד בטווח התאריכים המבוקש");
-
-        // Mathematical Distribution Strategy (Matches your exact logic)
-        let baseAmudimPerDay = Math.floor(totalAmudimInSequence / actualStudyDaysCount);
-        let leftoverAmudim = totalAmudimInSequence % actualStudyDaysCount;
-
-        // Populate study array from left to right with base floor rate
-        // Skip trailing slots that will be overwritten as inter-masechet breaks during generation pass
-        let assignCount = 0;
-        for (let i = 0; i < studyDaysSequence.length; i++) {
-            studyDaysSequence[i].amudimToLearn = baseAmudimPerDay;
-        }
-
-        // Add 1 amud to the endmost available study days for the remainder distribution
-        // This spreads the remainder safely backward from the final target day
-        let distributedLeftovers = 0;
-        for (let i = studyDaysSequence.length - 1; i >= 0; i--) {
-            if (distributedLeftovers >= leftoverAmudim) break;
-            studyDaysSequence[i].amudimToLearn += 1;
-            distributedLeftovers++;
-        }
-    }
-
-    // --- Step 4: Front Padding ---
+    // --- Step 3: Build Front Padding First ---
     let tempDate = new Date(startInputDate);
     if (calendarType === 'hebrew') {
         while (parseInt(new Intl.DateTimeFormat('he-IL-u-ca-hebrew', { day: 'numeric' }).format(tempDate)) > 1) {
@@ -317,86 +260,162 @@ async function generate() {
     } else {
         tempDate.setDate(1);
     }
-    let paddingDate = new Date(tempDate);
-    while (paddingDate < startInputDate) {
-        const dStr = formatDateToIL(paddingDate);
+
+    while (tempDate < startInputDate) {
+        const dStr = formatDateToIL(tempDate);
         AppState.schedule.push({
-            date: new Date(paddingDate), dateString: dStr, masechet: "-",
-            isShabbat: paddingDate.getDay() === 6, isHoliday: !!AppState.calendarData[dStr]?.displayText,
+            date: new Date(tempDate), dateString: dStr, masechet: "-",
+            isShabbat: tempDate.getDay() === 6, isHoliday: !!AppState.calendarData[dStr]?.displayText,
             holidayTitle: AppState.calendarData[dStr]?.displayText, isEmpty: true, content: "", pages: 0
         });
-        paddingDate.setDate(paddingDate.getDate() + 1);
+        tempDate.setDate(tempDate.getDate() + 1);
     }
 
-    // --- Step 5: Process Main Sequence Mapping ---
+    // --- Step 4: Build the Strict Timeline Map ---
+    let timelineDays = [];
     let currentDate = new Date(startInputDate);
-    let studyDayPointer = 0;
 
-    for (let mIdx = 0; mIdx < AppState.sequence.length; mIdx++) {
-        const masechetName = AppState.sequence[mIdx];
-        const totalMasechetAmudim = getTotalAmudim(masechetName);
-        let currentAmud = (mIdx === 0) ? initialAmudOffset : 0;
+    if (method === 'targetDate') {
+        const targetDateInput = document.getElementById('targetDateInput').value;
+        const endDate = new Date(targetDateInput);
+        endDate.setHours(0, 0, 0, 0);
 
-        while (currentAmud < totalMasechetAmudim) {
+        if (endDate < startInputDate) return alert("תאריך היעד חייב להיות אחרי תאריך ההתחלה");
+
+        while (currentDate <= endDate) {
             const dateString = formatDateToIL(currentDate);
-            const isShabbat = currentDate.getDay() === 6;
             const overrideState = AppState.manualOverrides[dateString] || 0;
-            const traits = AppState.calendarData[dateString]?.traits || {};
-            let isNonStudyDay = (overrideState === 1) || (overrideState !== 2 && shouldDayBeRest(currentDate, includeShabbat, includeHolidays));
+            let isRestDay = (overrideState === 1) || (overrideState !== 2 && shouldDayBeRest(currentDate, includeShabbat, includeHolidays));
 
-            const dayData = {
-                date: new Date(currentDate), dateString: dateString, masechet: masechetName,
-                isShabbat: isShabbat || traits.isParasha, isHoliday: !!AppState.calendarData[dateString]?.displayText,
-                holidayTitle: AppState.calendarData[dateString]?.displayText || "", isEmpty: isNonStudyDay, override: overrideState
-            };
-
-            if (isNonStudyDay) {
-                dayData.content = (overrideState === 1) ? "הפסקה" : "";
-                dayData.pages = 0;
-            } else {
-                let amudimToLearnToday = 0;
-
-                if (method === 'targetDate') {
-                    // Extract precalculated distribution array value 
-                    amudimToLearnToday = studyDaysSequence[studyDayPointer] ? studyDaysSequence[studyDayPointer].amudimToLearn : 0;
-                    studyDayPointer++;
-                } else {
-                    amudimToLearnToday = Math.round(parseFloat(document.getElementById('paceInput').value) * 2);
-                }
-
-                let end = Math.min(currentAmud + amudimToLearnToday, totalMasechetAmudim);
-                dayData.content = (currentAmud === end) ? "חזרה" : `${indexToDaf(currentAmud)} - ${indexToDaf(end - 1)}`;
-                dayData.pages = (end - currentAmud) / 2;
-                currentAmud = end;
-            }
-
-            AppState.schedule.push(dayData);
+            timelineDays.push({
+                date: new Date(currentDate),
+                dateString: dateString,
+                isRestDay: isRestDay,
+                isBreakDay: false,
+                isStudyDay: !isRestDay,
+                overrideState: overrideState,
+                amudimToCount: 0
+            });
             currentDate.setDate(currentDate.getDate() + 1);
         }
 
-        // Inter-masechet breaks allocation tracking
-        if (mIdx < AppState.sequence.length - 1 && breakDays > 0) {
-            for (let i = 0; i < breakDays; i++) {
-                const dStr = formatDateToIL(currentDate);
-                const overrideState = AppState.manualOverrides[dStr] || 0;
-                let isRestDay = (overrideState === 1) || (overrideState !== 2 && shouldDayBeRest(currentDate, includeShabbat, includeHolidays));
+        // Account for structural inter-masechet break days inside target window
+        let estimatedBreaksCount = breakDays * (AppState.sequence.length - 1);
+        let activeStudyDays = timelineDays.filter(d => d.isStudyDay);
+        let actualStudyDaysCount = activeStudyDays.length - estimatedBreaksCount;
 
-                // If a break day falls on a natural non-study day anyway, don't waste an active pointer index count on it
-                if (!isRestDay && method === 'targetDate') {
-                    studyDayPointer++;
+        if (actualStudyDaysCount <= 0) {
+            actualStudyDaysCount = activeStudyDays.length;
+        } else {
+            let breakConverted = 0;
+            for (let i = timelineDays.length - 1; i >= 0; i--) {
+                if (breakConverted >= estimatedBreaksCount) break;
+                if (timelineDays[i].isStudyDay) {
+                    timelineDays[i].isStudyDay = false;
+                    timelineDays[i].isBreakDay = true;
+                    breakConverted++;
                 }
-
-                AppState.schedule.push({
-                    date: new Date(currentDate), dateString: dStr, masechet: "הפסקה",
-                    isShabbat: currentDate.getDay() === 6, isHoliday: !!AppState.calendarData[dStr]?.displayText,
-                    holidayTitle: AppState.calendarData[dStr]?.displayText || "", isEmpty: true, content: "", pages: 0
-                });
-                currentDate.setDate(currentDate.getDate() + 1);
             }
+        }
+
+        let trueStudyDays = timelineDays.filter(d => d.isStudyDay);
+        if (trueStudyDays.length === 0) return alert("אין מספיק ימי לימוד בטווח התאריכים המבוקש");
+
+        let baseAmudimPerDay = Math.floor(masterAmudPool.length / trueStudyDays.length);
+        let leftoverAmudim = masterAmudPool.length % trueStudyDays.length;
+
+        trueStudyDays.forEach(d => d.amudimToCount = baseAmudimPerDay);
+
+        let distributedLeftovers = 0;
+        for (let i = trueStudyDays.length - 1; i >= 0; i--) {
+            if (distributedLeftovers >= leftoverAmudim) break;
+            trueStudyDays[i].amudimToCount += 1;
+            distributedLeftovers++;
+        }
+    } else {
+        // Pace Mode
+        let amudPoolCopy = [...masterAmudPool];
+        const dailyAmudimPace = Math.round(parseFloat(document.getElementById('paceInput').value) * 2);
+
+        while (amudPoolCopy.length > 0) {
+            const dateString = formatDateToIL(currentDate);
+            const overrideState = AppState.manualOverrides[dateString] || 0;
+            let isRestDay = (overrideState === 1) || (overrideState !== 2 && shouldDayBeRest(currentDate, includeShabbat, includeHolidays));
+
+            timelineDays.push({
+                date: new Date(currentDate),
+                dateString: dateString,
+                isRestDay: isRestDay,
+                isBreakDay: false,
+                isStudyDay: !isRestDay,
+                overrideState: overrideState,
+                amudimToCount: isRestDay ? 0 : dailyAmudimPace
+            });
+
+            if (!isRestDay) {
+                let drained = amudPoolCopy.splice(0, dailyAmudimPace);
+                if (drained.length > 0 && amudPoolCopy.length > 0 && drained[drained.length - 1].masechet !== amudPoolCopy[0].masechet) {
+                    for (let b = 0; b < breakDays; b++) {
+                        currentDate.setDate(currentDate.getDate() + 1);
+                        const bStr = formatDateToIL(currentDate);
+                        timelineDays.push({
+                            date: new Date(currentDate), dateString: bStr,
+                            isRestDay: false, isBreakDay: true, isStudyDay: false, overrideState: 0, amudimToCount: 0
+                        });
+                    }
+                }
+            }
+            currentDate.setDate(currentDate.getDate() + 1);
         }
     }
 
-    // --- Step 6: Back Padding ---
+    // --- Step 5: Process Main Timeline Mapping ---
+    let amudPointer = 0;
+
+    timelineDays.forEach(day => {
+        const isShabbat = day.date.getDay() === 6;
+        const traits = AppState.calendarData[day.dateString]?.traits || {};
+
+        let dayData = {
+            date: day.date,
+            dateString: day.dateString,
+            masechet: "-",
+            isShabbat: isShabbat || traits.isParasha,
+            isHoliday: !!AppState.calendarData[day.dateString]?.displayText,
+            holidayTitle: AppState.calendarData[day.dateString]?.displayText || "",
+            isEmpty: day.isRestDay || day.isBreakDay,
+            override: day.overrideState,
+            content: "",
+            pages: 0
+        };
+
+        if (day.isRestDay) {
+            dayData.content = (day.overrideState === 1) ? "הפסקה" : "";
+        } else if (day.isBreakDay) {
+            dayData.masechet = "הפסקה";
+            dayData.content = "";
+        } else if (day.isStudyDay || day.amudimToCount > 0) {
+            let count = day.amudimToCount;
+            if (count > 0 && amudPointer < masterAmudPool.length) {
+                let startAmud = masterAmudPool[amudPointer];
+                let endAmud = masterAmudPool[Math.min(amudPointer + count - 1, masterAmudPool.length - 1)];
+
+                dayData.masechet = startAmud.masechet;
+                dayData.content = (startAmud.amudIdx === endAmud.amudIdx && startAmud.masechet === endAmud.masechet)
+                    ? indexToDaf(startAmud.amudIdx)
+                    : `${indexToDaf(startAmud.amudIdx)} - ${indexToDaf(endAmud.amudIdx)}`;
+
+                dayData.pages = count / 2;
+                amudPointer += count;
+            } else {
+                dayData.content = "חזרה";
+            }
+        }
+
+        AppState.schedule.push(dayData);
+    });
+
+    // --- Step 6: Back Monthly Layout Padding ---
     const isEndOfMonth = (d) => {
         const nextDay = new Date(d);
         nextDay.setDate(nextDay.getDate() + 1);
@@ -408,9 +427,9 @@ async function generate() {
         return nextDay.getDate() === 1;
     };
 
-    let lastDay = AppState.schedule[AppState.schedule.length - 1];
-    if (lastDay) {
-        let runnerDate = new Date(lastDay.date);
+    let lastScheduledDay = timelineDays[timelineDays.length - 1];
+    if (lastScheduledDay) {
+        let runnerDate = new Date(lastScheduledDay.date);
         while (!isEndOfMonth(runnerDate)) {
             runnerDate.setDate(runnerDate.getDate() + 1);
             const ds = formatDateToIL(runnerDate);
