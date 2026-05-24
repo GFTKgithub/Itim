@@ -1,14 +1,24 @@
 import { hebrewToNumber, numberToHebrew, formatGematria, formatHebrewMonthTitle, indexToDaf, formatDateToIL } from './utils.js';
 import { masechtot, getTotalAmudim } from './data.js';
 import { fetchCalendarEvents } from './api.js';
-import { updateSequenceUI, toggleInputs, updateHebrewLabel, renderCalendar } from './ui.js';
+import { updateSequenceUI, toggleInputs, updateHebrewLabel, renderDateLabels, renderCalendar } from './ui.js';
 import { shouldDayBeRest } from './schedule.js';
 
 let AppState = {
-    sequence: [], // Keeps the masechet sequence list
-    schedule: [], // Keeps the data of the entire schedule
-    manualOverrides: {}, // Keeps all manual overrides of calendar days study status (0 = Default, 1 = Force Break, 2 = Force Study)
-    calendarData: {} // Keeps data of special calendar events (DD.YY.MM)
+    sequence: [],           // Masechet sequence list
+    schedule: [],           // Data of the entire schedule
+    manualOverrides: {},    // Manual overrides of calendar days study status (0 = Default, 1 = Force Break, 2 = Force Study)
+    calendarData: {},       // Data of special calendar events (DD.YY.MM)
+    userSettings: {         // User Settings (with default values)
+        includeShabbat: true,
+        includeHolidays: false,
+        startDate: new Date().toISOString().split('T')[0],
+        targetDate: '',
+        pace: 1,
+        breakDays: 0,
+        method: 'pace',
+        calendarType: 'hebrew'
+    }
 }
 
 /* 
@@ -17,55 +27,78 @@ let AppState = {
 
 // Setups all event listeners in the page
 function setupEventListeners() {
-    // Simple On-click Listeners
-    document.getElementById('generateBtn').addEventListener('click', generate);
-    document.getElementById('addToSequenceBtn').addEventListener('click', addToSequence);
-    document.getElementById('clearSequenceBtn').addEventListener('click', clearSequence);
-    document.getElementById('exportBtn').addEventListener('click', exportScheduleToExcel);
-    document.getElementById('printBtn').addEventListener('click', () => {
-        window.print();
-    });
+    // Cache DOM elements up front to prevent repeated DOM queries
+    const generateBtn = document.getElementById('generateBtn');
+    const addToSequenceBtn = document.getElementById('addToSequenceBtn');
+    const clearSequenceBtn = document.getElementById('clearSequenceBtn');
+    const exportBtn = document.getElementById('exportBtn');
+    const printBtn = document.getElementById('printBtn');
+    const sequenceList = document.getElementById('sequenceList');
+    const calendarContainer = document.getElementById('calendarContainer');
 
-    // Other On-click Listeners
-    // Handle removing from sequence
-    document.getElementById('sequenceList').addEventListener('click', (event) => {
-        // Check if the clicked element (or its parent) is our remove button
+    // User settings elements
+    const calcMethod = document.getElementById('calcMethod');
+    const calendarType = document.getElementById('calendarType');
+    const includeShabbatInput = document.getElementById('includeShabbatInput');
+    const includeHolidaysInput = document.getElementById('includeHolidaysInput');
+    const breakDaysInput = document.getElementById('breakDaysInput');
+    const startDateInput = document.getElementById('startDateInput');
+    const targetDateInput = document.getElementById('targetDateInput');
+
+    // --- Action Listeners ---
+    generateBtn.addEventListener('click', generate);
+    addToSequenceBtn.addEventListener('click', addToSequence);
+    clearSequenceBtn.addEventListener('click', clearSequence);
+    exportBtn.addEventListener('click', exportScheduleToExcel);
+    printBtn.addEventListener('click', () => window.print());
+
+    // --- Event Delegation ---
+    sequenceList.addEventListener('click', (event) => {
         const removeBtn = event.target.closest('.remove-btn');
-
         if (removeBtn) {
-            // Grab the index from the data attribute (comes as string, convert to Number)
-            const index = Number(removeBtn.dataset.index);
-            removeFromSequence(index);
+            removeFromSequence(Number(removeBtn.dataset.index));
         }
     });
 
-    // Calendar grid onClick
-    document.getElementById('calendarContainer').addEventListener('click', (event) => {
-        // Look for the closest element with the 'calendar-day' class
+    calendarContainer.addEventListener('click', (event) => {
         const calendarDay = event.target.closest('.calendar-day');
-
-        if (calendarDay && calendarDay.dataset.date) {
-            const dateString = calendarDay.dataset.date;
-            cycleDateOverride(dateString);
+        if (calendarDay?.dataset.date) {
+            cycleDateOverride(calendarDay.dataset.date);
         }
     });
 
-    // On-change Listeners
-    document.getElementById('calcMethod').addEventListener('change', () => {
+    // --- App Settings Sync Listeners ---
+    calcMethod.addEventListener('change', (e) => {
+        AppState.userSettings.method = e.target.value;
         toggleInputs();
     });
 
-    document.getElementById('targetDateInput').addEventListener('change', (event) => {
-        updateHebrewLabel(event.target, document.getElementById('targetDateHebrewLabel'));
-    });
-
-    document.getElementById('startDateInput').addEventListener('change', (event) => {
-        updateHebrewLabel(event.target, document.getElementById('startDateHebrewLabel'));
-    });
-
-    document.getElementById('calendarType').addEventListener('change', () => {
+    calendarType.addEventListener('change', (e) => {
+        AppState.userSettings.calendarType = e.target.value;
         generate();
     });
+
+    includeShabbatInput.addEventListener('change', (e) => {
+        AppState.userSettings.includeShabbat = e.target.checked;
+    });
+
+    includeHolidaysInput.addEventListener('change', (e) => {
+        AppState.userSettings.includeHolidays = e.target.checked;
+    });
+
+    breakDaysInput.addEventListener('input', (e) => {
+        AppState.userSettings.breakDays = parseInt(e.target.value, 10) || 0;
+    });
+
+    // --- Date Inputs Sync ---
+    const handleDateChange = () => {
+        AppState.userSettings.startDate = startDateInput.value;
+        AppState.userSettings.targetDate = targetDateInput.value;
+        renderDateLabels(AppState.userSettings.startDate, AppState.userSettings.targetDate);
+    };
+
+    startDateInput.addEventListener('change', handleDateChange);
+    targetDateInput.addEventListener('change', handleDateChange);
 }
 
 // Initiate calendar configuration control panel
@@ -83,36 +116,8 @@ function initUserConfigPanel() {
     const startDateInput = document.getElementById('startDateInput');
     startDateInput.valueAsDate = new Date();
 
-    const startDateHebrewLabel = document.getElementById('startDateHebrewLabel');
-    const targetDateHebrewLabel = document.getElementById('targetDateHebrewLabel');
-
-    // Fix 1: Fire the label generator function immediately for the initial state
-    updateHebrewLabel(startDateInput, startDateHebrewLabel);
-
-    // 3. Attach standard Change Events for real-time label updates
-    startDateInput.addEventListener('input', () => {
-        updateHebrewLabel(startDateInput, startDateHebrewLabel);
-    });
-
-    const targetDateInput = document.getElementById('targetDateInput');
-    targetDateInput.addEventListener('input', () => {
-        updateHebrewLabel(targetDateInput, targetDateHebrewLabel);
-    });
-
-    // Fix 2: Toggling logic ensuring UI blocks clean up nicely
-    const calcMethod = document.getElementById('calcMethod');
-    const paceSection = document.getElementById('paceSection');
-    const targetDateSection = document.getElementById('targetDateSection');
-
-    calcMethod.addEventListener('change', () => {
-        if (calcMethod.value === 'pace') {
-            paceSection.classList.remove('hidden');
-            targetDateSection.classList.add('hidden');
-        } else {
-            paceSection.classList.add('hidden');
-            targetDateSection.classList.remove('hidden');
-        }
-    });
+    // 3. Render initial Hebrew date labels for the default view
+    renderDateLabels(AppState.userSettings.startDate, AppState.userSettings.targetDate);
 }
 
 // Main page initiation function

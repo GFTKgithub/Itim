@@ -63,6 +63,59 @@ export function updateHebrewLabel(input, label) {
     }
 }
 
+// Renders the Hebrew date labels
+export function renderDateLabels(startDate, targetDate) {
+    const startDateLabel = document.getElementById('startDateHebrewLabel');
+    const targetDateLabel = document.getElementById('targetDateHebrewLabel');
+
+    // Helper to format the date exactly like your old updateHebrewLabel function
+    const getHebrewLabelText = (dateInput) => {
+        if (!dateInput) return "";
+
+        // Handle both raw string inputs (from HTML elements) and Date objects safely
+        const dateObj = dateInput instanceof Date ? dateInput : new Date(dateInput);
+
+        // Check for an invalid date
+        if (isNaN(dateObj.getTime())) return "";
+
+        try {
+            // Extract components using Intl.DateTimeFormat
+            const parts = new Intl.DateTimeFormat('he-IL-u-ca-hebrew', {
+                day: 'numeric',
+                month: 'long',
+                year: 'numeric'
+            }).formatToParts(dateObj);
+
+            const dayNum = parseInt(parts.find(p => p.type === 'day').value, 10);
+            let yearNum = parseInt(parts.find(p => p.type === 'year').value, 10);
+            const monthName = parts.find(p => p.type === 'month').value;
+
+            // Standardize 4-digit Hebrew year
+            if (yearNum < 1000) yearNum += 5000;
+
+            // Convert to Hebrew letters and apply gematria formatting rules
+            const dayHebrew = formatGematria(dayNum, numberToHebrew(dayNum));
+            const yearHebrew = formatGematria(yearNum, numberToHebrew(yearNum));
+
+            // Return the identical output string format
+            return `${dayHebrew} ב${monthName} ${yearHebrew}`;
+        } catch (e) {
+            console.error("Error generating custom Hebrew date format string", e);
+            return "";
+        }
+    };
+
+    // Update the Start Date UI Label
+    if (startDateLabel) {
+        startDateLabel.textContent = getHebrewLabelText(startDate);
+    }
+
+    // Update the Target Date UI Label
+    if (targetDateLabel) {
+        targetDateLabel.textContent = targetDate ? getHebrewLabelText(targetDate) : '';
+    }
+}
+
 // Renders the calendar UI
 export function renderCalendar(containerId, schedule, config={calendarType, overrides}) {
     const { calendarType = 'hebrew', overrides = {} } = config;
