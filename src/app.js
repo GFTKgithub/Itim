@@ -4,6 +4,7 @@ import { fetchCalendarEvents } from './api.js';
 import { toggleInputs, updateTrackSequenceUI, renderDateLabels, renderCalendar } from './ui.js';
 import { addToSequence, removeFromSequence, clearSequence } from './track-sequence.js';
 import { shouldDayBeRest } from './schedule.js';
+import { saveToLocalStorage, loadFromLocalStorage } from './persistence.js';
 
 let AppState = {
     trackSequence: [],      // Masechet sequence list
@@ -455,43 +456,6 @@ function cycleDateOverride(dateString) {
 
     saveToLocalStorage();
     generate();
-}
-
-/* 
-    LocalStorage logic
-*/
-
-const STORAGE_KEY = 'itim_app_state';
-
-// Saves user-configurable data from AppState to localStorage
-function saveToLocalStorage() {
-    const stateToSave = {
-        trackSequence: AppState.trackSequence,
-        manualOverrides: AppState.manualOverrides,
-        userSettings: AppState.userSettings
-    };
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(stateToSave));
-}
-
-// Loads user-configurable data from localStorage to AppState
-function loadFromLocalStorage() {
-    try {
-        const saved = localStorage.getItem(STORAGE_KEY);
-        if (!saved) return;
-
-        const parsed = JSON.parse(saved);
-
-        // Use logical OR (||) fallbacks to ensure arrays/objects stay initialized
-        AppState.trackSequence = parsed.trackSequence || [];
-        AppState.manualOverrides = parsed.manualOverrides || {};
-
-        if (parsed.userSettings) {
-            AppState.userSettings = { ...AppState.userSettings, ...parsed.userSettings };
-        }
-        console.log("State restored successfully from localStorage");
-    } catch (e) {
-        console.error("Error loading state from localStorage:", e);
-    }
 }
 
 // Hydrate HTML inputs with values loaded into AppState
