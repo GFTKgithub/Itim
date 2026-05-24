@@ -158,7 +158,7 @@ function initUserConfigPanel() {
     updateTrackSequenceUI(AppState.trackSequence);
     console.log("Test");
 
-    if (AppState.sequence.length > 0) {
+    if (AppState.trackSequence.length > 0) {
         generate();
     }
 }
