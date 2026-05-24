@@ -4,7 +4,7 @@ import { fetchCalendarEvents } from './api.js';
 import { toggleInputs, updateTrackSequenceUI, renderDateLabels, renderCalendar } from './ui.js';
 import { addToSequence, removeFromSequence, clearSequence } from './track-sequence.js';
 import { shouldDayBeRest } from './schedule.js';
-import { saveToLocalStorage, loadFromLocalStorage } from './persistence.js';
+import { initPersistence, saveToLocalStorage, loadFromLocalStorage, exportStateBackup, importStateBackup } from './persistence.js';
 
 let AppState = {
     trackSequence: [],      // Masechet sequence list
@@ -167,6 +167,8 @@ function initUserConfigPanel() {
 // Main page initiation function
 function init() {
     console.log("HTML page initialized succesfully");
+
+    initPersistence(AppState);
 
     loadFromLocalStorage();
 

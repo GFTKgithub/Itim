@@ -1,6 +1,8 @@
+let stateRef = null;
 
-
-
+export function initPersistence(AppState) {
+    stateRef = AppState;
+}
 
 /* 
     LocalStorage logic
@@ -8,7 +10,7 @@
 
 const STORAGE_KEY = 'itim_app_state';
 
-// Saves user-configurable data from AppState to localStorage
+// Saves user-configurable data from AppState (stateRef) to localStorage
 export function saveToLocalStorage() {
     const stateToSave = {
         trackSequence: AppState.trackSequence,
@@ -18,7 +20,7 @@ export function saveToLocalStorage() {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(stateToSave));
 }
 
-// Loads user-configurable data from localStorage to AppState
+// Loads user-configurable data from localStorage to AppState (stateRef)
 export function loadFromLocalStorage() {
     try {
         const saved = localStorage.getItem(STORAGE_KEY);
