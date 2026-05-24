@@ -35,10 +35,15 @@ function setupEventListeners() {
     const generateBtn = document.getElementById('generateBtn');
     const addToSequenceBtn = document.getElementById('addToSequenceBtn');
     const clearSequenceBtn = document.getElementById('clearSequenceBtn');
-    const exportBtn = document.getElementById('exportBtn');
+
+    const exportBtn = document.getElementById('exportToExcelBtn');
     const printBtn = document.getElementById('printBtn');
     const sequenceList = document.getElementById('sequenceList');
     const calendarContainer = document.getElementById('calendarContainer');
+
+    const backupExportBtn = document.getElementById('backupExportBtn');
+    const backupImportBtn = document.getElementById('backupImportBtn');
+    const backupFileInput = document.getElementById('backupFileInput');
 
     // User settings elements
     const calcMethod = document.getElementById('calcMethod');
@@ -56,7 +61,7 @@ function setupEventListeners() {
     generateBtn.addEventListener('click', generate);
     addToSequenceBtn.addEventListener('click', () => {
        AppState.trackSequence = addToSequence(AppState.trackSequence);
-    saveToLocalStorage();
+        saveToLocalStorage();
     });
 
     clearSequenceBtn.addEventListener('click', () => 
@@ -68,6 +73,15 @@ function setupEventListeners() {
     
     exportBtn.addEventListener('click', exportScheduleToExcel);
     printBtn.addEventListener('click', () => window.print());
+
+    // --- Backup Action Listeners ---
+    backupExportBtn.addEventListener('click', exportStateBackup);
+
+    // Clicking our styled button triggers the hidden file input
+    backupImportBtn.addEventListener('click', () => backupFileInput.click());
+
+    // When a file is chosen, pass the event to your import function
+    backupFileInput.addEventListener('change', importStateBackup);
 
     // --- Event Delegation ---
     sequenceList.addEventListener('click', (event) => {

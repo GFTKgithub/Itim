@@ -17,6 +17,18 @@
             <p class="text-lg text-slate-500 font-medium">תכנון ובניית מסלולי לימוד תורה בהתאמה אישית</p>
         </header>
 
+        <div class="flex justify-center gap-3 text-sm font-semibold mb-6 no-print">
+            <button id="backupExportBtn"
+                class="text-slate-600 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 px-4 py-2 rounded-lg transition-all flex items-center gap-1.5 shadow-sm">
+                <span>💾 גיבוי הגדרות (ייצוא)</span>
+            </button>
+            <button id="backupImportBtn"
+                class="text-blue-700 hover:text-blue-900 bg-blue-50 hover:bg-blue-100 px-4 py-2 rounded-lg transition-all flex items-center gap-1.5 shadow-sm">
+                <span>📂 טעינת גיבוי (ייבוא)</span>
+            </button>
+            <input type="file" id="backupFileInput" class="hidden" accept=".json">
+        </div>
+
         <div class="bg-white rounded-2xl shadow-xl mb-8 no-print border border-slate-200 overflow-hidden">
             <div class="h-2 bg-gradient-to-r from-blue-900 via-blue-700 to-blue-900"></div>
 
@@ -188,7 +200,7 @@
                 <span class="text-xl group-hover:scale-120 transition-transform">🖨️</span>
                 <span>הדפסת הלוח</span>
             </button>
-            <button id="exportBtn"
+            <button id="exportToExcelBtn"
                 class="bg-green-600 text-white px-8 py-4 rounded-2xl shadow-[0_20px_50px_rgba(22,163,74,0.3)] font-bold hover:bg-green-700 transition-all flex items-center gap-3 group">
                 <span class="text-xl group-hover:rotate-12 transition-transform">📊</span>
                 <span>ייצוא לאקסל</span>
