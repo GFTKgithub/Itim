@@ -47,6 +47,7 @@ function setupEventListeners() {
     const breakDaysInput = document.getElementById('breakDaysInput');
     const startDateInput = document.getElementById('startDateInput');
     const targetDateInput = document.getElementById('targetDateInput');
+    const paceInput = document.getElementById('paceInput');
     const startDafInput = document.getElementById('startDafInput');
     const startAmudInput = document.getElementById('startAmudInput');
 
@@ -120,6 +121,11 @@ function setupEventListeners() {
         AppState.userSettings.startAmud = e.target.value;
         saveToLocalStorage();
     });
+
+    paceInput.addEventListener('change', (e) => {
+        AppState.userSettings.pace = e.target.value;
+        saveToLocalStorage();
+    })
 
     // --- Date Inputs Sync ---
     const handleDateChange = () => {
@@ -497,6 +503,7 @@ function hydrateHtmlFromAppState() {
     document.getElementById('breakDaysInput').value = AppState.userSettings.breakDays;
     document.getElementById('startDateInput').value = AppState.userSettings.startDate;
     document.getElementById('targetDateInput').value = AppState.userSettings.targetDate;
+    document.getElementById('paceInput').value = AppState.userSettings.pace;
     document.getElementById('startDafInput').value = AppState.userSettings.startDaf;
     document.getElementById('startAmudInput').value = AppState.userSettings.startAmud;
 }
