@@ -171,7 +171,6 @@ function initUserConfigPanel() {
     renderDateLabels(AppState.userSettings.startDate, AppState.userSettings.targetDate);
 
     updateTrackSequenceUI(AppState.trackSequence);
-    console.log("Test");
 
     if (AppState.trackSequence.length > 0) {
         generate();

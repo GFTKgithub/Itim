@@ -41,6 +41,10 @@ export function loadFromLocalStorage() {
     }
 }
 
+/* 
+    Backup Logic
+*/
+
 // Export app state to a JSON file
 export function exportStateBackup() {
     if (!stateRef) return;
