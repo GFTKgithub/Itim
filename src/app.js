@@ -14,6 +14,8 @@ let AppState = {
         includeHolidays: false,
         startDate: new Date().toISOString().split('T')[0],
         targetDate: '',
+        startDaf: 'ב',
+        startAmud: 'א',
         pace: 1,
         breakDays: 0,
         method: 'pace',
@@ -44,6 +46,8 @@ function setupEventListeners() {
     const breakDaysInput = document.getElementById('breakDaysInput');
     const startDateInput = document.getElementById('startDateInput');
     const targetDateInput = document.getElementById('targetDateInput');
+    const startDafInput = document.getElementById('startDafInput');
+    const startAmudInput = document.getElementById('startAmudInput');
 
     // --- Action Listeners ---
     generateBtn.addEventListener('click', generate);
@@ -88,6 +92,14 @@ function setupEventListeners() {
 
     breakDaysInput.addEventListener('input', (e) => {
         AppState.userSettings.breakDays = parseInt(e.target.value, 10) || 0;
+    });
+
+    startDafInput.addEventListener('change', (e) => {
+        AppState.userSettings.startDaf = e.target.value;
+    });
+
+    startAmudInput.addEventListener('change', (e) => {
+        AppState.userSettings.startAmud = e.target.value;
     });
 
     // --- Date Inputs Sync ---
@@ -161,15 +173,15 @@ function clearSequence() {
 async function generate() {
     if (AppState.sequence.length === 0) return alert("נא להוסיף לפחות מסכת אחת למסלול");
 
-    const includeShabbat = document.getElementById('includeShabbatInput').checked;
-    const includeHolidays = document.getElementById('includeHolidaysInput').checked;
-    const breakDays = parseInt(document.getElementById('breakDaysInput').value) || 0;
-    const method = document.getElementById('calcMethod').value;
-    const calendarType = document.getElementById('calendarType').value;
+    const includeShabbat = AppState.userSettings.includeShabbat;
+    const includeHolidays = AppState.userSettings.includeHolidays;
+    const breakDays = AppState.userSettings.breakDays;
+    const method = AppState.userSettings.method;
+    const calendarType = AppState.userSettings.calendarType;
 
     AppState.schedule = [];
 
-    const startDateValue = document.getElementById('startDateInput').value;
+    const startDateValue = AppState.userSettings.startDate;
     if (!startDateValue) return alert("נא לבחור תאריך התחלה");
 
     const startInputDate = new Date(startDateValue);
@@ -182,10 +194,10 @@ async function generate() {
     AppState.sequence.forEach((name, idx) => {
         let startIdx = 0;
         if (idx === 0) {
-            const startDafHeb = document.getElementById('startDafInput').value.trim();
+            const startDafHeb = AppState.userSettings.startDaf.trim();
             if (startDafHeb) {
                 startIdx = Math.max(0, (hebrewToNumber(startDafHeb) * 2) - 4);
-                if (document.getElementById('startAmudSelect').value === "ב") startIdx += 1;
+                if (AppState.userSettings.startAmud === "ב") startIdx += 1;
             }
             initialAmudOffset = startIdx;
         }
@@ -201,11 +213,11 @@ async function generate() {
     let endYear = startYear;
 
     if (method === 'targetDate') {
-        const targetDateInput = document.getElementById('targetDateInput').value;
+        const targetDateInput = AppState.userSettings.targetDate;
         if (!targetDateInput) return alert("נא לבחור תאריך יעד");
         endYear = new Date(targetDateInput).getFullYear();
     } else {
-        const dailyAmudimPace = Math.round(parseFloat(document.getElementById('paceInput').value) * 2);
+        const dailyAmudimPace = Math.round(parseFloat(AppState.userSettings.pace) * 2);
         if (dailyAmudimPace > 0) {
             const estimatedStudyDays = Math.ceil(masterAmudPool.length / dailyAmudimPace);
             const totalStructuralBreakDays = breakDays * (AppState.sequence.length - 1);
@@ -248,7 +260,7 @@ async function generate() {
     let currentDate = new Date(startInputDate);
 
     if (method === 'targetDate') {
-        const targetDateInput = document.getElementById('targetDateInput').value;
+        const targetDateInput = AppState.userSettings.targetDate;
         const endDate = new Date(targetDateInput);
         endDate.setHours(0, 0, 0, 0);
 
@@ -307,7 +319,7 @@ async function generate() {
     } else {
         // Pace Mode
         let amudPoolCopy = [...masterAmudPool];
-        const dailyAmudimPace = Math.round(parseFloat(document.getElementById('paceInput').value) * 2);
+        const dailyAmudimPace = Math.round(parseFloat(AppState.userSettings.pace) * 2);
 
         while (amudPoolCopy.length > 0) {
             const dateString = formatDateToIL(currentDate);
