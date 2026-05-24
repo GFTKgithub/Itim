@@ -1,12 +1,12 @@
 import { hebrewToNumber, numberToHebrew, formatGematria, formatHebrewMonthTitle, indexToDaf, formatDateToIL } from './utils.js';
 import { masechtot, getTotalAmudim } from './data.js';
 import { fetchCalendarEvents } from './api.js';
-import { toggleInputs, renderDateLabels, renderCalendar } from './ui.js';
+import { toggleInputs, updateTrackSequenceUI, renderDateLabels, renderCalendar } from './ui.js';
 import { addToSequence, removeFromSequence, clearSequence } from './track-sequence.js';
 import { shouldDayBeRest } from './schedule.js';
 
 let AppState = {
-    sequence: [],           // Masechet sequence list
+    trackSequence: [],      // Masechet sequence list
     schedule: [],           // Data of the entire schedule
     manualOverrides: {},    // Manual overrides of calendar days study status (0 = Default, 1 = Force Break, 2 = Force Study)
     calendarData: {},       // Data of special calendar events (DD.YY.MM)
@@ -52,8 +52,18 @@ function setupEventListeners() {
 
     // --- Action Listeners ---
     generateBtn.addEventListener('click', generate);
-    addToSequenceBtn.addEventListener('click', () => AppState.sequence = addToSequence(AppState.sequence));
-    clearSequenceBtn.addEventListener('click', () => AppState.sequence = clearSequence(AppState.sequence));
+    addToSequenceBtn.addEventListener('click', () => {
+       AppState.trackSequence = addToSequence(AppState.trackSequence);
+    saveToLocalStorage();
+    });
+
+    clearSequenceBtn.addEventListener('click', () => 
+    {
+        AppState.trackSequence = clearSequence(AppState.trackSequence);
+        saveToLocalStorage();
+    });
+            
+    
     exportBtn.addEventListener('click', exportScheduleToExcel);
     printBtn.addEventListener('click', () => window.print());
 
@@ -61,7 +71,8 @@ function setupEventListeners() {
     sequenceList.addEventListener('click', (event) => {
         const removeBtn = event.target.closest('.remove-btn');
         if (removeBtn) {
-            AppState.sequence = removeFromSequence(AppState.sequence, Number(removeBtn.dataset.index));
+            AppState.trackSequence = removeFromSequence(AppState.trackSequence, Number(removeBtn.dataset.index));
+            saveToLocalStorage();
         }
     });
 
@@ -76,31 +87,38 @@ function setupEventListeners() {
     calcMethod.addEventListener('change', (e) => {
         AppState.userSettings.method = e.target.value;
         toggleInputs();
+        saveToLocalStorage();
     });
 
     calendarType.addEventListener('change', (e) => {
         AppState.userSettings.calendarType = e.target.value;
         generate();
+        saveToLocalStorage();
     });
 
     includeShabbatInput.addEventListener('change', (e) => {
         AppState.userSettings.includeShabbat = e.target.checked;
+        saveToLocalStorage();
     });
 
     includeHolidaysInput.addEventListener('change', (e) => {
         AppState.userSettings.includeHolidays = e.target.checked;
+        saveToLocalStorage();
     });
 
     breakDaysInput.addEventListener('input', (e) => {
         AppState.userSettings.breakDays = parseInt(e.target.value, 10) || 0;
+        saveToLocalStorage();
     });
 
     startDafInput.addEventListener('change', (e) => {
         AppState.userSettings.startDaf = e.target.value;
+        saveToLocalStorage();
     });
 
     startAmudInput.addEventListener('change', (e) => {
         AppState.userSettings.startAmud = e.target.value;
+        saveToLocalStorage();
     });
 
     // --- Date Inputs Sync ---
@@ -108,6 +126,7 @@ function setupEventListeners() {
         AppState.userSettings.startDate = startDateInput.value;
         AppState.userSettings.targetDate = targetDateInput.value;
         renderDateLabels(AppState.userSettings.startDate, AppState.userSettings.targetDate);
+        saveToLocalStorage();
     };
 
     startDateInput.addEventListener('change', handleDateChange);
@@ -125,17 +144,24 @@ function initUserConfigPanel() {
         select.appendChild(opt);
     });
 
-    // 2. Set Today as default starting date
-    const startDateInput = document.getElementById('startDateInput');
-    startDateInput.valueAsDate = new Date();
+    hydrateHtmlFromAppState();
 
-    // 3. Render initial Hebrew date labels for the default view
+    toggleInputs();
     renderDateLabels(AppState.userSettings.startDate, AppState.userSettings.targetDate);
+
+    updateTrackSequenceUI(AppState.trackSequence);
+    console.log("Test");
+
+    if (AppState.sequence.length > 0) {
+        generate();
+    }
 }
 
 // Main page initiation function
 function init() {
     console.log("HTML page initialized succesfully");
+
+    loadFromLocalStorage();
 
     setupEventListeners();
 
@@ -147,7 +173,7 @@ document.addEventListener('DOMContentLoaded', init);
 
 // Generates the Track's study calendar
 async function generate() {
-    if (AppState.sequence.length === 0) return alert("נא להוסיף לפחות מסכת אחת למסלול");
+    if (AppState.trackSequence.length === 0) return alert("נא להוסיף לפחות מסכת אחת למסלול");
 
     const includeShabbat = AppState.userSettings.includeShabbat;
     const includeHolidays = AppState.userSettings.includeHolidays;
@@ -167,7 +193,7 @@ async function generate() {
     let masterAmudPool = [];
     let initialAmudOffset = 0;
 
-    AppState.sequence.forEach((name, idx) => {
+    AppState.trackSequence.forEach((name, idx) => {
         let startIdx = 0;
         if (idx === 0) {
             const startDafHeb = AppState.userSettings.startDaf.trim();
@@ -196,7 +222,7 @@ async function generate() {
         const dailyAmudimPace = Math.round(parseFloat(AppState.userSettings.pace) * 2);
         if (dailyAmudimPace > 0) {
             const estimatedStudyDays = Math.ceil(masterAmudPool.length / dailyAmudimPace);
-            const totalStructuralBreakDays = breakDays * (AppState.sequence.length - 1);
+            const totalStructuralBreakDays = breakDays * (AppState.trackSequence.length - 1);
             const totalProjectedDays = (estimatedStudyDays + totalStructuralBreakDays) * 1.4;
 
             const projectedEndDate = new Date(startInputDate);
@@ -260,7 +286,7 @@ async function generate() {
         }
 
         // Account for structural inter-masechet break days inside target window
-        let estimatedBreaksCount = breakDays * (AppState.sequence.length - 1);
+        let estimatedBreaksCount = breakDays * (AppState.trackSequence.length - 1);
         let activeStudyDays = timelineDays.filter(d => d.isStudyDay);
         let actualStudyDaysCount = activeStudyDays.length - estimatedBreaksCount;
 
@@ -421,9 +447,59 @@ function cycleDateOverride(dateString) {
         AppState.manualOverrides[dateString] = next;
     }
 
+    saveToLocalStorage();
     generate();
 }
 
+/* 
+    LocalStorage logic
+*/
+
+const STORAGE_KEY = 'itim_app_state';
+
+// Saves user-configurable data from AppState to localStorage
+function saveToLocalStorage() {
+    const stateToSave = {
+        trackSequence: AppState.trackSequence,
+        manualOverrides: AppState.manualOverrides,
+        userSettings: AppState.userSettings
+    };
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(stateToSave));
+}
+
+// Loads user-configurable data from localStorage to AppState
+function loadFromLocalStorage() {
+    try {
+        const saved = localStorage.getItem(STORAGE_KEY);
+        if (!saved) return;
+
+        const parsed = JSON.parse(saved);
+
+        // Use logical OR (||) fallbacks to ensure arrays/objects stay initialized
+        AppState.trackSequence = parsed.trackSequence || [];
+        AppState.manualOverrides = parsed.manualOverrides || {};
+
+        if (parsed.userSettings) {
+            AppState.userSettings = { ...AppState.userSettings, ...parsed.userSettings };
+        }
+        console.log("State restored successfully from localStorage");
+    } catch (e) {
+        console.error("Error loading state from localStorage:", e);
+    }
+}
+
+// Hydrate HTML inputs with values loaded into AppState
+function hydrateHtmlFromAppState() {
+    document.getElementById('calcMethod').value = AppState.userSettings.method;
+    document.getElementById('calendarType').value = AppState.userSettings.calendarType;
+    document.getElementById('includeShabbatInput').checked = AppState.userSettings.includeShabbat;
+    document.getElementById('includeHolidaysInput').checked = AppState.userSettings.includeHolidays;
+    document.getElementById('breakDaysInput').value = AppState.userSettings.breakDays;
+    document.getElementById('startDateInput').value = AppState.userSettings.startDate;
+    document.getElementById('targetDateInput').value = AppState.userSettings.targetDate;
+    document.getElementById('startDafInput').value = AppState.userSettings.startDaf;
+    document.getElementById('startAmudInput').value = AppState.userSettings.startAmud;
+}
 
 // Generates an RTL grid-structured workbook and downloads the schedule as an Excel file.
 async function exportScheduleToExcel() {
