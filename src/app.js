@@ -1,7 +1,8 @@
 import { hebrewToNumber, numberToHebrew, formatGematria, formatHebrewMonthTitle, indexToDaf, formatDateToIL } from './utils.js';
 import { masechtot, getTotalAmudim } from './data.js';
 import { fetchCalendarEvents } from './api.js';
-import { updateSequenceUI, toggleInputs, updateHebrewLabel, renderDateLabels, renderCalendar } from './ui.js';
+import { toggleInputs, renderDateLabels, renderCalendar } from './ui.js';
+import { addToSequence, removeFromSequence, clearSequence } from './track-sequence.js';
 import { shouldDayBeRest } from './schedule.js';
 
 let AppState = {
@@ -51,8 +52,8 @@ function setupEventListeners() {
 
     // --- Action Listeners ---
     generateBtn.addEventListener('click', generate);
-    addToSequenceBtn.addEventListener('click', addToSequence);
-    clearSequenceBtn.addEventListener('click', clearSequence);
+    addToSequenceBtn.addEventListener('click', () => AppState.sequence = addToSequence(AppState.sequence));
+    clearSequenceBtn.addEventListener('click', () => AppState.sequence = clearSequence(AppState.sequence));
     exportBtn.addEventListener('click', exportScheduleToExcel);
     printBtn.addEventListener('click', () => window.print());
 
@@ -60,7 +61,7 @@ function setupEventListeners() {
     sequenceList.addEventListener('click', (event) => {
         const removeBtn = event.target.closest('.remove-btn');
         if (removeBtn) {
-            removeFromSequence(Number(removeBtn.dataset.index));
+            AppState.sequence = removeFromSequence(AppState.sequence, Number(removeBtn.dataset.index));
         }
     });
 
@@ -143,31 +144,6 @@ function init() {
 
 // Executes main initiation function upon page load
 document.addEventListener('DOMContentLoaded', init);
-
-/*
-    Masechet sequence list logic
-*/ 
-
-// Adds the selected masechet into the Track's masechet sequence list
-function addToSequence() {
-    const val = document.getElementById('masechetSelect').value;
-    AppState.sequence.push(val);
-    updateSequenceUI(AppState.sequence);
-}
-
-// Removes the selected masechet from the Track's masechet sequence list
-function removeFromSequence(index) {
-    AppState.sequence.splice(index, 1);
-    updateSequenceUI(AppState.sequence);
-}
-
-// Clears the entire sequence of masechtot from the Track's masechet sequence list
-function clearSequence() {
-    if (confirm("האם למחוק את כל המסכתות מהמסלול?")) {
-        AppState.sequence = [];
-        updateSequenceUI([]);
-    }
-}
 
 // Generates the Track's study calendar
 async function generate() {

@@ -1,7 +1,7 @@
 import { numberToHebrew, formatGematria, formatHebrewMonthTitle } from './utils.js';
 
 // Updates UI of Track sequence 
-export function updateSequenceUI(sequence) {
+export function updateTrackSequenceUI(sequence) {
     const list = document.getElementById('sequenceList');
     list.innerHTML = sequence.map((m, i) => `
         <li class="flex justify-between items-center bg-white border border-blue-100 px-4 py-2 rounded-lg shadow-sm">
