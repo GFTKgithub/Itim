@@ -1,7 +1,7 @@
 import { hebrewToNumber, numberToHebrew, formatGematria, formatHebrewMonthTitle, indexToDaf, formatDateToIL } from './utils.js';
 import { masechtot, getTotalAmudim } from './data.js';
 import { fetchCalendarEvents } from './api.js';
-import { toggleInputs, updateTrackSequenceUI, renderDateLabels, renderCalendar } from './ui.js';
+import { hydrateHtmlFromAppState, toggleInputs, updateTrackSequenceUI, renderDateLabels, renderCalendar } from './ui.js';
 import { addToSequence, removeFromSequence, clearSequence } from './track-sequence.js';
 import { shouldDayBeRest } from './schedule.js';
 import { initPersistence, saveToLocalStorage, loadFromLocalStorage, exportStateBackup, importStateBackup } from './persistence.js';
@@ -165,7 +165,7 @@ function initUserConfigPanel() {
         select.appendChild(opt);
     });
 
-    hydrateHtmlFromAppState();
+    hydrateHtmlFromAppState(AppState);
 
     toggleInputs();
     renderDateLabels(AppState.userSettings.startDate, AppState.userSettings.targetDate);
@@ -472,20 +472,6 @@ function cycleDateOverride(dateString) {
 
     saveToLocalStorage();
     generate();
-}
-
-// Hydrate HTML inputs with values loaded into AppState
-function hydrateHtmlFromAppState() {
-    document.getElementById('calcMethod').value = AppState.userSettings.method;
-    document.getElementById('calendarType').value = AppState.userSettings.calendarType;
-    document.getElementById('includeShabbatInput').checked = AppState.userSettings.includeShabbat;
-    document.getElementById('includeHolidaysInput').checked = AppState.userSettings.includeHolidays;
-    document.getElementById('breakDaysInput').value = AppState.userSettings.breakDays;
-    document.getElementById('startDateInput').value = AppState.userSettings.startDate;
-    document.getElementById('targetDateInput').value = AppState.userSettings.targetDate;
-    document.getElementById('paceInput').value = AppState.userSettings.pace;
-    document.getElementById('startDafInput').value = AppState.userSettings.startDaf;
-    document.getElementById('startAmudInput').value = AppState.userSettings.startAmud;
 }
 
 // Generates an RTL grid-structured workbook and downloads the schedule as an Excel file.

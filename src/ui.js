@@ -1,5 +1,19 @@
 import { numberToHebrew, formatGematria, formatHebrewMonthTitle } from './utils.js';
 
+// Hydrates the user configuration panel elements with saved data
+export function hydrateHtmlFromAppState(AppState) {
+    document.getElementById('calcMethod').value = AppState.userSettings.method;
+    document.getElementById('calendarType').value = AppState.userSettings.calendarType;
+    document.getElementById('includeShabbatInput').checked = AppState.userSettings.includeShabbat;
+    document.getElementById('includeHolidaysInput').checked = AppState.userSettings.includeHolidays;
+    document.getElementById('breakDaysInput').value = AppState.userSettings.breakDays;
+    document.getElementById('startDateInput').value = AppState.userSettings.startDate;
+    document.getElementById('targetDateInput').value = AppState.userSettings.targetDate;
+    document.getElementById('paceInput').value = AppState.userSettings.pace;
+    document.getElementById('startDafInput').value = AppState.userSettings.startDaf;
+    document.getElementById('startAmudInput').value = AppState.userSettings.startAmud;
+}
+
 // Updates UI of Track sequence 
 export function updateTrackSequenceUI(sequence) {
     const list = document.getElementById('sequenceList');
