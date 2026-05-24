@@ -2,6 +2,7 @@ import { hebrewToNumber, numberToHebrew, formatGematria, formatHebrewMonthTitle,
 import { masechtot, getTotalAmudim } from './data.js';
 import { fetchCalendarEvents } from './api.js';
 import { updateSequenceUI, toggleInputs, updateHebrewLabel, renderCalendar } from './ui.js';
+import { shouldDayBeRest } from './schedule.js';
 
 let AppState = {
     sequence: [], // Keeps the masechet sequence list
@@ -125,40 +126,6 @@ function init() {
 
 // Executes main initiation function upon page load
 document.addEventListener('DOMContentLoaded', init);
-
-// Calculates if a given date should be rest or study (pre-override)
-function shouldDayBeRest(dateObj, includeShabbat, includeHolidays) {
-
-    const dateString = formatDateToIL(dateObj);
-
-    const day = AppState.calendarData[dateString];
-
-    const traits = day?.traits || {};
-
-    const isShabbatDay = dateObj.getDay() === 6;
-
-    // Standard Chagim
-    if (traits.isChag && !includeHolidays) {
-        return true;
-    }
-
-    // Shabbat / Parasha
-    if ((isShabbatDay || traits.isParasha) && !includeShabbat) {
-        return true;
-    }
-
-    // Always study on Rosh Chodesh
-    if (traits.isRoshChodesh) {
-        return false;
-    }
-
-    // Always study on modern exceptions
-    if (traits.isModernException) {
-        return false;
-    }
-
-    return false;
-}
 
 /*
     Masechet sequence list logic
@@ -285,7 +252,7 @@ async function generate() {
         while (currentDate <= endDate) {
             const dateString = formatDateToIL(currentDate);
             const overrideState = AppState.manualOverrides[dateString] || 0;
-            let isRestDay = (overrideState === 1) || (overrideState !== 2 && shouldDayBeRest(currentDate, includeShabbat, includeHolidays));
+            let isRestDay = (overrideState === 1) || (overrideState !== 2 && shouldDayBeRest(currentDate, includeShabbat, includeHolidays, AppState.calendarData));
 
             timelineDays.push({
                 date: new Date(currentDate),
@@ -340,7 +307,7 @@ async function generate() {
         while (amudPoolCopy.length > 0) {
             const dateString = formatDateToIL(currentDate);
             const overrideState = AppState.manualOverrides[dateString] || 0;
-            let isRestDay = (overrideState === 1) || (overrideState !== 2 && shouldDayBeRest(currentDate, includeShabbat, includeHolidays));
+            let isRestDay = (overrideState === 1) || (overrideState !== 2 && shouldDayBeRest(currentDate, includeShabbat, includeHolidays, AppState.calendarData));
 
             timelineDays.push({
                 date: new Date(currentDate),
