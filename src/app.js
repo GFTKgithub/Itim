@@ -4,23 +4,25 @@ import { addToSequence, removeFromSequence, clearSequence } from './track-sequen
 import { generateSchedule, cycleDateOverride } from './scheduler.js';
 import { initPersistence, saveToLocalStorage, loadFromLocalStorage, exportStateBackup, importStateBackup } from './persistence.js';
 
+const DEFAULT_USER_SETTINGS = {
+    method: 'pace',
+    pace: 1,
+    breakDays: 0,
+    startDate: new Date().toISOString().split('T')[0],
+    targetDate: '',
+    startDaf: 'ב',
+    startAmud: 'א',
+    includeShabbat: true,
+    includeHolidays: false,
+    calendarType: 'hebrew'
+}
+
 let AppState = {
     trackSequence: [],      // Masechet sequence list
     schedule: [],           // Data of the entire schedule
     manualOverrides: {},    // Manual overrides of calendar days study status (0 = Default, 1 = Force Break, 2 = Force Study)
     calendarData: {},       // Data of special calendar events (DD.YY.MM)
-    userSettings: {         // User Settings (with default values)
-        includeShabbat: true,
-        includeHolidays: false,
-        startDate: new Date().toISOString().split('T')[0],
-        targetDate: '',
-        startDaf: 'ב',
-        startAmud: 'א',
-        pace: 1,
-        breakDays: 0,
-        method: 'pace',
-        calendarType: 'hebrew'
-    }
+    userSettings: { ...DEFAULT_USER_SETTINGS }       // User Settings (with default values)
 }
 
 /* 
@@ -42,6 +44,9 @@ function setupEventListeners() {
     const backupExportBtn = document.getElementById('backupExportBtn');
     const backupImportBtn = document.getElementById('backupImportBtn');
     const backupFileInput = document.getElementById('backupFileInput');
+
+    const resetSettingsBtn = document.getElementById('resetSettingsBtn')
+    const resetManualOverridesBtn = document.getElementById('resetManualOverridesBtn')
 
     // User settings elements
     const calcMethod = document.getElementById('calcMethod');
@@ -81,6 +86,9 @@ function setupEventListeners() {
 
     // When a file is chosen, pass the event to your import function
     backupFileInput.addEventListener('change', importStateBackup);
+
+    resetSettingsBtn.addEventListener('click', handleResetSettings);
+    resetManualOverridesBtn.addEventListener('click', handleResetManualOverrides);
 
     // --- Event Delegation ---
     sequenceList.addEventListener('click', (event) => {
@@ -226,6 +234,40 @@ async function handleScheduleGeneration() {
 function handleDateOverrideClick(dateString) {
     AppState.manualOverrides = cycleDateOverride(AppState.manualOverrides, dateString);
 
+    saveToLocalStorage();
+    handleScheduleGeneration();
+}
+
+// Factory-resets user configuration variables and settings
+function handleResetSettings() {
+    if (!confirm("האם אתה בטוח שברצונך לאפס את כל ההגדרות והקצב לברירת המחדל?")) return;
+
+    // Reset user layout variables back to default blueprint values safely
+    AppState.userSettings = { ...DEFAULT_USER_SETTINGS };
+
+    // Clear out the track structure arrays separately if desired (optional)
+    AppState.trackSequence = [];
+
+    // Synchronize your local files, view layout, and engine calculations
+    saveToLocalStorage();
+    initUserConfigPanel();    // Repopulates form inputs with the fresh AppState.userSettings values
+    renderTrackSequence();    // Re-renders the list layout (now empty)
+    handleScheduleGeneration(); // Generates empty/default state layout cleanly
+}
+
+// Erases targeted timeline override blocks completely while leaving configuration controls alone
+function handleResetManualOverrides() {
+    if (Object.keys(AppState.manualOverrides).length === 0) {
+        alert("לא נמצאו שינויים ידניים בלוח הקיים.");
+        return;
+    }
+
+    if (!confirm("האם אתה בטוח שברצונך למחוק את כל חסימות התאריכים והשינויים הידניים שביצעת?")) return;
+
+    // Wipe out the map object completely
+    AppState.manualOverrides = {};
+
+    // Save state changes and re-run calculations
     saveToLocalStorage();
     handleScheduleGeneration();
 }
