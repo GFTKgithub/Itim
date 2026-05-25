@@ -201,6 +201,10 @@ function init() {
 // Executes main initiation function upon page load
 document.addEventListener('DOMContentLoaded', init);
 
+/* 
+    Handlers
+*/
+
 // Orchestrates schedule calculation by piping AppState inputs into the engine and rendering the resulting timeline grid
 async function handleScheduleGeneration() {
     try {

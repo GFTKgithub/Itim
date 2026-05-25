@@ -131,11 +131,25 @@ export function renderDateLabels(startDate, targetDate) {
 }
 
 // Renders the calendar UI
-export function renderCalendar(containerId, schedule, config={calendarType, overrides}) {
+export function renderCalendar(containerId, schedule, config = { calendarType, overrides }) {
     const { calendarType = 'hebrew', overrides = {} } = config;
-    
     const container = document.getElementById(containerId);
+    if (!container) return;
 
+    // --- STEP 1: Snapshot existing horizontal scroll positions ---
+    const scrollSnapshots = {};
+    container.querySelectorAll('.calendar-month').forEach(monthEl => {
+        const titleEl = monthEl.querySelector('.bg-slate-800');
+        const scrollContainer = monthEl.querySelector('.calendar-scroll-container');
+
+        if (titleEl && scrollContainer) {
+            const monthTitle = titleEl.textContent.trim();
+            // Store the exact horizontal scroll position mapped to this month's title
+            scrollSnapshots[monthTitle] = scrollContainer.scrollLeft;
+        }
+    });
+
+    // --- STEP 2: Clear and rebuild the DOM ---
     container.innerHTML = "";
     const months = {};
 
@@ -229,5 +243,10 @@ export function renderCalendar(containerId, schedule, config={calendarType, over
         scrollWrapper.appendChild(grid);
         monthWrapper.appendChild(scrollWrapper);
         container.appendChild(monthWrapper);
+
+        // --- STEP 3: Restore the horizontal scroll position for this specific month ---
+        if (scrollSnapshots[key] !== undefined) {
+            scrollWrapper.scrollLeft = scrollSnapshots[key];
+        }
     }
 }
