@@ -1,10 +1,10 @@
 const CACHE_NAME = 'itim-v1';
 const STATIC_ASSETS = [
-    '/',
-    '/index.html',
-    '/src/app.js',
-    '/manifest.json',
-    '/src/style.css',
+    './',              // Caches the current directory root
+    'index.html',
+    'manifest.json',
+    'src/app.js',
+    'src/style.css',
     'icons/itim-icon-192.png',
     'icons/itim-icon-512.png'
 ];
