@@ -133,23 +133,28 @@ select:focus {
     .calendar-scroll-container {
         width: 100% !important;
         overflow-x: auto !important;
+        overflow-y: hidden !important;
+        /* Strict: Stops any accidental vertical shaking */
         -webkit-overflow-scrolling: touch;
         position: relative;
-        padding-bottom: 8px;
+        padding-bottom: 4px;
     }
 
     .calendar-grid {
         display: grid !important;
-        grid-template-columns: repeat(7, 1fr) !important;
-        min-width: 180% !important;
+        /* Force explicit absolute minimal sizes: 7 days * 115px = 805px absolute structural baseline width */
+        grid-template-columns: repeat(7, minmax(115px, 1fr)) !important;
+        min-width: 805px !important;
+        width: 100% !important;
         background-color: #e5e7eb;
         gap: 1px;
     }
 
     .calendar-day {
-        aspect-ratio: 1 / 1 !important;
-        min-height: auto !important;
-        padding: 4px !important;
+        /* Drop the strict aspect-ratio lock—let explicit content and min-height set the boundary */
+        aspect-ratio: auto !important;
+        min-height: 90px !important;
+        padding: 5px !important;
     }
 
     .calendar-scroll-container::-webkit-scrollbar {
@@ -174,8 +179,8 @@ select:focus {
 
     .calendar-day span,
     .calendar-day div {
-        font-size: 0.85em;
-        line-height: 1.1;
+        font-size: 0.9em;
+        line-height: 1.15;
     }
 }
 
