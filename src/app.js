@@ -38,7 +38,7 @@ function setupEventListeners() {
 
     const exportBtn = document.getElementById('exportToExcelBtn');
     const printBtn = document.getElementById('printBtn');
-    const sequenceList = document.getElementById('sequenceList');
+    const sequenceList = document.getElementById('trackSequenceList');
     const calendarContainer = document.getElementById('calendarContainer');
 
     const backupExportBtn = document.getElementById('backupExportBtn');

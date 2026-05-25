@@ -16,7 +16,7 @@ export function hydrateHtmlFromAppState(AppState) {
 
 // Updates UI of Track sequence 
 export function updateTrackSequenceUI(sequence) {
-    const list = document.getElementById('sequenceList');
+    const list = document.getElementById('trackSequenceList');
     list.innerHTML = sequence.map((m, i) => `
         <li class="flex justify-between items-center bg-white border border-blue-100 px-4 py-2 rounded-lg shadow-sm">
             <span class="font-bold text-blue-900"><span class="text-slate-400 ml-2">${i + 1}.</span>מסכת ${m}</span>
