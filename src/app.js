@@ -1,4 +1,3 @@
-import { numberToHebrew, formatHebrewMonthTitle } from './utils.js';
 import { masechtot } from './data.js';
 import { hydrateHtmlFromAppState, toggleInputs, updateTrackSequenceUI, renderDateLabels, renderCalendar } from './ui.js';
 import { addToSequence, removeFromSequence, clearSequence } from './track-sequence.js';
@@ -71,7 +70,7 @@ function setupEventListeners() {
         saveToLocalStorage();
     });
     
-    exportBtn.addEventListener('click', exportScheduleToExcel);
+    exportBtn.addEventListener('click', () => exportScheduleToExcel(AppState.schedule));
     printBtn.addEventListener('click', () => window.print());
 
     // --- Backup Action Listeners ---
