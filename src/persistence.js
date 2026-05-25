@@ -74,7 +74,7 @@ export function importStateBackup(event) {
     if (!file) return;
 
     const reader = new FileReader();
-    reader.onload = function (e) {
+    reader.onload = async function (e) {
         try {
             const parsed = JSON.parse(e.target.result);
 
@@ -82,7 +82,16 @@ export function importStateBackup(event) {
                 throw new Error("קובץ הגיבוי אינו תואם או פגום.");
             }
 
+            // 1. Save to localStorage
             localStorage.setItem(STORAGE_KEY, JSON.stringify(parsed));
+
+            // 2. Sync the in-memory stateRef
+            stateRef.trackSequence = Array.isArray(parsed.trackSequence) ? parsed.trackSequence : [];
+            stateRef.manualOverrides = parsed.manualOverrides || {};
+            if (parsed.userSettings) {
+                stateRef.userSettings = { ...stateRef.userSettings, ...parsed.userSettings };
+            }
+
             alert("הגיבוי נטען בהצלחה! העמוד יתרענן כעת.");
             window.location.reload();
 

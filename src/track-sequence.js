@@ -1,4 +1,4 @@
-import { updateTrackSequenceUI } from "./ui.js";
+import { updateTrackSequenceUI, showDialog } from "./ui.js";
 /*
     Masechet sequence list logic
 */
@@ -19,8 +19,16 @@ export function removeFromSequence(sequence, index) {
 }
 
 // Clears the entire sequence of masechtot from the Track's masechet sequence list
-export function clearSequence(sequence) {
-    if (confirm("האם למחוק את כל המסכתות מהמסלול?")) {
+export async function clearSequence(sequence) {
+    const confirmed = await showDialog({
+            title: 'ניקוי רשימת המסכתות במסלול',
+            message: 'האם אתה בטוח שברצונך לנקות את רשימת המסכתות במסלול?',
+            icon: '🗑️',
+            showCancel: true,
+            confirmText: 'כן, נקה הכל',
+            cancelText: 'לא, התחרטתי'
+        });
+    if (confirmed) {
         sequence = [];
         updateTrackSequenceUI(sequence);
     }

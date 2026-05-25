@@ -1,8 +1,14 @@
 import { numberToHebrew, formatHebrewMonthTitle } from "./utils.js";
+import { showDialog } from "./ui.js";
 
 // Generates an RTL grid-structured workbook and downloads the schedule as an Excel file.
 export async function exportScheduleToExcel(schedule) {
-    if (!schedule || schedule.length === 0) return alert("יש ליצור לוח לימוד קודם");
+    if (!schedule || schedule.length === 0) return await showDialog({
+        title: 'אזהרה',
+        message: 'יש ליצור לוח לימוד קודם',
+        icon: '⚠️',
+        confirmText: 'המשך'
+    });
 
     const workbook = new ExcelJS.Workbook();
     const worksheet = workbook.addWorksheet('תכנית לימוד', {

@@ -304,3 +304,78 @@ export function renderCalendar(containerId, schedule, config = { calendarType, o
 
     window.scrollTo(window.scrollX, savedGlobalY);
 }
+
+// Create custom dialog message
+export function showDialog({
+    title,
+    message,
+    icon = '⚠️',
+    showCancel = false,
+    confirmText = 'אישור',
+    cancelText = 'ביטול'
+}) {
+    return new Promise((resolve) => {
+        // שליפת האלמנטים מה-DOM
+        const overlay = document.getElementById('customDialogOverlay');
+        const dialogBox = document.getElementById('customDialogBox');
+        const titleEl = document.getElementById('dialogTitle');
+        const messageEl = document.getElementById('dialogMessage');
+        const iconEl = document.getElementById('dialogIcon');
+        const confirmBtn = document.getElementById('dialogConfirmBtn');
+        const cancelBtn = document.getElementById('dialogCancelBtn');
+
+        // עדכון התוכן בדיאלוג
+        titleEl.textContent = title;
+        messageEl.textContent = message;
+        iconEl.innerHTML = icon;
+        confirmBtn.textContent = confirmText;
+        cancelBtn.textContent = cancelText;
+
+        // הצגה/הסתרה של כפתור הביטול בהתאם לצורך
+        if (showCancel) {
+            cancelBtn.classList.remove('hidden');
+        } else {
+            cancelBtn.classList.add('hidden');
+        }
+
+        // פונקציית סגירה עם אנימציה
+        function closeDialog(result) {
+            // אנימציית יציאה
+            overlay.classList.remove('opacity-100');
+            dialogBox.classList.remove('scale-100');
+            overlay.classList.add('opacity-0');
+            dialogBox.classList.add('scale-95');
+
+            setTimeout(() => {
+                overlay.classList.add('hidden');
+                // ניקוי האזנת אירועים כדי למנוע כפילויות בעתיד
+                confirmBtn.replaceWith(confirmBtn.cloneNode(true));
+                cancelBtn.replaceWith(cancelBtn.cloneNode(true));
+                overlay.replaceWith(overlay.cloneNode(true));
+
+                // החזרת התשובה
+                resolve(result);
+            }, 200); // תואם לזמן ה-duration של Tailwind (200ms)
+        }
+
+        // הצגת החלונית עם אנימציה (שימוש ב-setTimeout קצר מאפשר ל-Transition לעבוד)
+        overlay.classList.remove('hidden');
+        setTimeout(() => {
+            overlay.classList.remove('opacity-0', 'scale-95');
+            overlay.classList.add('opacity-100');
+            dialogBox.classList.remove('scale-95');
+            dialogBox.classList.add('scale-100');
+        }, 10);
+
+        // האזנה ללחיצות על הכפתורים החדשים (שנבנו מחדש בתוך closeDialog)
+        document.getElementById('dialogConfirmBtn').addEventListener('click', () => closeDialog(true));
+        document.getElementById('dialogCancelBtn').addEventListener('click', () => closeDialog(false));
+
+        // סגירה בלחיצה מחוץ לקופסה (על הרקע הכהה)
+        document.getElementById('customDialogOverlay').addEventListener('click', (e) => {
+            if (e.target === document.getElementById('customDialogOverlay')) {
+                closeDialog(false);
+            }
+        });
+    });
+}

@@ -1,5 +1,5 @@
 import { masechtot } from './data.js';
-import { hydrateHtmlFromAppState, toggleInputs, updateTrackSequenceUI, renderDateLabels, renderCalendar } from './ui.js';
+import { hydrateHtmlFromAppState, toggleInputs, updateTrackSequenceUI, renderDateLabels, renderCalendar, showDialog } from './ui.js';
 import { addToSequence, removeFromSequence, clearSequence } from './track-sequence.js';
 import { generateSchedule, cycleDateOverride } from './scheduler.js';
 import { initPersistence, saveToLocalStorage, loadFromLocalStorage, exportStateBackup, importStateBackup } from './persistence.js';
@@ -61,7 +61,6 @@ function setupEventListeners() {
     const startAmudInput = document.getElementById('startAmudInput');
 
     // --- Action Listeners ---
-    // generateBtn.addEventListener('click', generate);
     generateBtn.addEventListener('click', handleScheduleGeneration);
 
     addToSequenceBtn.addEventListener('click', () => {
@@ -69,9 +68,9 @@ function setupEventListeners() {
         saveToLocalStorage();
     });
 
-    clearSequenceBtn.addEventListener('click', () => 
+    clearSequenceBtn.addEventListener('click', async () => 
     {
-        AppState.trackSequence = clearSequence(AppState.trackSequence);
+        AppState.trackSequence = await clearSequence(AppState.trackSequence);
         saveToLocalStorage();
     });
     
@@ -180,7 +179,6 @@ function initUserConfigPanel() {
     updateTrackSequenceUI(AppState.trackSequence);
 
     if (AppState.trackSequence.length > 0) {
-        // generate();
         handleScheduleGeneration();
     }
 }
@@ -243,8 +241,17 @@ function handleDateOverrideClick(dateString) {
 }
 
 // Factory-resets user configuration variables and settings
-function handleResetSettings() {
-    if (!confirm("האם אתה בטוח שברצונך לאפס את כל ההגדרות והקצב לברירת המחדל?")) return;
+async function handleResetSettings() {
+    const confirmed = await showDialog({
+        title: 'איפוס הגדרות לברירת מחדל',
+        message: 'האם אתה בטוח שברצונך לאפס את כל ההגדרות והקצב לברירת המחדל?',
+        icon: '🗑️',
+        showCancel: true,
+        confirmText: 'כן, אפס הכל',
+        cancelText: 'לא, התחרטתי'
+    });
+
+    if(!confirmed) return;
 
     // Reset user layout variables back to default blueprint values safely
     AppState.userSettings = { ...DEFAULT_USER_SETTINGS };
@@ -255,18 +262,31 @@ function handleResetSettings() {
     // Synchronize your local files, view layout, and engine calculations
     saveToLocalStorage();
     initUserConfigPanel();    // Repopulates form inputs with the fresh AppState.userSettings values
-    renderTrackSequence();    // Re-renders the list layout (now empty)
+    updateTrackSequenceUI(AppState.trackSequence);    // Re-renders the list layout (now empty)
     handleScheduleGeneration(); // Generates empty/default state layout cleanly
 }
 
 // Erases targeted timeline override blocks completely while leaving configuration controls alone
-function handleResetManualOverrides() {
+async function handleResetManualOverrides() {
     if (Object.keys(AppState.manualOverrides).length === 0) {
-        alert("לא נמצאו שינויים ידניים בלוח הקיים.");
+        await showDialog({
+            title: 'פעולה התבטלה',
+            message: 'לא נמצאו שינויים ידניים בלוח הקיים.',
+            icon: '🔄',
+            confirmText: 'המשך'
+        });
         return;
     }
 
-    if (!confirm("האם אתה בטוח שברצונך למחוק את כל חסימות התאריכים והשינויים הידניים שביצעת?")) return;
+    const confirmed = await showDialog({
+        title: 'איפוס שינויים ידניים',
+        message: 'האם אתה בטוח שברצונך לאפס את כל השינויים הידניים שעשית ללוח הזמנים?',
+        icon: '🗑️',
+        showCancel: true,
+        confirmText: 'כן, אפס הכל',
+        cancelText: 'לא, התחרטתי'
+    });
+    if (!confirmed) return;
 
     // Wipe out the map object completely
     AppState.manualOverrides = {};
@@ -281,7 +301,7 @@ if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
         navigator.serviceWorker.register('sw.js')
             .then((registration) => {
-                console.log('ServiceWorker registered successfully with scope: ', registration.scope);
+                console.log('ServiceWorker registered successfully.');
             })
             .catch((error) => {
                 console.error('ServiceWorker registration failed: ', error);

@@ -220,6 +220,38 @@
         </div>
     </div>
 
+    <div id="customDialogOverlay"
+        class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-[100] hidden opacity-0 transition-opacity duration-200"
+        dir="rtl">
+        <div id="customDialogBox"
+            class="bg-white w-full max-w-md rounded-2xl shadow-2xl border border-slate-200 overflow-hidden transform scale-95 transition-transform duration-200">
+            <div class="h-1.5 bg-gradient-to-l from-blue-800 to-slate-800"></div>
+    
+            <div class="p-6">
+                <div class="flex items-start gap-4">
+                    <div id="dialogIcon" class="text-3xl select-none pt-0.5">⚠️</div>
+    
+                    <div class="flex-1 space-y-2">
+                        <h3 id="dialogTitle" class="text-xl font-bold text-slate-900 leading-tight">כותרת הודעה</h3>
+                        <p id="dialogMessage" class="text-slate-600 font-medium leading-relaxed">תוכן ההודעה יופיע כאן...
+                        </p>
+                    </div>
+                </div>
+            </div>
+    
+            <div class="bg-slate-50 px-6 py-4 flex flex-row-reverse justify-start gap-3 border-t border-slate-100">
+                <button id="dialogConfirmBtn"
+                    class="bg-slate-900 hover:bg-black text-white px-5 py-2.5 rounded-xl font-bold text-sm shadow-md transition-all active:scale-95">
+                    אישור
+                </button>
+                <button id="dialogCancelBtn"
+                    class="bg-white hover:bg-slate-100 text-slate-600 border border-slate-300 px-5 py-2.5 rounded-xl font-bold text-sm transition-all active:scale-95 hidden">
+                    ביטול
+                </button>
+            </div>
+        </div>
+    </div>
+
     <script type="module" src="src/app.js" defer></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.3.0/exceljs.min.js" defer></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js" defer></script>
