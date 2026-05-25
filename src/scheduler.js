@@ -62,7 +62,7 @@ export async function generateSchedule({ trackSequence, userSettings, manualOver
         if (!targetDate) throw new Error("נא לבחור תאריך יעד");
         endYear = new Date(targetDate).getFullYear();
     } else {
-        const dailyAmudimPace = Math.round(parseFloat(pace) * 2);
+        const dailyAmudimPace = Math.max(1, Math.ceil(parseFloat(pace) * 2));
         if (dailyAmudimPace > 0) {
             const estimatedStudyDays = Math.ceil(masterAmudPool.length / dailyAmudimPace);
             const totalStructuralBreakDays = breakDays * (trackSequence.length - 1);
@@ -164,9 +164,21 @@ export async function generateSchedule({ trackSequence, userSettings, manualOver
     } else {
         // Pace Mode
         let amudPoolCopy = [...masterAmudPool];
-        const dailyAmudimPace = Math.round(parseFloat(pace) * 2);
 
-        while (amudPoolCopy.length > 0) {
+        // Enforce a strict minimum pace of 0.5 daf (1 amud) per day
+        const parsedPace = parseFloat(pace);
+        const enforcedPace = parsedPace < 0.5 ? 0.5 : parsedPace;
+
+        // Convert daf pace to daily amudim pace
+        const dailyAmudimPace = Math.max(1, Math.ceil(enforcedPace * 2));
+
+        // Safety guard to prevent any structural infinite loop hanging
+        let safetyLoopCount = 0;
+        const maxSafetyIterations = masterAmudPool.length * 10 + 5000;
+
+        while (amudPoolCopy.length > 0 && safetyLoopCount < maxSafetyIterations) {
+            safetyLoopCount++;
+
             const dateString = formatDateToIL(currentDate);
             const overrideState = manualOverrides[dateString] || 0;
             let isRestDay = (overrideState === 1) || (overrideState !== 2 && shouldDayBeRest(currentDate, includeShabbat, includeHolidays, calendarData));
@@ -183,6 +195,7 @@ export async function generateSchedule({ trackSequence, userSettings, manualOver
 
             if (!isRestDay) {
                 let drained = amudPoolCopy.splice(0, dailyAmudimPace);
+
                 if (drained.length > 0 && amudPoolCopy.length > 0 && drained[drained.length - 1].masechet !== amudPoolCopy[0].masechet) {
                     for (let b = 0; b < breakDays; b++) {
                         currentDate.setDate(currentDate.getDate() + 1);
