@@ -1,5 +1,7 @@
 import { numberToHebrew, formatGematria, formatHebrewMonthTitle } from './utils.js';
 
+const hebrewDayFormatter = new Intl.DateTimeFormat('he-IL-u-ca-hebrew', { day: 'numeric' });
+
 // Hydrates the user configuration panel elements with saved data
 export function hydrateHtmlFromAppState(AppState) {
     document.getElementById('calcMethod').value = AppState.userSettings.method;
@@ -136,7 +138,74 @@ export function renderCalendar(containerId, schedule, config = { calendarType, o
     const container = document.getElementById(containerId);
     if (!container) return;
 
-    // 1. Snapshot scroll positions
+    // --- 1. OPTIMIZATION CHECK: Can we update in-place? ---
+    const existingDays = container.querySelectorAll('.calendar-day[data-date]');
+
+    if (existingDays.length > 0 && existingDays.length === schedule.length) {
+        // SUCCESS: Structure matches perfectly. Update content and state classes in-place.
+        schedule.forEach((day, index) => {
+            const dayEl = existingDays[index];
+            if (!dayEl) return;
+
+            // Update state classes and indicators
+            const state = overrides[day.dateString] || 0;
+            dayEl.classList.remove('force-break', 'force-study');
+
+            let indicatorEl = dayEl.querySelector('.absolute.bottom-1.right-1');
+
+            if (state === 1) {
+                dayEl.classList.add('force-break');
+                if (!indicatorEl) {
+                    dayEl.insertAdjacentHTML('beforeend', '<span class="absolute bottom-1 right-1 text-red-500 font-bold text-[10px]">✕</span>');
+                } else {
+                    indicatorEl.className = "absolute bottom-1 right-1 text-red-500 font-bold text-[10px]";
+                    indicatorEl.textContent = "✕";
+                }
+            } else if (state === 2) {
+                dayEl.classList.add('force-study');
+                if (!indicatorEl) {
+                    dayEl.insertAdjacentHTML('beforeend', '<span class="absolute bottom-1 right-1 text-blue-600 font-bold text-[10px]">✎</span>');
+                } else {
+                    indicatorEl.className = "absolute bottom-1 right-1 text-blue-600 font-bold text-[10px]";
+                    indicatorEl.textContent = "✎";
+                }
+            } else if (indicatorEl) {
+                indicatorEl.remove();
+            }
+
+            // Update Masechet label
+            const masechetEl = dayEl.querySelector('.text-blue-800');
+            if (masechetEl && masechetEl.textContent !== day.masechet) {
+                masechetEl.textContent = day.masechet;
+            }
+
+            // Update content text AND dynamic styling classes (Fixes the gray/italic text issue)
+            const contentEl = dayEl.querySelector('.text-center.mt-1');
+            if (contentEl) {
+                // Synchronize the classes exactly as defined in your template layout
+                contentEl.className = `text-[10px] font-bold text-center mt-1 leading-tight ${day.isEmpty ? 'text-slate-400 italic' : 'text-slate-800'}`;
+
+                const newContentHTML = day.isHoliday
+                    ? `<span class="holiday-label-small">${day.holidayTitle}</span>\n${day.content}`
+                    : day.content;
+                if (contentEl.innerHTML.trim() !== newContentHTML.trim()) {
+                    contentEl.innerHTML = newContentHTML;
+                }
+            }
+
+            // Update Page Count numbers
+            const pagesEl = dayEl.querySelector('.mt-auto');
+            const newPagesText = !day.isEmpty ? `${day.pages} דף` : '';
+            if (pagesEl && pagesEl.textContent.trim() !== newPagesText) {
+                pagesEl.textContent = newPagesText;
+            }
+        });
+
+        // Fast path complete. Skip structural rebuilding entirely.
+        return;
+    }
+
+    // --- 2. FALLBACK PATH: Structural Generation (Your exact styling/logic preserved) ---
     const savedGlobalY = window.scrollY;
     const scrollSnapshots = {};
     container.querySelectorAll('.calendar-month').forEach(monthEl => {
@@ -147,10 +216,8 @@ export function renderCalendar(containerId, schedule, config = { calendarType, o
         }
     });
 
-    // 2. Clear container once
     container.innerHTML = "";
 
-    // 3. Group days by month in memory
     const months = {};
     schedule.forEach(day => {
         let monthKey = (calendarType === 'hebrew')
@@ -161,17 +228,12 @@ export function renderCalendar(containerId, schedule, config = { calendarType, o
         months[monthKey].push(day);
     });
 
-    // 4. Process each month
     for (const key in months) {
         const monthData = months[key];
-
         const monthWrapper = document.createElement('div');
         monthWrapper.className = "calendar-month bg-white shadow-xl rounded-2xl border border-slate-200 mb-10 overflow-hidden";
 
-        // Create a memory buffer array to accumulate layout strings
         const htmlBuffer = [];
-
-        // Build headers into buffer
         htmlBuffer.push(`<div class="bg-slate-800 text-white p-4 text-center font-bold text-xl">${key}</div>`);
         htmlBuffer.push(`<div class="calendar-scroll-container">`);
         htmlBuffer.push(`<div class="calendar-grid">`);
@@ -180,13 +242,11 @@ export function renderCalendar(containerId, schedule, config = { calendarType, o
             htmlBuffer.push(`<div class="bg-slate-50 p-2 text-center text-xs font-bold text-slate-500 border-b border-gray-200">${d}</div>`);
         });
 
-        // Build padding into buffer
         const firstDayOfWeek = monthData[0].date.getDay();
         for (let i = 0; i < firstDayOfWeek; i++) {
             htmlBuffer.push(`<div class="calendar-day bg-slate-50/50"></div>`);
         }
 
-        // Build days into buffer
         monthData.forEach(day => {
             const state = overrides[day.dateString] || 0;
             let statusClass = "";
@@ -232,20 +292,15 @@ export function renderCalendar(containerId, schedule, config = { calendarType, o
             </div>`);
         });
 
-        // Close grid wrappers
         htmlBuffer.push(`</div></div>`);
-
-        // Inject EVERYTHING for this month into the element at once
         monthWrapper.innerHTML = htmlBuffer.join('');
         container.appendChild(monthWrapper);
 
-        // 5. Restore horizontal scroll for this month
         const scrollWrapper = monthWrapper.querySelector('.calendar-scroll-container');
         if (scrollWrapper && scrollSnapshots[key] !== undefined) {
             scrollWrapper.scrollLeft = scrollSnapshots[key];
         }
     }
 
-    // 6. Restore vertical viewport scroll
     window.scrollTo(window.scrollX, savedGlobalY);
 }
