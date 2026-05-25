@@ -134,7 +134,7 @@ select:focus {
         width: 100% !important;
         overflow-x: auto !important;
         overflow-y: hidden !important;
-        /* Strict: Stops any accidental vertical shaking */
+        /* Strict: Blocks vertical shaking */
         -webkit-overflow-scrolling: touch;
         position: relative;
         padding-bottom: 4px;
@@ -142,19 +142,22 @@ select:focus {
 
     .calendar-grid {
         display: grid !important;
-        /* Force explicit absolute minimal sizes: 7 days * 115px = 805px absolute structural baseline width */
-        grid-template-columns: repeat(7, minmax(115px, 1fr)) !important;
-        min-width: 805px !important;
+        /* Lock column base width so cells can never shrink below 110px */
+        grid-template-columns: repeat(7, minmax(110px, 1fr)) !important;
+        /* 7 columns * 110px floor = 770px absolute minimum grid width */
+        min-width: 770px !important;
         width: 100% !important;
         background-color: #e5e7eb;
         gap: 1px;
     }
 
     .calendar-day {
-        /* Drop the strict aspect-ratio lock—let explicit content and min-height set the boundary */
-        aspect-ratio: auto !important;
-        min-height: 90px !important;
-        padding: 5px !important;
+        /* Force a strict 1:1 mathematical square based on the column width */
+        aspect-ratio: 1 / 1 !important;
+        min-height: auto !important;
+        /* Let aspect-ratio dictate the height */
+        padding: 6px !important;
+        box-sizing: border-box !important;
     }
 
     .calendar-scroll-container::-webkit-scrollbar {
@@ -177,9 +180,10 @@ select:focus {
         overflow-x: hidden !important;
     }
 
+    /* Keep cell typography compact so it fits beautifully inside the squares */
     .calendar-day span,
     .calendar-day div {
-        font-size: 0.9em;
+        font-size: 0.75em;
         line-height: 1.15;
     }
 }
