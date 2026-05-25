@@ -136,7 +136,10 @@ export function renderCalendar(containerId, schedule, config = { calendarType, o
     const container = document.getElementById(containerId);
     if (!container) return;
 
-    // --- STEP 1: Snapshot existing horizontal scroll positions ---
+    // --- STEP 1A: Snapshot main window vertical scroll position ---
+    const savedGlobalY = window.scrollY;
+
+    // --- STEP 1B: Snapshot existing horizontal month scroll positions ---
     const scrollSnapshots = {};
     container.querySelectorAll('.calendar-month').forEach(monthEl => {
         const titleEl = monthEl.querySelector('.bg-slate-800');
@@ -144,7 +147,6 @@ export function renderCalendar(containerId, schedule, config = { calendarType, o
 
         if (titleEl && scrollContainer) {
             const monthTitle = titleEl.textContent.trim();
-            // Store the exact horizontal scroll position mapped to this month's title
             scrollSnapshots[monthTitle] = scrollContainer.scrollLeft;
         }
     });
@@ -154,12 +156,10 @@ export function renderCalendar(containerId, schedule, config = { calendarType, o
     const months = {};
 
     schedule.forEach(day => {
-        let monthKey;
-        if (calendarType === 'hebrew') {
-            monthKey = formatHebrewMonthTitle(day.date);
-        } else {
-            monthKey = day.date.toLocaleString('he-IL', { month: 'long', year: 'numeric' });
-        }
+        let monthKey = (calendarType === 'hebrew')
+            ? formatHebrewMonthTitle(day.date)
+            : day.date.toLocaleString('he-IL', { month: 'long', year: 'numeric' });
+
         if (!months[monthKey]) months[monthKey] = [];
         months[monthKey].push(day);
     });
@@ -168,8 +168,6 @@ export function renderCalendar(containerId, schedule, config = { calendarType, o
         const monthData = months[key];
         const monthWrapper = document.createElement('div');
         monthWrapper.className = "calendar-month bg-white shadow-xl rounded-2xl border border-slate-200 mb-10 overflow-hidden";
-
-        // Month Title
         monthWrapper.innerHTML = `<div class="bg-slate-800 text-white p-4 text-center font-bold text-xl">${key}</div>`;
 
         const scrollWrapper = document.createElement('div');
@@ -244,9 +242,13 @@ export function renderCalendar(containerId, schedule, config = { calendarType, o
         monthWrapper.appendChild(scrollWrapper);
         container.appendChild(monthWrapper);
 
-        // --- STEP 3: Restore the horizontal scroll position for this specific month ---
+        // --- STEP 3: Restore horizontal scroll position for this specific month ---
         if (scrollSnapshots[key] !== undefined) {
             scrollWrapper.scrollLeft = scrollSnapshots[key];
         }
     }
+
+    // --- STEP 4: Restore main window vertical scroll position ---
+    // window.scrollTo ensures the viewport snaps back to exactly where the user was looking
+    window.scrollTo(window.scrollX, savedGlobalY);
 }
