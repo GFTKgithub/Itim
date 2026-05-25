@@ -1,54 +1,13 @@
-const CACHE_NAME = 'itim-v1';
-const STATIC_ASSETS = [
-    './',              // Caches the current directory root
-    'index.html',
-    'manifest.json',
-    'src/app.js',
-    'src/style.css',
-    'icons/itim-icon-192.png',
-    'icons/itim-icon-512.png'
-];
-
-// Install: Cache core layout shell
+// Satisfies PWA install criteria without intercepting or caching assets
 self.addEventListener('install', (event) => {
-    event.waitUntil(
-        caches.open(CACHE_NAME).then((cache) => cache.addAll(STATIC_ASSETS))
-    );
+    self.skipWaiting();
 });
 
-// Activate: Clear out old cache buckets
 self.addEventListener('activate', (event) => {
-    event.waitUntil(
-        caches.keys().then((keys) => Promise.all(
-            keys.map((key) => {
-                if (key !== CACHE_NAME) return caches.delete(key);
-            })
-        ))
-    );
+    event.waitUntil(self.clients.claim());
 });
 
-// Fetch Strategy
 self.addEventListener('fetch', (event) => {
-    event.respondWith(
-        caches.match(event.request).then((cachedResponse) => {
-            // Return cached asset if found
-            if (cachedResponse) {
-                return cachedResponse;
-            }
-
-            // Otherwise fetch from network, cache it for next time, and return it
-            return fetch(event.request).then((networkResponse) => {
-                // Check if it's a valid local asset we want to cache (like our own JS files)
-                if (networkResponse.status === 200 && event.request.url.startsWith(self.location.origin)) {
-                    return caches.open(CACHE_NAME).then((cache) => {
-                        cache.put(event.request, networkResponse.clone());
-                        return networkResponse;
-                    });
-                }
-                return networkResponse;
-            }).catch(() => {
-                // Offline fallback logic here if needed
-            });
-        })
-    );
+    // Pass-through: Force browser to use normal network requests
+    event.respondWith(fetch(event.request));
 });

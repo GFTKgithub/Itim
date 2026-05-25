@@ -2,7 +2,7 @@
     "name": "Itim - Torah Study Tracker",
     "short_name": "Itim",
     "description": "A web-based Torah study tracker designed to build custom calendars, monitor progress, and actively drive a consistent learning routine (לקבוע עתים לתורה).",
-    "start_url": "index.html",
+    "start_url": "./",
     "display": "standalone",
     "background_color": "#1e293b",
     "theme_color": "#1e293b",
