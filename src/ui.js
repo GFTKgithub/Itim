@@ -136,25 +136,22 @@ export function renderCalendar(containerId, schedule, config = { calendarType, o
     const container = document.getElementById(containerId);
     if (!container) return;
 
-    // --- STEP 1A: Snapshot main window vertical scroll position ---
+    // 1. Snapshot scroll positions
     const savedGlobalY = window.scrollY;
-
-    // --- STEP 1B: Snapshot existing horizontal month scroll positions ---
     const scrollSnapshots = {};
     container.querySelectorAll('.calendar-month').forEach(monthEl => {
         const titleEl = monthEl.querySelector('.bg-slate-800');
         const scrollContainer = monthEl.querySelector('.calendar-scroll-container');
-
         if (titleEl && scrollContainer) {
-            const monthTitle = titleEl.textContent.trim();
-            scrollSnapshots[monthTitle] = scrollContainer.scrollLeft;
+            scrollSnapshots[titleEl.textContent.trim()] = scrollContainer.scrollLeft;
         }
     });
 
-    // --- STEP 2: Clear and rebuild the DOM ---
+    // 2. Clear container once
     container.innerHTML = "";
-    const months = {};
 
+    // 3. Group days by month in memory
+    const months = {};
     schedule.forEach(day => {
         let monthKey = (calendarType === 'hebrew')
             ? formatHebrewMonthTitle(day.date)
@@ -164,30 +161,32 @@ export function renderCalendar(containerId, schedule, config = { calendarType, o
         months[monthKey].push(day);
     });
 
+    // 4. Process each month
     for (const key in months) {
         const monthData = months[key];
+
         const monthWrapper = document.createElement('div');
         monthWrapper.className = "calendar-month bg-white shadow-xl rounded-2xl border border-slate-200 mb-10 overflow-hidden";
-        monthWrapper.innerHTML = `<div class="bg-slate-800 text-white p-4 text-center font-bold text-xl">${key}</div>`;
 
-        const scrollWrapper = document.createElement('div');
-        scrollWrapper.className = "calendar-scroll-container";
+        // Create a memory buffer array to accumulate layout strings
+        const htmlBuffer = [];
 
-        const grid = document.createElement('div');
-        grid.className = "calendar-grid";
+        // Build headers into buffer
+        htmlBuffer.push(`<div class="bg-slate-800 text-white p-4 text-center font-bold text-xl">${key}</div>`);
+        htmlBuffer.push(`<div class="calendar-scroll-container">`);
+        htmlBuffer.push(`<div class="calendar-grid">`);
 
-        // Headers
         ['א', 'ב', 'ג', 'ד', 'ה', 'ו', 'ש'].forEach(d => {
-            grid.innerHTML += `<div class="bg-slate-50 p-2 text-center text-xs font-bold text-slate-500 border-b border-gray-200">${d}</div>`;
+            htmlBuffer.push(`<div class="bg-slate-50 p-2 text-center text-xs font-bold text-slate-500 border-b border-gray-200">${d}</div>`);
         });
 
-        // Padding for start of month
+        // Build padding into buffer
         const firstDayOfWeek = monthData[0].date.getDay();
         for (let i = 0; i < firstDayOfWeek; i++) {
-            grid.innerHTML += `<div class="calendar-day bg-slate-50/50"></div>`;
+            htmlBuffer.push(`<div class="calendar-day bg-slate-50/50"></div>`);
         }
 
-        // Days
+        // Build days into buffer
         monthData.forEach(day => {
             const state = overrides[day.dateString] || 0;
             let statusClass = "";
@@ -212,10 +211,9 @@ export function renderCalendar(containerId, schedule, config = { calendarType, o
                 secondaryDateDisplay = formatGematria(hebrewDayNum, numberToHebrew(hebrewDayNum));
             }
 
-            grid.innerHTML += `
+            htmlBuffer.push(`
             <div data-date="${day.dateString}" 
                 class="calendar-day cursor-pointer relative ${statusClass} ${day.isShabbat ? 'shabbat-bg' : ''} ${day.isHoliday ? 'holiday-bg' : ''} border-b border-l border-gray-100">
-                
                 <div class="flex justify-between items-start mb-1">
                     <div class="flex flex-col">
                         <span class="text-xs font-bold ${day.date.getDay() === 6 ? 'text-blue-700' : 'text-slate-800'}">${mainDateDisplay}</span>
@@ -223,32 +221,31 @@ export function renderCalendar(containerId, schedule, config = { calendarType, o
                     </div>
                     <span class="text-[10px] text-blue-800 font-bold truncate max-w-[40px]">${day.masechet}</span>
                 </div>
-                
                 ${indicator}
-                
                 <div class="text-[10px] font-bold text-center mt-1 leading-tight ${day.isEmpty ? 'text-slate-400 italic' : 'text-slate-800'}">
                     ${day.isHoliday ? `<span class="holiday-label-small">${day.holidayTitle}</span>` : ''}
                     ${day.content}
                 </div>
-                
                 <div class="mt-auto text-[8px] text-slate-400 text-left">
                     ${!day.isEmpty ? `${day.pages} דף` : ''}
                 </div>
-            </div>`;
+            </div>`);
         });
 
-        // Assemble
-        scrollWrapper.appendChild(grid);
-        monthWrapper.appendChild(scrollWrapper);
+        // Close grid wrappers
+        htmlBuffer.push(`</div></div>`);
+
+        // Inject EVERYTHING for this month into the element at once
+        monthWrapper.innerHTML = htmlBuffer.join('');
         container.appendChild(monthWrapper);
 
-        // --- STEP 3: Restore horizontal scroll position for this specific month ---
-        if (scrollSnapshots[key] !== undefined) {
+        // 5. Restore horizontal scroll for this month
+        const scrollWrapper = monthWrapper.querySelector('.calendar-scroll-container');
+        if (scrollWrapper && scrollSnapshots[key] !== undefined) {
             scrollWrapper.scrollLeft = scrollSnapshots[key];
         }
     }
 
-    // --- STEP 4: Restore main window vertical scroll position ---
-    // window.scrollTo ensures the viewport snaps back to exactly where the user was looking
+    // 6. Restore vertical viewport scroll
     window.scrollTo(window.scrollX, savedGlobalY);
 }
