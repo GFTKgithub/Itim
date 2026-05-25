@@ -274,18 +274,19 @@ export async function generateSchedule({ trackSequence, userSettings, manualOver
 }
 
 // Cycles the date's manual schedule override: Default -> Force Break -> Force Study -> Reset.
-export function cycleDateOverride(dateString) {
-    const current = AppState.manualOverrides[dateString] || 0;
+export function cycleDateOverride(currentOverrides, dateString) {
+    // 1. Shallow copy the overrides to prevent direct state mutation bugs
+    const updatedOverrides = { ...currentOverrides };
 
-    // Cycle logic: 0 -> 1 -> 2 -> 0
+    const current = updatedOverrides[dateString] || 0;
     const next = (current + 1) % 3;
 
     if (next === 0) {
-        delete AppState.manualOverrides[dateString];
+        delete updatedOverrides[dateString];
     } else {
-        AppState.manualOverrides[dateString] = next;
+        updatedOverrides[dateString] = next;
     }
 
-    saveToLocalStorage();
-    handleScheduleGeneration();
+    // 2. Return the new calculated data state
+    return updatedOverrides;
 }
