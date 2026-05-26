@@ -38,7 +38,7 @@ function setupEventListeners() {
 
     const exportBtn = document.getElementById('exportToExcelBtn');
     const printBtn = document.getElementById('printBtn');
-    const sequenceList = document.getElementById('trackSequenceList');
+    const trackSequenceList = document.getElementById('trackSequenceList');
     const calendarContainer = document.getElementById('calendarContainer');
 
     const backupExportBtn = document.getElementById('backupExportBtn');
@@ -91,7 +91,7 @@ function setupEventListeners() {
     resetManualOverridesBtn.addEventListener('click', handleResetManualOverrides);
 
     // --- Event Delegation ---
-    sequenceList.addEventListener('click', (event) => {
+    trackSequenceList.addEventListener('click', (event) => {
         const removeBtn = event.target.closest('.remove-btn');
         if (removeBtn) {
             AppState.trackSequence = removeFromSequence(AppState.trackSequence, Number(removeBtn.dataset.index));
@@ -159,6 +159,60 @@ function setupEventListeners() {
 
     startDateInput.addEventListener('change', handleDateChange);
     targetDateInput.addEventListener('change', handleDateChange);
+
+    // --- Drag and Drop Event Orchestration ---
+    let draggedItemIndex = null;
+
+    trackSequenceList.addEventListener('dragstart', (e) => {
+        const item = e.target.closest('.drag-item');
+        if (!item) return;
+        draggedItemIndex = Number(item.dataset.index);
+        item.classList.add('dragging');
+        e.dataTransfer.effectAllowed = 'move';
+    });
+
+    trackSequenceList.addEventListener('dragover', (e) => {
+        e.preventDefault(); // Required to allow dropping
+        const item = e.target.closest('.drag-item');
+        if (!item || item.classList.contains('dragging')) return;
+
+        item.classList.add('drag-over');
+    });
+
+    trackSequenceList.addEventListener('dragleave', (e) => {
+        const item = e.target.closest('.drag-item');
+        if (item) item.classList.remove('drag-over');
+    });
+
+    trackSequenceList.addEventListener('drop', (e) => {
+        e.preventDefault();
+        const item = e.target.closest('.drag-item');
+        if (!item) return;
+
+        item.classList.remove('drag-over');
+        const targetIndex = Number(item.dataset.index);
+
+        if (draggedItemIndex !== null && draggedItemIndex !== targetIndex) {
+            // Re-order our global sequence variable
+            const reorderedSeq = [...AppState.trackSequence];
+            const [removed] = reorderedSeq.splice(draggedItemIndex, 1);
+            reorderedSeq.splice(targetIndex, 0, removed);
+
+            // Sync mutated array state back to DOM and store
+            AppState.trackSequence = reorderedSeq;
+            updateTrackSequenceUI(AppState.trackSequence);
+            saveToLocalStorage();
+        }
+    });
+
+    trackSequenceList.addEventListener('dragend', (e) => {
+        const item = e.target.closest('.drag-item');
+        if (item) item.classList.remove('dragging');
+
+        // Clean up fallback remnants
+        document.querySelectorAll('.drag-item').forEach(el => el.classList.remove('drag-over'));
+        draggedItemIndex = null;
+    });
 }
 
 // Initiate calendar configuration control panel
@@ -205,7 +259,6 @@ document.addEventListener('DOMContentLoaded', init);
 */
 
 // Orchestrates schedule calculation by piping AppState inputs into the engine and rendering the resulting timeline grid
-// app.js
 async function handleScheduleGeneration() {
     // 1. Explicit UI State Check: Is the track sequence empty?
     if (!AppState.trackSequence || AppState.trackSequence.length === 0) {

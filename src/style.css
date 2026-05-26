@@ -1,4 +1,19 @@
 /* --- SCREEN STYLES (Website) --- */
+
+/* --- Drag and Drop Feature Aesthetics --- */
+.drag-item.dragging {
+    opacity: 0.4;
+    transform: scale(0.98);
+    border-color: #3b82f6 !important;
+    background-color: #eff6ff !important;
+}
+
+.drag-item.drag-over {
+    border-top: 3px solid #2563eb !important;
+    margin-top: 0.5rem;
+    padding-top: 0.5rem;
+}
+
 .calendar-grid {
     display: grid;
     grid-template-columns: repeat(7, 1fr);

@@ -19,10 +19,35 @@ export function hydrateHtmlFromAppState(AppState) {
 // Updates UI of Track sequence 
 export function updateTrackSequenceUI(sequence) {
     const list = document.getElementById('trackSequenceList');
+
+    if (sequence.length === 0) {
+        list.innerHTML = `
+            <div class="text-center p-4 text-slate-400 text-sm italic">
+                אין מסכתות ברשימה. בחר מסכת מלמעלה והוסף אותה.
+            </div>`;
+        return;
+    }
+
     list.innerHTML = sequence.map((m, i) => `
-        <li class="flex justify-between items-center bg-white border border-blue-100 px-4 py-2 rounded-lg shadow-sm">
-            <span class="font-bold text-blue-900"><span class="text-slate-400 ml-2">${i + 1}.</span>מסכת ${m}</span>
-            <button data-index="${i}" class="remove-btn text-red-400 hover:text-red-600 transition">✕</button>
+        <li draggable="true" data-index="${i}" 
+            class="drag-item flex justify-between items-center bg-white border border-slate-200 hover:border-blue-300 px-4 py-2.5 rounded-xl shadow-xs cursor-grab active:cursor-grabbing transition-all duration-150 select-none">
+            
+            <div class="flex items-center gap-3">
+                <div class="text-slate-400 hover:text-slate-600 flex flex-col gap-0.5 justify-center leading-none select-none">
+                    <span class="block">•••</span>
+                    <span class="block -mt-1.5">•••</span>
+                </div>
+                <span class="font-bold text-slate-700">
+                    <span class="text-slate-400 ml-1 font-medium text-xs">${i + 1}.</span> 
+                    מסכת ${m}
+                </span>
+            </div>
+            
+            <button data-index="${i}" class="remove-btn text-slate-400 hover:text-red-500 hover:bg-red-50 p-1.5 rounded-lg transition-colors" title="הסר מהרשימה">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+            </button>
         </li>
     `).join('');
 }
@@ -138,7 +163,6 @@ export function renderCalendar(containerId, schedule, config = { calendarType, o
     const container = document.getElementById(containerId);
     if (!container) return;
 
-    // --- 1. OPTIMIZATION CHECK: Can we update in-place? ---
     const existingDays = container.querySelectorAll('.calendar-day[data-date]');
 
     if (existingDays.length > 0 && existingDays.length === schedule.length) {
@@ -179,7 +203,7 @@ export function renderCalendar(containerId, schedule, config = { calendarType, o
                 masechetEl.textContent = day.masechet;
             }
 
-            // Update content text AND dynamic styling classes (Fixes the gray/italic text issue)
+            // Update content text AND dynamic styling classes
             const contentEl = dayEl.querySelector('.text-center.mt-1');
             if (contentEl) {
                 // Synchronize the classes exactly as defined in your template layout
@@ -201,11 +225,10 @@ export function renderCalendar(containerId, schedule, config = { calendarType, o
             }
         });
 
-        // Fast path complete. Skip structural rebuilding entirely.
         return;
     }
 
-    // --- 2. FALLBACK PATH: Structural Generation (Your exact styling/logic preserved) ---
+    // --- 2. FALLBACK PATH: Structural Generation ---
     const savedGlobalY = window.scrollY;
     const scrollSnapshots = {};
     container.querySelectorAll('.calendar-month').forEach(monthEl => {
