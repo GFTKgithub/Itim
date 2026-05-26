@@ -12,7 +12,10 @@
     padding: 4px;
     display: flex;
     flex-direction: column;
-    transition: all 0.2s;
+
+    transition: background-color 0.15s ease-in-out, border-color 0.15s ease-in-out;
+
+    will-change: background-color;
 }
 
 .calendar-day:hover {
