@@ -23,7 +23,7 @@ export function shouldDayBeRest(dateObj, includeShabbat, includeHolidays, calend
 // Generate a full schedule data array of day objects based on user input
 export async function generateSchedule({ trackSequence, userSettings, manualOverrides, calendarData }) {
     if (trackSequence.length === 0) {
-        throw new Error("נא להוסיף לפחות מסכת אחת למסלול");
+        return [];
     }
 
     const { includeShabbat, includeHolidays, breakDays, method, calendarType, startDate, targetDate, startDaf, startAmud, pace } = userSettings;

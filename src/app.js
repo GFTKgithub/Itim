@@ -72,6 +72,7 @@ function setupEventListeners() {
     {
         AppState.trackSequence = await clearSequence(AppState.trackSequence);
         saveToLocalStorage();
+        handleScheduleGeneration(); // Update to remove ghost calendar UI
     });
     
     exportBtn.addEventListener('click', () => exportScheduleToExcel(AppState.schedule));
@@ -204,9 +205,30 @@ document.addEventListener('DOMContentLoaded', init);
 */
 
 // Orchestrates schedule calculation by piping AppState inputs into the engine and rendering the resulting timeline grid
+// app.js
 async function handleScheduleGeneration() {
+    // 1. Explicit UI State Check: Is the track sequence empty?
+    if (!AppState.trackSequence || AppState.trackSequence.length === 0) {
+        // Clear internal state data
+        AppState.schedule = [];
+
+        // Wipe the UI container completely or replace it with a placeholder
+        const container = document.getElementById('calendarContainer');
+        if (container) {
+            container.innerHTML = `
+                <div class="text-center p-8 text-slate-400 italic">
+                    טרם נבחר חומר לימוד. נא לבחור לפחות מסכת אחת כדי להציג לוח לימוד.
+                </div>
+            `;
+        }
+
+        // Hide the output wrapper if you don't want an empty wrapper showing
+        document.getElementById('output').classList.add('hidden');
+        return; // Exit early safely
+    }
+
     try {
-        // 1. Core Logic Pipeline Execution (Independent calculation)
+        // 2. Core Logic Pipeline Execution (Independent calculation)
         const updatedSchedule = await generateSchedule({
             trackSequence: AppState.trackSequence,
             userSettings: AppState.userSettings,
@@ -214,10 +236,10 @@ async function handleScheduleGeneration() {
             calendarData: AppState.calendarData
         });
 
-        // 2. Synchronize calculated timeline back into internal state 
+        // 3. Synchronize calculated timeline back into internal state 
         AppState.schedule = updatedSchedule;
 
-        // 3. Command interface rendering safely down inside the UI engine layer
+        // 4. Command interface rendering safely down inside the UI engine layer
         renderCalendar('calendarContainer', AppState.schedule, {
             calendarType: AppState.userSettings.calendarType,
             overrides: AppState.manualOverrides
@@ -227,7 +249,7 @@ async function handleScheduleGeneration() {
         document.getElementById('output').classList.remove('hidden');
 
     } catch (error) {
-        // Pure error handler catch boundary interface logic
+        // Pure error handler catch boundary interface logic (real errors like network, dates, etc.)
         alert(error.message);
     }
 }
