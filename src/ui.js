@@ -1,4 +1,6 @@
-import { numberToHebrew, formatGematria, formatHebrewMonthTitle } from './utils.js';
+// utils
+import { numberToHebrew, formatGematria } from './utils/gematria.js';
+import { formatHebrewMonthTitle } from './utils/dates.js';
 
 const hebrewDayFormatter = new Intl.DateTimeFormat('he-IL-u-ca-hebrew', { day: 'numeric' });
 

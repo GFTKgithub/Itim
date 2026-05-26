@@ -1,4 +1,5 @@
-import { formatDateToIL } from "./utils.js";
+// utils
+import { formatDateToIL } from "./utils/dates.js";
 
 /* 
     Hebcal API

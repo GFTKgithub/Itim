@@ -1,4 +1,6 @@
-import { numberToHebrew, formatHebrewMonthTitle } from "./utils.js";
+// utils
+import { formatHebrewMonthTitle } from "./utils/dates.js";
+import { numberToHebrew } from "./utils/gematria.js";
 import { showDialog } from "./ui.js";
 
 // Generates an RTL grid-structured workbook and downloads the schedule as an Excel file.

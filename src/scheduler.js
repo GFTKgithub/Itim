@@ -1,7 +1,10 @@
-// scheduler.js
-import { hebrewToNumber, indexToDaf, formatDateToIL } from './utils.js';
 import { getTotalAmudim } from './data.js';
 import { fetchCalendarEvents } from './api.js';
+
+// utils
+import { hebrewToNumber } from './utils/gematria.js';
+import { indexToDaf } from './utils/talmud.js';
+import { formatDateToIL } from './utils/dates.js';
 
 // Calculate if a given day should be marked as a rest day based on settings
 export function shouldDayBeRest(dateObj, includeShabbat, includeHolidays, calendarData) {

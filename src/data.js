@@ -1,4 +1,5 @@
-import { hebrewToNumber } from "./utils.js";
+//utils
+import { hebrewToNumber } from "./utils/gematria.js";
 
 // Data for all masechtot
 export const masechtot = [
