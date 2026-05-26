@@ -1,6 +1,3 @@
-//utils
-import { hebrewToNumber } from "./utils/gematria.js";
-
 // Data for all masechtot
 export const masechtot = [
     // Zeraim
@@ -52,13 +49,3 @@ export const masechtot = [
     // Tahorot
     { name: "נדה", end: { daf: "עג", amud: "א" } }
 ];
-
-// Gets the number of total amudim from a masechet
-export function getTotalAmudim(masechetName) {
-    const masechet = masechtot.find(m => m.name === masechetName);
-    if (!masechet) return 0;
-    const dafNum = hebrewToNumber(masechet.end.daf);
-    let total = (dafNum * 2) - 2;
-    if (masechet.end.amud === "א") total -= 1;
-    return total;
-}

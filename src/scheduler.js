@@ -1,4 +1,4 @@
-import { getTotalAmudim } from './data.js';
+import { getTotalAmudim } from './utils/talmud.js';
 import { fetchCalendarEvents } from './api.js';
 
 // utils
