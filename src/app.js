@@ -61,7 +61,23 @@ function setupEventListeners() {
     const startAmudInput = document.getElementById('startAmudInput');
 
     // --- Action Listeners ---
-    generateBtn.addEventListener('click', handleScheduleGeneration);
+    generateBtn.addEventListener('click', async () => {
+        await handleScheduleGeneration();
+
+        const listContainer = document.getElementById('trackSequenceList');
+
+        // Only scroll if trackList is empty
+        if (listContainer && listContainer.children.length > 0) {
+            const calendarContainer = document.getElementById('calendarContainer');
+
+            if (calendarContainer) {
+                calendarContainer.scrollIntoView({
+                    behavior: 'smooth',
+                    block: 'start'
+                });
+            }
+        }
+    });
 
     addToSequenceBtn.addEventListener('click', () => {
         AppState.trackSequence = addToSequence(AppState.trackSequence);
