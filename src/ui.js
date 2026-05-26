@@ -31,11 +31,11 @@ export function updateTrackSequenceUI(sequence) {
     }
 
     list.innerHTML = sequence.map((m, i) => `
-        <li draggable="true" data-index="${i}" 
-            class="drag-item flex justify-between items-center bg-white border border-slate-200 hover:border-blue-300 px-4 py-2.5 rounded-xl shadow-xs cursor-grab active:cursor-grabbing transition-all duration-150 select-none">
+        <li data-index="${i}" 
+            class="drag-item flex justify-between items-center bg-white border border-slate-200 hover:border-blue-300 px-4 py-2.5 rounded-xl shadow-xs transition-all duration-150 select-none">
             
             <div class="flex items-center gap-3">
-                <div class="text-slate-400 hover:text-slate-600 flex flex-col gap-0.5 justify-center leading-none select-none">
+                <div draggable="true" class="drag-handle text-slate-400 hover:text-slate-600 flex flex-col gap-0.5 justify-center leading-none select-none cursor-grab active:cursor-grabbing">
                     <span class="block">•••</span>
                     <span class="block -mt-1.5">•••</span>
                 </div>

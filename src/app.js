@@ -180,8 +180,17 @@ function setupEventListeners() {
     let draggedItemIndex = null;
 
     trackSequenceList.addEventListener('dragstart', (e) => {
+        // Check if the target is the handle or inside the handle
+        const handle = e.target.closest('.drag-handle');
+
+        if (!handle) {
+            e.preventDefault(); // Prevent dragging if they click the text/background
+            return;
+        }
+
         const item = e.target.closest('.drag-item');
         if (!item) return;
+
         draggedItemIndex = Number(item.dataset.index);
         item.classList.add('dragging');
         e.dataTransfer.effectAllowed = 'move';
