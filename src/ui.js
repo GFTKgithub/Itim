@@ -302,7 +302,7 @@ export function renderCalendar(containerId, schedule, config = { calendarType, o
                         <span class="text-xs font-bold ${day.date.getDay() === 6 ? 'text-blue-700' : 'text-slate-800'}">${mainDateDisplay}</span>
                         <span class="text-[9px] text-slate-400 font-normal leading-none">${secondaryDateDisplay}</span>
                     </div>
-                    <span class="text-[10px] text-blue-800 font-bold truncate max-w-[40px]">${day.masechet}</span>
+                    <span class="text-[10px] text-blue-800 font-bold whitespace-nowrap">${day.masechet}</span>
                 </div>
                 ${indicator}
                 <div class="text-[10px] font-bold text-center mt-1 leading-tight ${day.isEmpty ? 'text-slate-400 italic' : 'text-slate-800'}">
