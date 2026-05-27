@@ -21,6 +21,20 @@
     will-change: transform;
 }
 
+/* Initializes list container tracking */
+.ordered-track-list {
+    counter-reset: track-sequence;
+}
+
+/* Increments and injects the static number layout automatically */
+.ordered-track-list .drag-row {
+    counter-increment: track-sequence;
+}
+
+.ordered-track-list .static-index::before {
+    content: counter(track-sequence) ".";
+}
+
 .calendar-grid {
     display: grid;
     grid-template-columns: repeat(7, 1fr);

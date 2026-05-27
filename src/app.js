@@ -181,86 +181,76 @@ function setupEventListeners() {
     startDateInput.addEventListener('change', handleDateChange);
     targetDateInput.addEventListener('change', handleDateChange);
 
-    // --- Advanced Body-Pinned Pointer Drag Engine ---
-    let dragElement = null;     // Original element hidden/styled in list
+    // --- Track Sequence List Drag & Drop ---
+    let dragElement = null;     // Original row wrapper hidden/styled in list
     let mirrorElement = null;   // Floating visual copy appended to body
-    let dragOffsetX = 0;        // Keeps pointer locked to exact grab location
+    let dragOffsetX = 0;
     let dragOffsetY = 0;
 
     trackSequenceList.addEventListener('pointerdown', (e) => {
         const handle = e.target.closest('.drag-handle');
         if (!handle) return;
 
-        const item = e.target.closest('.drag-item');
-        if (!item) return;
+        const row = e.target.closest('.drag-row');
+        if (!row) return;
 
-        // Prevent target misbehaviors on mobile text selections
         e.preventDefault();
 
-        dragElement = item;
+        dragElement = row;
         trackSequenceList.setPointerCapture(e.pointerId);
 
-        const rect = dragElement.getBoundingClientRect();
+        // Target the inner visual card for the mirror blueprint dimensions
+        const innerCard = dragElement.querySelector('.drag-item');
+        const rect = innerCard.getBoundingClientRect();
 
-        // Calculate exactly where inside the element the user clicked
         dragOffsetX = e.clientX - rect.left;
         dragOffsetY = e.clientY - rect.top;
 
-        // Create the high-performance visual mirror element
-        mirrorElement = dragElement.cloneNode(true);
+        mirrorElement = innerCard.cloneNode(true);
         mirrorElement.style.position = 'fixed';
         mirrorElement.style.top = `${rect.top}px`;
         mirrorElement.style.left = `${rect.left}px`;
         mirrorElement.style.width = `${rect.width}px`;
         mirrorElement.style.height = `${rect.height}px`;
-        mirrorElement.style.pointerEvents = 'none'; // Passthrough to allow under-element tracking
+        mirrorElement.style.pointerEvents = 'none';
 
-        // Premium "Pop out" presentation styles
         mirrorElement.classList.add('z-[9999]', 'shadow-2xl', 'border-blue-500', 'bg-white/95', 'scale-[1.03]', 'transition-transform', 'duration-100');
         document.body.appendChild(mirrorElement);
 
-        // Turn the original element into a smooth layout placeholder
-        dragElement.classList.add('opacity-40', 'bg-slate-100', 'border-dashed', 'border-slate-300');
-
-        // Enforce grabbing status across viewport
+        innerCard.classList.add('opacity-40', 'bg-slate-100', 'border-dashed', 'border-slate-300');
         document.body.style.cursor = 'grabbing';
     });
 
     trackSequenceList.addEventListener('pointermove', (e) => {
         if (!dragElement || !mirrorElement) return;
 
-        // Fluid mirror following logic anchored to structural cursor position
         mirrorElement.style.top = `${e.clientY - dragOffsetY}px`;
         mirrorElement.style.left = `${e.clientX - dragOffsetX}px`;
 
-        const items = [...trackSequenceList.querySelectorAll('.drag-item')];
+        const rows = [...trackSequenceList.querySelectorAll('.drag-row')];
         const mirrorRect = mirrorElement.getBoundingClientRect();
         const mirrorMidY = mirrorRect.top + mirrorRect.height / 2;
 
-        // Find the index of the element we are currently holding in the DOM
-        const currentDragIndex = items.indexOf(dragElement);
+        const currentDragIndex = rows.indexOf(dragElement);
 
-        for (let i = 0; i < items.length; i++) {
-            const item = items[i];
-            if (item === dragElement) continue;
+        for (let i = 0; i < rows.length; i++) {
+            const targetRow = rows[i];
+            if (targetRow === dragElement) continue;
 
-            const box = item.getBoundingClientRect();
+            const box = targetRow.getBoundingClientRect();
             const boxMidY = box.top + box.height / 2;
 
-            // Check if our cursor/mirror midpoint has crossed the middle threshold of a target card
             if (i < currentDragIndex) {
-                // DRAGGING UPWARD: If your mirror midpoint goes ABOVE the target's midpoint, 
-                // instantly snap the placeholder right before it.
+                // DRAGGING UPWARD
                 if (mirrorMidY < boxMidY) {
-                    trackSequenceList.insertBefore(dragElement, item);
+                    trackSequenceList.insertBefore(dragElement, targetRow);
                     break;
                 }
             } else {
-                // DRAGGING DOWNWARD: If your mirror midpoint goes BELOW the target's midpoint, 
-                // instantly snap the placeholder right after it.
+                // DRAGGING DOWNWARD
                 if (mirrorMidY > boxMidY) {
-                    trackSequenceList.insertBefore(dragElement, item.nextElementSibling);
-                    break; // break early since we found the right position change
+                    trackSequenceList.insertBefore(dragElement, targetRow.nextElementSibling);
+                    break;
                 }
             }
         }
@@ -273,22 +263,24 @@ function setupEventListeners() {
             trackSequenceList.releasePointerCapture(e.pointerId);
         } catch (err) { }
 
-        // Remove floating mirror component smoothly
         if (mirrorElement) {
             mirrorElement.remove();
             mirrorElement = null;
         }
 
-        // Restore list element layout presentations
-        dragElement.classList.remove('opacity-40', 'bg-slate-100', 'border-dashed', 'border-slate-300');
+        const innerCard = dragElement.querySelector('.drag-item');
+        if (innerCard) {
+            innerCard.classList.remove('opacity-40', 'bg-slate-100', 'border-dashed', 'border-slate-300');
+        }
         document.body.style.cursor = '';
 
-        // Extract fresh sequence array matching the updated DOM tree structure
-        const finalDomItems = [...trackSequenceList.querySelectorAll('.drag-item')];
-        const updatedSequence = finalDomItems.map(item => AppState.trackSequence[Number(item.dataset.index)]);
+        // Read out array indexes matching the updated structural layout order
+        const finalDomRows = [...trackSequenceList.querySelectorAll('.drag-row')];
+        const updatedSequence = finalDomRows.map(row => AppState.trackSequence[Number(row.dataset.index)]);
 
-        // Commit modifications cleanly to internal memory and local states
         AppState.trackSequence = updatedSequence;
+
+        // Fully synchronizes clean tracking configurations
         updateTrackSequenceUI(AppState.trackSequence);
         saveToLocalStorage();
 
