@@ -36,18 +36,17 @@ export function updateTrackSequenceUI(sequence) {
         return;
     }
 
-    // "ordered-track-list" initializes the stationary CSS counter
-    list.className = "ordered-track-list space-y-2 max-h-56 overflow-y-auto bg-slate-50 py-3 px-2 rounded-xl border-2 border-dashed border-slate-300 min-h-[80px]";
+    list.className = "ordered-track-list space-y-2 max-h-56 overflow-y-auto bg-slate-50 py-3 px-2 rounded-xl border-2 border-dashed border-slate-300 min-h-[80px] touch-pan-y";
 
     list.innerHTML = sequence.map((m, i) => `
-        <div data-index="${i}" class="drag-row flex items-center gap-2 select-none touch-none w-full py-0.5">
+        <div data-index="${i}" class="drag-row flex items-center gap-2 select-none w-full py-0.5 touch-pan-y">
             
             <span class="static-index text-slate-400 font-bold text-xs w-5 text-center select-none pointer-events-none tracking-tight"></span>
 
-            <li class="drag-item flex-1 flex justify-between items-center bg-white border border-slate-200 hover:border-blue-300 px-4 py-2.5 rounded-xl shadow-xs transition-all duration-150 relative">
+            <li class="drag-item flex-1 flex justify-between items-center bg-white border border-slate-200 hover:border-blue-300 px-4 py-2.5 rounded-xl shadow-xs transition-all duration-150 relative touch-pan-y">
                 
                 <div class="flex items-center gap-3 pointer-events-none">
-                    <div class="drag-handle text-slate-400 hover:text-slate-600 flex flex-col gap-0.5 justify-center leading-none select-none cursor-grab p-2 pointer-events-auto">
+                    <div class="drag-handle text-slate-400 hover:text-slate-600 flex flex-col gap-0.5 justify-center leading-none select-none cursor-grab p-2 pointer-events-auto touch-none">
                         <span class="block">•••</span>
                         <span class="block -mt-1.5">•••</span>
                     </div>
