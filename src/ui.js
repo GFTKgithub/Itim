@@ -8,7 +8,6 @@ const hebrewDayFormatter = new Intl.DateTimeFormat('he-IL-u-ca-hebrew', { day: '
 export function hydrateHtmlFromAppState(AppState) {
     document.getElementById('calcMethod').value = AppState.userSettings.method;
     document.getElementById('calendarType').value = AppState.userSettings.calendarType;
-    document.getElementById('includeShabbatInput').checked = AppState.userSettings.includeShabbat;
     document.getElementById('includeHolidaysInput').checked = AppState.userSettings.includeHolidays;
     document.getElementById('breakDaysInput').value = AppState.userSettings.breakDays;
     document.getElementById('startDateInput').value = AppState.userSettings.startDate;
@@ -16,6 +15,12 @@ export function hydrateHtmlFromAppState(AppState) {
     document.getElementById('paceInput').value = AppState.userSettings.pace;
     document.getElementById('startDafInput').value = AppState.userSettings.startDaf;
     document.getElementById('startAmudInput').value = AppState.userSettings.startAmud;
+
+    // Synchronize Weekday Selection checkboxes
+    const activeDays = AppState.userSettings.studyDays || [];
+    document.querySelectorAll('input[name="studyDays"]').forEach(checkbox => {
+        checkbox.checked = activeDays.includes(parseInt(checkbox.value, 10));
+    });
 }
 
 // Updates UI of Track sequence 
@@ -86,14 +91,11 @@ export function updateHebrewLabel(input, label) {
         // Dynamically pull the exact Hebrew month name string directly from the browser's engine
         const monthName = parts.find(p => p.type === 'month').value;
 
-        // Standardize 4-digit Hebrew year integer format (e.g., 5786)
         if (yearNum < 1000) yearNum += 5000;
 
-        // Generate the raw sequences using your utilities
         const rawDayHebrew = numberToHebrew(dayNum);
         const rawYearHebrew = numberToHebrew(yearNum);
 
-        // Apply grammatical punctuation rules via your formatGematria function
         const dayHebrew = formatGematria(dayNum, rawDayHebrew);
         const yearHebrew = formatGematria(yearNum, rawYearHebrew);
 
@@ -111,18 +113,15 @@ export function renderDateLabels(startDate, targetDate) {
     const startDateLabel = document.getElementById('startDateHebrewLabel');
     const targetDateLabel = document.getElementById('targetDateHebrewLabel');
 
-    // Helper to format the date exactly like your old updateHebrewLabel function
     const getHebrewLabelText = (dateInput) => {
         if (!dateInput) return "";
 
-        // Handle both raw string inputs (from HTML elements) and Date objects safely
         const dateObj = dateInput instanceof Date ? dateInput : new Date(dateInput);
 
         // Check for an invalid date
         if (isNaN(dateObj.getTime())) return "";
 
         try {
-            // Extract components using Intl.DateTimeFormat
             const parts = new Intl.DateTimeFormat('he-IL-u-ca-hebrew', {
                 day: 'numeric',
                 month: 'long',
@@ -133,14 +132,11 @@ export function renderDateLabels(startDate, targetDate) {
             let yearNum = parseInt(parts.find(p => p.type === 'year').value, 10);
             const monthName = parts.find(p => p.type === 'month').value;
 
-            // Standardize 4-digit Hebrew year
             if (yearNum < 1000) yearNum += 5000;
 
-            // Convert to Hebrew letters and apply gematria formatting rules
             const dayHebrew = formatGematria(dayNum, numberToHebrew(dayNum));
             const yearHebrew = formatGematria(yearNum, numberToHebrew(yearNum));
 
-            // Return the identical output string format
             return `${dayHebrew} ב${monthName} ${yearHebrew}`;
         } catch (e) {
             console.error("Error generating custom Hebrew date format string", e);
@@ -148,19 +144,17 @@ export function renderDateLabels(startDate, targetDate) {
         }
     };
 
-    // Update the Start Date UI Label
     if (startDateLabel) {
         startDateLabel.textContent = getHebrewLabelText(startDate);
     }
 
-    // Update the Target Date UI Label
     if (targetDateLabel) {
         targetDateLabel.textContent = targetDate ? getHebrewLabelText(targetDate) : '';
     }
 }
 
 // Renders the calendar UI
-export function renderCalendar(containerId, schedule, config = { calendarType, overrides }) {
+export function renderCalendar(containerId, schedule, config = {}) {
     const { calendarType = 'hebrew', overrides = {} } = config;
     const container = document.getElementById(containerId);
     if (!container) return;
@@ -168,12 +162,10 @@ export function renderCalendar(containerId, schedule, config = { calendarType, o
     const existingDays = container.querySelectorAll('.calendar-day[data-date]');
 
     if (existingDays.length > 0 && existingDays.length === schedule.length) {
-        // SUCCESS: Structure matches perfectly. Update content and state classes in-place.
         schedule.forEach((day, index) => {
             const dayEl = existingDays[index];
             if (!dayEl) return;
 
-            // Update state classes and indicators
             const state = overrides[day.dateString] || 0;
             dayEl.classList.remove('force-break', 'force-study');
 
@@ -199,16 +191,13 @@ export function renderCalendar(containerId, schedule, config = { calendarType, o
                 indicatorEl.remove();
             }
 
-            // Update Masechet label
             const masechetEl = dayEl.querySelector('.text-blue-800');
             if (masechetEl && masechetEl.textContent !== day.masechet) {
                 masechetEl.textContent = day.masechet;
             }
 
-            // Update content text AND dynamic styling classes
             const contentEl = dayEl.querySelector('.text-center.mt-1');
             if (contentEl) {
-                // Synchronize the classes exactly as defined in your template layout
                 contentEl.className = `text-[10px] font-bold text-center mt-1 leading-tight ${day.isEmpty ? 'text-slate-400 italic' : 'text-slate-800'}`;
 
                 const newContentHTML = day.isHoliday
@@ -219,7 +208,6 @@ export function renderCalendar(containerId, schedule, config = { calendarType, o
                 }
             }
 
-            // Update Page Count numbers
             const pagesEl = dayEl.querySelector('.mt-auto');
             const newPagesText = !day.isEmpty ? `${day.pages} דף` : '';
             if (pagesEl && pagesEl.textContent.trim() !== newPagesText) {
@@ -230,7 +218,6 @@ export function renderCalendar(containerId, schedule, config = { calendarType, o
         return;
     }
 
-    // --- 2. FALLBACK PATH: Structural Generation ---
     const savedGlobalY = window.scrollY;
     const scrollSnapshots = {};
     container.querySelectorAll('.calendar-month').forEach(monthEl => {
@@ -340,7 +327,6 @@ export function showDialog({
     cancelText = 'ביטול'
 }) {
     return new Promise((resolve) => {
-        // שליפת האלמנטים מה-DOM
         const overlay = document.getElementById('customDialogOverlay');
         const dialogBox = document.getElementById('customDialogBox');
         const titleEl = document.getElementById('dialogTitle');
@@ -349,23 +335,19 @@ export function showDialog({
         const confirmBtn = document.getElementById('dialogConfirmBtn');
         const cancelBtn = document.getElementById('dialogCancelBtn');
 
-        // עדכון התוכן בדיאלוג
         titleEl.textContent = title;
         messageEl.textContent = message;
         iconEl.innerHTML = icon;
         confirmBtn.textContent = confirmText;
         cancelBtn.textContent = cancelText;
 
-        // הצגה/הסתרה של כפתור הביטול בהתאם לצורך
         if (showCancel) {
             cancelBtn.classList.remove('hidden');
         } else {
             cancelBtn.classList.add('hidden');
         }
 
-        // פונקציית סגירה עם אנימציה
         function closeDialog(result) {
-            // אנימציית יציאה
             overlay.classList.remove('opacity-100');
             dialogBox.classList.remove('scale-100');
             overlay.classList.add('opacity-0');
@@ -373,23 +355,19 @@ export function showDialog({
 
             setTimeout(() => {
                 overlay.classList.add('hidden');
-                // ניקוי האזנת אירועים כדי למנוע כפילויות בעתיד
                 confirmBtn.replaceWith(confirmBtn.cloneNode(true));
                 cancelBtn.replaceWith(cancelBtn.cloneNode(true));
-                overlay.replaceWith(overlay.cloneNode(true));
-
-                // החזרת התשובה
                 resolve(result);
-            }, 200); // תואם לזמן ה-duration של Tailwind (200ms)
+            }, 200);
         }
 
-        // הצגת החלונית עם אנימציה (שימוש ב-setTimeout קצר מאפשר ל-Transition לעבוד)
+        document.getElementById('dialogConfirmBtn').addEventListener('click', () => closeDialog(true));
+        document.getElementById('dialogCancelBtn').addEventListener('click', () => closeDialog(false));
+
         overlay.classList.remove('hidden');
         setTimeout(() => {
             overlay.classList.remove('opacity-0', 'scale-95');
-            overlay.classList.add('opacity-100');
-            dialogBox.classList.remove('scale-95');
-            dialogBox.classList.add('scale-100');
+            overlay.classList.add('opacity-100', 'scale-100');
         }, 10);
 
         // האזנה ללחיצות על הכפתורים החדשים (שנבנו מחדש בתוך closeDialog)

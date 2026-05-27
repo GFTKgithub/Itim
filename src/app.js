@@ -12,7 +12,7 @@ const DEFAULT_USER_SETTINGS = {
     targetDate: '',
     startDaf: 'ב',
     startAmud: 'א',
-    includeShabbat: true,
+    studyDays: [0, 1, 2, 3, 4, 5], // Default: Sun-Fri (0-5), Shabbat (6) excluded
     includeHolidays: false,
     calendarType: 'hebrew'
 }
@@ -51,7 +51,6 @@ function setupEventListeners() {
     // User settings elements
     const calcMethod = document.getElementById('calcMethod');
     const calendarType = document.getElementById('calendarType');
-    const includeShabbatInput = document.getElementById('includeShabbatInput');
     const includeHolidaysInput = document.getElementById('includeHolidaysInput');
     const breakDaysInput = document.getElementById('breakDaysInput');
     const startDateInput = document.getElementById('startDateInput');
@@ -84,13 +83,12 @@ function setupEventListeners() {
         saveToLocalStorage();
     });
 
-    clearSequenceBtn.addEventListener('click', async () => 
-    {
+    clearSequenceBtn.addEventListener('click', async () => {
         AppState.trackSequence = await clearSequence(AppState.trackSequence);
         saveToLocalStorage();
         handleScheduleGeneration(); // Update to remove ghost calendar UI
     });
-    
+
     exportBtn.addEventListener('click', () => exportScheduleToExcel(AppState.schedule));
     printBtn.addEventListener('click', () => window.print());
 
@@ -135,14 +133,21 @@ function setupEventListeners() {
         saveToLocalStorage();
     });
 
-    includeShabbatInput.addEventListener('change', (e) => {
-        AppState.userSettings.includeShabbat = e.target.checked;
-        saveToLocalStorage();
+    // Dynamic Tracking for Study Days Checkboxes
+    document.querySelectorAll('input[name="studyDays"]').forEach(checkbox => {
+        checkbox.addEventListener('change', () => {
+            const checkedDays = Array.from(document.querySelectorAll('input[name="studyDays"]:checked'))
+                .map(cb => parseInt(cb.value, 10));
+
+            AppState.userSettings.studyDays = checkedDays;
+            saveToLocalStorage();
+        });
     });
 
     includeHolidaysInput.addEventListener('change', (e) => {
         AppState.userSettings.includeHolidays = e.target.checked;
         saveToLocalStorage();
+        handleScheduleGeneration();
     });
 
     breakDaysInput.addEventListener('input', (e) => {
@@ -265,7 +270,7 @@ function initUserConfigPanel() {
 
 // Main page initiation function
 function init() {
-    console.log("HTML page initialized succesfully");
+    console.log("HTML page initialized successfully");
 
     initPersistence(AppState);
 
@@ -285,9 +290,7 @@ document.addEventListener('DOMContentLoaded', init);
 
 // Orchestrates schedule calculation by piping AppState inputs into the engine and rendering the resulting timeline grid
 async function handleScheduleGeneration() {
-    // 1. Explicit UI State Check: Is the track sequence empty?
     if (!AppState.trackSequence || AppState.trackSequence.length === 0) {
-        // Clear internal state data
         AppState.schedule = [];
 
         // Wipe the UI container completely or replace it with a placeholder
@@ -300,13 +303,11 @@ async function handleScheduleGeneration() {
             `;
         }
 
-        // Hide the output wrapper if you don't want an empty wrapper showing
         document.getElementById('output').classList.add('hidden');
-        return; // Exit early safely
+        return;
     }
 
     try {
-        // 2. Core Logic Pipeline Execution (Independent calculation)
         const updatedSchedule = await generateSchedule({
             trackSequence: AppState.trackSequence,
             userSettings: AppState.userSettings,
@@ -314,20 +315,16 @@ async function handleScheduleGeneration() {
             calendarData: AppState.calendarData
         });
 
-        // 3. Synchronize calculated timeline back into internal state 
         AppState.schedule = updatedSchedule;
 
-        // 4. Command interface rendering safely down inside the UI engine layer
         renderCalendar('calendarContainer', AppState.schedule, {
             calendarType: AppState.userSettings.calendarType,
             overrides: AppState.manualOverrides
         });
 
-        // Reveal view component wrapper
         document.getElementById('output').classList.remove('hidden');
 
     } catch (error) {
-        // Pure error handler catch boundary interface logic (real errors like network, dates, etc.)
         alert(error.message);
     }
 }
@@ -351,12 +348,9 @@ async function handleResetSettings() {
         cancelText: 'לא, התחרטתי'
     });
 
-    if(!confirmed) return;
+    if (!confirmed) return;
 
-    // Reset user layout variables back to default blueprint values safely
     AppState.userSettings = { ...DEFAULT_USER_SETTINGS };
-
-    // Clear out the track structure arrays separately if desired (optional)
     AppState.trackSequence = [];
 
     // Synchronize your local files, view layout, and engine calculations

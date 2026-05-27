@@ -7,15 +7,19 @@ import { indexToDaf } from './utils/talmud.js';
 import { formatDateToIL } from './utils/dates.js';
 
 // Calculate if a given day should be marked as a rest day based on settings
-export function shouldDayBeRest(dateObj, includeShabbat, includeHolidays, calendarData) {
+export function shouldDayBeRest(dateObj, studyDays, includeHolidays, calendarData) {
     const dateString = formatDateToIL(dateObj);
     const day = calendarData[dateString];
     const traits = day?.traits || {};
-    const isShabbatDay = dateObj.getDay() === 6;
+    const dayOfWeek = dateObj.getDay(); // 0 = Sunday, 6 = Shabbat
 
-    if (traits.isChag && !includeHolidays) return true;     // Force break on Standard Chagim
-    if ((isShabbatDay || traits.isParasha)
-        && !includeShabbat) return true;     // Force break on Shabbat / Parasha
+    // 1. Force break on Standard Chagim if includeHolidays is false
+    if (traits.isChag && !includeHolidays) return true;
+
+    // 2. Check if this weekday is NOT in the user's selected study days array
+    // (Also treats calendar-marked Parasha days as Shabbat if Saturday is unchecked)
+    const isScheduledStudyDay = studyDays.includes(dayOfWeek);
+    if (!isScheduledStudyDay) return true;
 
     if (traits.isRoshChodesh) return false;     // Study by default on Rosh Chodesh
     if (traits.isModernException) return false;     // Study by default on Modern Exceptions
@@ -29,7 +33,7 @@ export async function generateSchedule({ trackSequence, userSettings, manualOver
         return [];
     }
 
-    const { includeShabbat, includeHolidays, breakDays, method, calendarType, startDate, targetDate, startDaf, startAmud, pace } = userSettings;
+    const { studyDays, includeHolidays, breakDays, method, calendarType, startDate, targetDate, startDaf, startAmud, pace } = userSettings;
 
     if (!startDate) {
         throw new Error("נא לבחור תאריך התחלה");
@@ -118,7 +122,8 @@ export async function generateSchedule({ trackSequence, userSettings, manualOver
         while (currentDate <= endDate) {
             const dateString = formatDateToIL(currentDate);
             const overrideState = manualOverrides[dateString] || 0;
-            let isRestDay = (overrideState === 1) || (overrideState !== 2 && shouldDayBeRest(currentDate, includeShabbat, includeHolidays, calendarData));
+
+            let isRestDay = (overrideState === 1) || (overrideState !== 2 && shouldDayBeRest(currentDate, studyDays, includeHolidays, calendarData));
 
             timelineDays.push({
                 date: new Date(currentDate),
@@ -184,7 +189,8 @@ export async function generateSchedule({ trackSequence, userSettings, manualOver
 
             const dateString = formatDateToIL(currentDate);
             const overrideState = manualOverrides[dateString] || 0;
-            let isRestDay = (overrideState === 1) || (overrideState !== 2 && shouldDayBeRest(currentDate, includeShabbat, includeHolidays, calendarData));
+
+            let isRestDay = (overrideState === 1) || (overrideState !== 2 && shouldDayBeRest(currentDate, studyDays, includeHolidays, calendarData));
 
             timelineDays.push({
                 date: new Date(currentDate),
