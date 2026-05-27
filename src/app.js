@@ -181,68 +181,122 @@ function setupEventListeners() {
     startDateInput.addEventListener('change', handleDateChange);
     targetDateInput.addEventListener('change', handleDateChange);
 
-    // --- Drag and Drop Event Orchestration ---
-    let draggedItemIndex = null;
+    // --- Advanced Body-Pinned Pointer Drag Engine ---
+    let dragElement = null;     // Original element hidden/styled in list
+    let mirrorElement = null;   // Floating visual copy appended to body
+    let dragOffsetX = 0;        // Keeps pointer locked to exact grab location
+    let dragOffsetY = 0;
 
-    trackSequenceList.addEventListener('dragstart', (e) => {
-        // Check if the target is the handle or inside the handle
+    trackSequenceList.addEventListener('pointerdown', (e) => {
         const handle = e.target.closest('.drag-handle');
-
-        if (!handle) {
-            e.preventDefault(); // Prevent dragging if they click the text/background
-            return;
-        }
+        if (!handle) return;
 
         const item = e.target.closest('.drag-item');
         if (!item) return;
 
-        draggedItemIndex = Number(item.dataset.index);
-        item.classList.add('dragging');
-        e.dataTransfer.effectAllowed = 'move';
-    });
-
-    trackSequenceList.addEventListener('dragover', (e) => {
-        e.preventDefault(); // Required to allow dropping
-        const item = e.target.closest('.drag-item');
-        if (!item || item.classList.contains('dragging')) return;
-
-        item.classList.add('drag-over');
-    });
-
-    trackSequenceList.addEventListener('dragleave', (e) => {
-        const item = e.target.closest('.drag-item');
-        if (item) item.classList.remove('drag-over');
-    });
-
-    trackSequenceList.addEventListener('drop', (e) => {
+        // Prevent target misbehaviors on mobile text selections
         e.preventDefault();
-        const item = e.target.closest('.drag-item');
-        if (!item) return;
 
-        item.classList.remove('drag-over');
-        const targetIndex = Number(item.dataset.index);
+        dragElement = item;
+        trackSequenceList.setPointerCapture(e.pointerId);
 
-        if (draggedItemIndex !== null && draggedItemIndex !== targetIndex) {
-            // Re-order our global sequence variable
-            const reorderedSeq = [...AppState.trackSequence];
-            const [removed] = reorderedSeq.splice(draggedItemIndex, 1);
-            reorderedSeq.splice(targetIndex, 0, removed);
+        const rect = dragElement.getBoundingClientRect();
 
-            // Sync mutated array state back to DOM and store
-            AppState.trackSequence = reorderedSeq;
-            updateTrackSequenceUI(AppState.trackSequence);
-            saveToLocalStorage();
+        // Calculate exactly where inside the element the user clicked
+        dragOffsetX = e.clientX - rect.left;
+        dragOffsetY = e.clientY - rect.top;
+
+        // Create the high-performance visual mirror element
+        mirrorElement = dragElement.cloneNode(true);
+        mirrorElement.style.position = 'fixed';
+        mirrorElement.style.top = `${rect.top}px`;
+        mirrorElement.style.left = `${rect.left}px`;
+        mirrorElement.style.width = `${rect.width}px`;
+        mirrorElement.style.height = `${rect.height}px`;
+        mirrorElement.style.pointerEvents = 'none'; // Passthrough to allow under-element tracking
+
+        // Premium "Pop out" presentation styles
+        mirrorElement.classList.add('z-[9999]', 'shadow-2xl', 'border-blue-500', 'bg-white/95', 'scale-[1.03]', 'transition-transform', 'duration-100');
+        document.body.appendChild(mirrorElement);
+
+        // Turn the original element into a smooth layout placeholder
+        dragElement.classList.add('opacity-40', 'bg-slate-100', 'border-dashed', 'border-slate-300');
+
+        // Enforce grabbing status across viewport
+        document.body.style.cursor = 'grabbing';
+    });
+
+    trackSequenceList.addEventListener('pointermove', (e) => {
+        if (!dragElement || !mirrorElement) return;
+
+        // Fluid mirror following logic anchored to structural cursor position
+        mirrorElement.style.top = `${e.clientY - dragOffsetY}px`;
+        mirrorElement.style.left = `${e.clientX - dragOffsetX}px`;
+
+        const items = [...trackSequenceList.querySelectorAll('.drag-item')];
+        const mirrorRect = mirrorElement.getBoundingClientRect();
+        const mirrorMidY = mirrorRect.top + mirrorRect.height / 2;
+
+        // Find the index of the element we are currently holding in the DOM
+        const currentDragIndex = items.indexOf(dragElement);
+
+        for (let i = 0; i < items.length; i++) {
+            const item = items[i];
+            if (item === dragElement) continue;
+
+            const box = item.getBoundingClientRect();
+            const boxMidY = box.top + box.height / 2;
+
+            // Check if our cursor/mirror midpoint has crossed the middle threshold of a target card
+            if (i < currentDragIndex) {
+                // DRAGGING UPWARD: If your mirror midpoint goes ABOVE the target's midpoint, 
+                // instantly snap the placeholder right before it.
+                if (mirrorMidY < boxMidY) {
+                    trackSequenceList.insertBefore(dragElement, item);
+                    break;
+                }
+            } else {
+                // DRAGGING DOWNWARD: If your mirror midpoint goes BELOW the target's midpoint, 
+                // instantly snap the placeholder right after it.
+                if (mirrorMidY > boxMidY) {
+                    trackSequenceList.insertBefore(dragElement, item.nextElementSibling);
+                    break; // break early since we found the right position change
+                }
+            }
         }
     });
 
-    trackSequenceList.addEventListener('dragend', (e) => {
-        const item = e.target.closest('.drag-item');
-        if (item) item.classList.remove('dragging');
+    const handlePointerUpOrCancel = (e) => {
+        if (!dragElement) return;
 
-        // Clean up fallback remnants
-        document.querySelectorAll('.drag-item').forEach(el => el.classList.remove('drag-over'));
-        draggedItemIndex = null;
-    });
+        try {
+            trackSequenceList.releasePointerCapture(e.pointerId);
+        } catch (err) { }
+
+        // Remove floating mirror component smoothly
+        if (mirrorElement) {
+            mirrorElement.remove();
+            mirrorElement = null;
+        }
+
+        // Restore list element layout presentations
+        dragElement.classList.remove('opacity-40', 'bg-slate-100', 'border-dashed', 'border-slate-300');
+        document.body.style.cursor = '';
+
+        // Extract fresh sequence array matching the updated DOM tree structure
+        const finalDomItems = [...trackSequenceList.querySelectorAll('.drag-item')];
+        const updatedSequence = finalDomItems.map(item => AppState.trackSequence[Number(item.dataset.index)]);
+
+        // Commit modifications cleanly to internal memory and local states
+        AppState.trackSequence = updatedSequence;
+        updateTrackSequenceUI(AppState.trackSequence);
+        saveToLocalStorage();
+
+        dragElement = null;
+    };
+
+    trackSequenceList.addEventListener('pointerup', handlePointerUpOrCancel);
+    trackSequenceList.addEventListener('pointercancel', handlePointerUpOrCancel);
 }
 
 // Initiate calendar configuration control panel

@@ -24,6 +24,7 @@ export function hydrateHtmlFromAppState(AppState) {
 }
 
 // Updates UI of Track sequence 
+// Updates UI of Track sequence 
 export function updateTrackSequenceUI(sequence) {
     const list = document.getElementById('trackSequenceList');
 
@@ -37,10 +38,10 @@ export function updateTrackSequenceUI(sequence) {
 
     list.innerHTML = sequence.map((m, i) => `
         <li data-index="${i}" 
-            class="drag-item flex justify-between items-center bg-white border border-slate-200 hover:border-blue-300 px-4 py-2.5 rounded-xl shadow-xs transition-all duration-150 select-none">
+            class="drag-item flex justify-between items-center bg-white border border-slate-200 hover:border-blue-300 px-4 py-2.5 rounded-xl shadow-xs transition-all duration-150 select-none touch-none relative">
             
-            <div class="flex items-center gap-3">
-                <div draggable="true" class="drag-handle text-slate-400 hover:text-slate-600 flex flex-col gap-0.5 justify-center leading-none select-none cursor-grab active:cursor-grabbing">
+            <div class="flex items-center gap-3 pointer-events-none">
+                <div class="drag-handle text-slate-400 hover:text-slate-600 flex flex-col gap-0.5 justify-center leading-none select-none cursor-grab p-2 pointer-events-auto">
                     <span class="block">•••</span>
                     <span class="block -mt-1.5">•••</span>
                 </div>
@@ -50,7 +51,7 @@ export function updateTrackSequenceUI(sequence) {
                 </span>
             </div>
             
-            <button data-index="${i}" class="remove-btn text-slate-400 hover:text-red-500 hover:bg-red-50 p-1.5 rounded-lg transition-colors" title="הסר מהרשימה">
+            <button data-index="${i}" class="remove-btn text-slate-400 hover:text-red-500 hover:bg-red-50 p-1.5 rounded-lg transition-colors z-10" title="הסר מהרשימה">
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12" />
                 </svg>
