@@ -156,19 +156,73 @@ export async function generateSchedule({ trackSequence, userSettings, manualOver
         }
 
         let trueStudyDays = timelineDays.filter(d => d.isStudyDay);
-        if (trueStudyDays.length === 0) throw new Error("אין מספיק ימי לימוד בטווח התאריכים המבוקש");
 
-        let baseAmudimPerDay = Math.floor(masterAmudPool.length / trueStudyDays.length);
-        let leftoverAmudim = masterAmudPool.length % trueStudyDays.length;
-
-        trueStudyDays.forEach(d => d.amudimToCount = baseAmudimPerDay);
-
-        let distributedLeftovers = 0;
-        for (let i = trueStudyDays.length - 1; i >= 0; i--) {
-            if (distributedLeftovers >= leftoverAmudim) break;
-            trueStudyDays[i].amudimToCount += 1;
-            distributedLeftovers++;
+        // Rule 1 Enforcement: Minimum 1 day per masechet
+        if (trueStudyDays.length < trackSequence.length) {
+            throw new Error("אין מספיק ימי לימוד כדי להקצות לפחות יום אחד לכל מסכת.");
         }
+
+        // Isolate amud counts strictly by masechet boundaries
+        const masechetCounts = [];
+        trackSequence.forEach(trackName => {
+            const count = masterAmudPool.filter(a => a.masechet === trackName).length;
+            if (count > 0) {
+                masechetCounts.push({ name: trackName, count: count });
+            }
+        });
+
+        const totalAmudim = masterAmudPool.length;
+        const totalDays = trueStudyDays.length;
+
+        // Rule 2: Calculate proportional day allocation per masechet
+        let totalAllocatedDays = 0;
+        masechetCounts.forEach(m => {
+            m.exactDays = totalDays * (m.count / totalAmudim);
+            m.allocatedDays = Math.floor(m.exactDays);
+
+            if (m.allocatedDays === 0) {
+                m.allocatedDays = 1; // Prevent 0-day allocation
+            }
+            totalAllocatedDays += m.allocatedDays;
+        });
+
+        let daysToDistribute = totalDays - totalAllocatedDays;
+
+        if (daysToDistribute < 0) {
+            // Edge case correction: Enforcing the 1-day minimum caused day overflow
+            for (let i = 0; i < Math.abs(daysToDistribute); i++) {
+                masechetCounts.sort((a, b) => (a.allocatedDays - a.exactDays) - (b.allocatedDays - b.exactDays));
+                let target = masechetCounts.find(m => m.allocatedDays > 1);
+                if (target) target.allocatedDays--;
+            }
+        } else if (daysToDistribute > 0) {
+            // Largest Remainder Method: Distribute unallocated integer days evenly
+            masechetCounts.sort((a, b) => (b.exactDays - b.allocatedDays) - (a.exactDays - a.allocatedDays));
+            for (let i = 0; i < daysToDistribute; i++) {
+                masechetCounts[i % masechetCounts.length].allocatedDays++;
+            }
+        }
+
+        // Re-sort to maintain the original track sequence chronological order
+        const scheduleSequence = masechetCounts.sort((a, b) => trackSequence.indexOf(a.name) - trackSequence.indexOf(b.name));
+
+        // Rule 3: Distribute amudim within the fixed masechet day allocations
+        let dayPlans = [];
+        scheduleSequence.forEach(m => {
+            const baseAmudim = Math.floor(m.count / m.allocatedDays);
+            const remainder = m.count % m.allocatedDays;
+
+            for (let i = 0; i < m.allocatedDays; i++) {
+                // Back-loading mechanism: The extra units are pushed to the end of the localized loop
+                const extra = (i >= m.allocatedDays - remainder) ? 1 : 0;
+                dayPlans.push(baseAmudim + extra);
+            }
+        });
+
+        // Map the sequence correctly back to the timeline data objects
+        trueStudyDays.forEach((d, idx) => {
+            d.amudimToCount = dayPlans[idx];
+        });
     } else {
         // Pace Mode
         let amudPoolCopy = [...masterAmudPool];
