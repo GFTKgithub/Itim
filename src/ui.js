@@ -191,9 +191,13 @@ export function renderCalendar(containerId, schedule, config = {}) {
                 indicatorEl.remove();
             }
 
-            const masechetEl = dayEl.querySelector('.text-blue-800');
-            if (masechetEl && masechetEl.textContent !== day.masechet) {
-                masechetEl.textContent = day.masechet;
+            // Update masechet element classes dynamically for review mode tracking
+            const masechetEl = dayEl.querySelector('[data-masechet-label]');
+            if (masechetEl) {
+                if (masechetEl.textContent !== day.masechet) {
+                    masechetEl.textContent = day.masechet;
+                }
+                masechetEl.className = `text-[10px] font-bold whitespace-nowrap ${day.isReviewDay ? 'text-slate-500 font-medium' : 'text-blue-800'}`;
             }
 
             const contentEl = dayEl.querySelector('.text-center.mt-1');
@@ -291,7 +295,7 @@ export function renderCalendar(containerId, schedule, config = {}) {
                         <span class="text-xs font-bold ${day.date.getDay() === 6 ? 'text-blue-700' : 'text-slate-800'}">${mainDateDisplay}</span>
                         <span class="text-[9px] text-slate-400 font-normal leading-none">${secondaryDateDisplay}</span>
                     </div>
-                    <span class="text-[10px] text-blue-800 font-bold whitespace-nowrap">${day.masechet}</span>
+                    <span data-masechet-label class="text-[10px] font-bold whitespace-nowrap ${day.isReviewDay ? 'text-slate-500 font-medium' : 'text-blue-800'}">${day.masechet}</span>
                 </div>
                 ${indicator}
                 <div class="text-[10px] font-bold text-center mt-1 leading-tight ${day.isEmpty ? 'text-slate-400 italic' : 'text-slate-800'}">
