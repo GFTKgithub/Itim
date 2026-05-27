@@ -42,7 +42,7 @@ export async function generateSchedule({ trackSequence, userSettings, manualOver
     const startInputDate = new Date(startDate);
     startInputDate.setHours(0, 0, 0, 0);
 
-    // --- Step 1: Flatten All Amudim Into a Single Master Pool ---
+    // --- Step 1: Flatten All Amudim Into a Single Master Pool with Instance Tracking ---
     let masterAmudPool = [];
 
     trackSequence.forEach((name, idx) => {
@@ -57,7 +57,8 @@ export async function generateSchedule({ trackSequence, userSettings, manualOver
 
         const totalAmudim = getTotalAmudim(name);
         for (let i = startIdx; i < totalAmudim; i++) {
-            masterAmudPool.push({ masechet: name, amudIdx: i });
+            // trackIdx guarantees unique isolation for identical masechet names
+            masterAmudPool.push({ masechet: name, amudIdx: i, trackIdx: idx });
         }
     });
 
@@ -159,10 +160,9 @@ export async function generateSchedule({ trackSequence, userSettings, manualOver
         let trueStudyDays = timelineDays.filter(d => d.isStudyDay);
         if (trueStudyDays.length === 0) throw new Error("אין מספיק ימי לימוד בטווח התאריכים המבוקש");
 
-        const minAmudimPerDay = 1; // Minimum floor: 0.5 daf per day
+        const minAmudimPerDay = 1;
         const maxDaysNeeded = Math.ceil(masterAmudPool.length / minAmudimPerDay);
 
-        // Check if the timeline is sparse enough to hit the floor pace limit
         if (trueStudyDays.length > maxDaysNeeded) {
             let studyDayCounter = 0;
             timelineDays.forEach(day => {
@@ -171,30 +171,28 @@ export async function generateSchedule({ trackSequence, userSettings, manualOver
                         day.amudimToCount = minAmudimPerDay;
                         studyDayCounter++;
                     } else {
-                        // Overflow days are explicitly set to review to preserve front-loaded pacing
                         day.isStudyDay = false;
                         day.isReviewDay = true;
                     }
                 }
             });
         } else {
-            // Rule 1 Enforcement: Ensure day availability handles masechet count
             if (trueStudyDays.length < trackSequence.length) {
                 throw new Error("אין מספיק ימי לימוד כדי להקצות לפחות יום אחד לכל מסכת.");
             }
 
             const masechetCounts = [];
-            trackSequence.forEach(trackName => {
-                const count = masterAmudPool.filter(a => a.masechet === trackName).length;
+            trackSequence.forEach((trackName, idx) => {
+                // Filter strictly against unique track sequence indices
+                const count = masterAmudPool.filter(a => a.trackIdx === idx).length;
                 if (count > 0) {
-                    masechetCounts.push({ name: trackName, count: count });
+                    masechetCounts.push({ name: trackName, trackIdx: idx, count: count });
                 }
             });
 
             const totalAmudim = masterAmudPool.length;
             const totalDays = trueStudyDays.length;
 
-            // Rule 2: Proportional Day Allocation
             let totalAllocatedDays = 0;
             masechetCounts.forEach(m => {
                 m.exactDays = totalDays * (m.count / totalAmudim);
@@ -212,16 +210,14 @@ export async function generateSchedule({ trackSequence, userSettings, manualOver
                     if (target) target.allocatedDays--;
                 }
             } else if (daysToDistribute > 0) {
-                // Largest Remainder Method distribution
                 masechetCounts.sort((a, b) => (b.exactDays - b.allocatedDays) - (a.exactDays - a.allocatedDays));
                 for (let i = 0; i < daysToDistribute; i++) {
                     masechetCounts[i % masechetCounts.length].allocatedDays++;
                 }
             }
 
-            const scheduleSequence = masechetCounts.sort((a, b) => trackSequence.indexOf(a.name) - trackSequence.indexOf(b.name));
+            const scheduleSequence = masechetCounts.sort((a, b) => a.trackIdx - b.trackIdx);
 
-            // Rule 3: Distribute amudim within fixed spaces (back-loading remainders)
             let dayPlans = [];
             scheduleSequence.forEach(m => {
                 const baseAmudim = Math.floor(m.count / m.allocatedDays);
@@ -254,6 +250,26 @@ export async function generateSchedule({ trackSequence, userSettings, manualOver
             const overrideState = manualOverrides[dateString] || 0;
             let isRestDay = (overrideState === 1) || (overrideState !== 2 && shouldDayBeRest(currentDate, studyDays, includeHolidays, calendarData));
 
+            let amudimToCountForDay = 0;
+            let triggerBreak = false;
+
+            if (!isRestDay) {
+                const currentTrackIdx = amudPoolCopy[0].trackIdx;
+
+                // Enforce Rule 1: Never pull amudim beyond the current masechet instance boundary
+                let limit = 0;
+                while (limit < dailyAmudimPace && limit < amudPoolCopy.length && amudPoolCopy[limit].trackIdx === currentTrackIdx) {
+                    limit++;
+                }
+
+                let drained = amudPoolCopy.splice(0, limit);
+                amudimToCountForDay = drained.length; // Capture true dynamic allocation count
+
+                if (amudPoolCopy.length > 0 && amudPoolCopy[0].trackIdx !== currentTrackIdx) {
+                    triggerBreak = true;
+                }
+            }
+
             timelineDays.push({
                 date: new Date(currentDate),
                 dateString: dateString,
@@ -262,21 +278,17 @@ export async function generateSchedule({ trackSequence, userSettings, manualOver
                 isStudyDay: !isRestDay,
                 isReviewDay: false,
                 overrideState: overrideState,
-                amudimToCount: isRestDay ? 0 : dailyAmudimPace
+                amudimToCount: amudimToCountForDay
             });
 
-            if (!isRestDay) {
-                let drained = amudPoolCopy.splice(0, dailyAmudimPace);
-
-                if (drained.length > 0 && amudPoolCopy.length > 0 && drained[drained.length - 1].masechet !== amudPoolCopy[0].masechet) {
-                    for (let b = 0; b < breakDays; b++) {
-                        currentDate.setDate(currentDate.getDate() + 1);
-                        const bStr = formatDateToIL(currentDate);
-                        timelineDays.push({
-                            date: new Date(currentDate), dateString: bStr,
-                            isRestDay: false, isBreakDay: true, isStudyDay: false, isReviewDay: false, overrideState: 0, amudimToCount: 0
-                        });
-                    }
+            if (triggerBreak) {
+                for (let b = 0; b < breakDays; b++) {
+                    currentDate.setDate(currentDate.getDate() + 1);
+                    const bStr = formatDateToIL(currentDate);
+                    timelineDays.push({
+                        date: new Date(currentDate), dateString: bStr,
+                        isRestDay: false, isBreakDay: true, isStudyDay: false, isReviewDay: false, overrideState: 0, amudimToCount: 0
+                    });
                 }
             }
             currentDate.setDate(currentDate.getDate() + 1);
@@ -285,7 +297,7 @@ export async function generateSchedule({ trackSequence, userSettings, manualOver
 
     // --- Step 5: Process Main Timeline Mapping ---
     let amudPointer = 0;
-    let currentActiveMasechet = "-"; // Track the last active masechet for subsequent review days
+    let currentActiveMasechet = "-";
 
     timelineDays.forEach(day => {
         const isShabbat = day.date.getDay() === 6;
@@ -302,7 +314,7 @@ export async function generateSchedule({ trackSequence, userSettings, manualOver
             override: day.overrideState,
             content: "",
             pages: 0,
-            isReviewDay: day.isReviewDay // Flag sent to frontend for conditional greyed-out styling
+            isReviewDay: day.isReviewDay
         };
 
         if (day.isRestDay) {
@@ -311,7 +323,7 @@ export async function generateSchedule({ trackSequence, userSettings, manualOver
             dayData.masechet = "הפסקה";
             dayData.content = "";
         } else if (day.isReviewDay) {
-            dayData.masechet = currentActiveMasechet; // Assign the completed masechet name to the cell header
+            dayData.masechet = currentActiveMasechet;
             dayData.content = "חזרה";
         } else if (day.isStudyDay || day.amudimToCount > 0) {
             let count = day.amudimToCount;
@@ -320,9 +332,9 @@ export async function generateSchedule({ trackSequence, userSettings, manualOver
                 let endAmud = masterAmudPool[Math.min(amudPointer + count - 1, masterAmudPool.length - 1)];
 
                 dayData.masechet = startAmud.masechet;
-                currentActiveMasechet = startAmud.masechet; // Update tracking context
+                currentActiveMasechet = startAmud.masechet;
 
-                dayData.content = (startAmud.amudIdx === endAmud.amudIdx && startAmud.masechet === endAmud.masechet)
+                dayData.content = (startAmud.amudIdx === endAmud.amudIdx && startAmud.trackIdx === endAmud.trackIdx)
                     ? indexToDaf(startAmud.amudIdx)
                     : `${indexToDaf(startAmud.amudIdx)} - ${indexToDaf(endAmud.amudIdx)}`;
 
@@ -336,7 +348,7 @@ export async function generateSchedule({ trackSequence, userSettings, manualOver
 
         outputSchedule.push(dayData);
     });
-    
+
     // --- Step 6: Back Monthly Layout Padding ---
     const isEndOfMonth = (d) => {
         const nextDay = new Date(d);
