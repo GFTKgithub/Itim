@@ -314,7 +314,8 @@ export async function generateSchedule({ trackSequence, userSettings, manualOver
             override: day.overrideState,
             content: "",
             pages: 0,
-            isReviewDay: day.isReviewDay
+            isReviewDay: day.isReviewDay,
+            isSiyum: false
         };
 
         if (day.isRestDay) {
@@ -329,7 +330,8 @@ export async function generateSchedule({ trackSequence, userSettings, manualOver
             let count = day.amudimToCount;
             if (count > 0 && amudPointer < masterAmudPool.length) {
                 let startAmud = masterAmudPool[amudPointer];
-                let endAmud = masterAmudPool[Math.min(amudPointer + count - 1, masterAmudPool.length - 1)];
+                let lastAvailableIdx = Math.min(amudPointer + count - 1, masterAmudPool.length - 1);
+                let endAmud = masterAmudPool[lastAvailableIdx];
 
                 dayData.masechet = startAmud.masechet;
                 currentActiveMasechet = startAmud.masechet;
@@ -339,6 +341,12 @@ export async function generateSchedule({ trackSequence, userSettings, manualOver
                     : `${indexToDaf(startAmud.amudIdx)} - ${indexToDaf(endAmud.amudIdx)}`;
 
                 dayData.pages = count / 2;
+
+                const totalAmudimForThisTrack = getTotalAmudim(startAmud.masechet);
+                if (endAmud.amudIdx === totalAmudimForThisTrack - 1) {
+                    dayData.isSiyum = true;
+                }
+
                 amudPointer += count;
             } else {
                 dayData.masechet = currentActiveMasechet;

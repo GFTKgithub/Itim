@@ -434,6 +434,16 @@ async function handleScheduleGeneration() {
 
         AppState.schedule = updatedSchedule;
 
+        // EXTRACT AND SAVE SIYUM EVENTS GLOBALLY
+        AppState.siyumEvents = updatedSchedule
+            .filter(day => day.isSiyum)
+            .map(day => ({
+                dateString: day.dateString,
+                date: day.date,
+                masechet: day.masechet,
+                title: `סיום מסכת ${day.masechet}`
+            }));
+
         renderCalendar('calendarContainer', AppState.schedule, {
             calendarType: AppState.userSettings.calendarType,
             overrides: AppState.manualOverrides

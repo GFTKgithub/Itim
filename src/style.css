@@ -59,12 +59,12 @@
 }
 
 .holiday-bg {
-    background-color: #fefce8;
-    border: 1px solid #fef08a;
+    background-color: #f3eff4;
+    border: 1px solid #a877be;
 }
 
 .holiday-bg:hover {
-    background-color: #faf8df;
+    background-color: #eadff1;
 }
 
 .shabbat-bg {
@@ -73,6 +73,15 @@
 
 .shabbat-bg:hover {
     background-color: #e6eef9;
+}
+
+.siyum-bg {
+    background-color: #fefce8;
+    border: 1px solid #edc04d;
+}
+
+.siyum-bg:hover {
+    background-color: #f1efd9;
 }
 
 .holiday-label-small {

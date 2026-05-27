@@ -208,20 +208,25 @@ export function renderCalendar(containerId, schedule, config = {}) {
 
             const contentEl = dayEl.querySelector('.text-center.mt-1');
             if (contentEl) {
+                // Reset/Apply background or text formatting for Siyum dynamically
+                if (day.isSiyum) {
+                    dayEl.classList.add('bg-amber-50', 'border-amber-400', 'shadow-inner'); // Golden Siyum highlight
+                } else {
+                    dayEl.classList.remove('bg-amber-50', 'border-amber-400', 'shadow-inner');
+                }
+
                 contentEl.className = `text-[10px] font-bold text-center mt-1 leading-tight ${day.isEmpty ? 'text-slate-400 italic' : 'text-slate-800'}`;
+
+                // Append a tiny visual badge or change layout text if it's a Siyum
+                const siyumBadge = day.isSiyum ? `<span class="block text-[9px] text-amber-700 font-extrabold tracking-wide">★ סיום ★</span>` : '';
 
                 const newContentHTML = day.isHoliday
                     ? `<span class="holiday-label-small">${day.holidayTitle}</span>\n${day.content}`
-                    : day.content;
+                    : `${siyumBadge}${day.content}`;
+
                 if (contentEl.innerHTML.trim() !== newContentHTML.trim()) {
                     contentEl.innerHTML = newContentHTML;
                 }
-            }
-
-            const pagesEl = dayEl.querySelector('.mt-auto');
-            const newPagesText = !day.isEmpty ? `${day.pages} דף` : '';
-            if (pagesEl && pagesEl.textContent.trim() !== newPagesText) {
-                pagesEl.textContent = newPagesText;
             }
         });
 
@@ -293,21 +298,43 @@ export function renderCalendar(containerId, schedule, config = {}) {
                 secondaryDateDisplay = formatGematria(hebrewDayNum, numberToHebrew(hebrewDayNum));
             }
 
+            let dayBgClass = '';
+
+            if (day.isSiyum) {
+                dayBgClass = 'siyum-bg'; // Priority 1
+            } else if (day.isShabbat) {
+                dayBgClass = 'shabbat-bg'; // Priority 2
+            } else if (day.isHoliday) {
+                dayBgClass = 'holiday-bg'; // Priority 3
+            } else {
+                dayBgClass = statusClass; // Default (e.g., completed, pending)
+            }
+
             htmlBuffer.push(`
             <div data-date="${day.dateString}" 
-                class="calendar-day cursor-pointer relative ${statusClass} ${day.isShabbat ? 'shabbat-bg' : ''} ${day.isHoliday ? 'holiday-bg' : ''} border-b border-l border-gray-100">
+                class="calendar-day cursor-pointer relative ${dayBgClass} border-b border-l border-gray-100">
                 <div class="flex justify-between items-start mb-1">
                     <div class="flex flex-col">
-                        <span class="text-xs font-bold ${day.date.getDay() === 6 ? 'text-blue-700' : 'text-slate-800'}">${mainDateDisplay}</span>
-                        <span class="text-[9px] text-slate-400 font-normal leading-none">${secondaryDateDisplay}</span>
+                        <span class="text-xs font-bold ${day.date.getDay() === 6 ? 'text-blue-700' : 'text-slate-800'}">
+                            ${mainDateDisplay}
+                        </span>
+                        <span class="text-[9px] text-slate-400 font-normal leading-none">
+                            ${secondaryDateDisplay}
+                        </span>
                     </div>
-                    <span data-masechet-label class="text-[10px] font-bold whitespace-nowrap ${day.isReviewDay ? 'text-slate-500 font-medium' : 'text-blue-800'}">${day.masechet}</span>
+                    <span data-masechet-label class="text-[10px] font-bold whitespace-nowrap ${day.isReviewDay ? 'text-slate-500 font-medium' : 'text-blue-800'}">
+                        ${day.masechet}
+                    </span>
                 </div>
+                
                 ${indicator}
+
                 <div class="text-[10px] font-bold text-center mt-1 leading-tight ${day.isEmpty ? 'text-slate-400 italic' : 'text-slate-800'}">
                     ${day.isHoliday ? `<span class="holiday-label-small">${day.holidayTitle}</span>` : ''}
                     ${day.content}
+                    ${day.isSiyum ? `<span class="block text-[9px] text-amber-800 font-extrabold">★ סיום מסכת ★</span>` : ''}
                 </div>
+
                 <div class="mt-auto text-[8px] text-slate-400 text-left">
                     ${!day.isEmpty ? `${day.pages} דף` : ''}
                 </div>
