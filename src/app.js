@@ -186,6 +186,10 @@ function setupEventListeners() {
     let mirrorElement = null;   // Floating visual copy appended to body
     let dragOffsetX = 0;
     let dragOffsetY = 0;
+    let autoScrollFrameId = null; // Keeps track of the active requestAnimationFrame loop
+
+    // Track the actual live position of the mouse across frames
+    let currentMouse = { x: 0, y: 0, pointerId: null };
 
     trackSequenceList.addEventListener('pointerdown', (e) => {
         const handle = e.target.closest('.drag-handle');
@@ -199,7 +203,11 @@ function setupEventListeners() {
         dragElement = row;
         trackSequenceList.setPointerCapture(e.pointerId);
 
-        // Target the inner visual card for the mirror blueprint dimensions
+        // Populate initial mouse position
+        currentMouse.x = e.clientX;
+        currentMouse.y = e.clientY;
+        currentMouse.pointerId = e.pointerId;
+
         const innerCard = dragElement.querySelector('.drag-item');
         const rect = innerCard.getBoundingClientRect();
 
@@ -221,16 +229,23 @@ function setupEventListeners() {
         document.body.style.cursor = 'grabbing';
     });
 
-    trackSequenceList.addEventListener('pointermove', (e) => {
+    // HELPER FUNCTION
+    function updateDragPositionAndSorting() {
         if (!dragElement || !mirrorElement) return;
 
-        mirrorElement.style.top = `${e.clientY - dragOffsetY}px`;
-        mirrorElement.style.left = `${e.clientX - dragOffsetX}px`;
-
-        const rows = [...trackSequenceList.querySelectorAll('.drag-row')];
+        const listRect = trackSequenceList.getBoundingClientRect();
         const mirrorRect = mirrorElement.getBoundingClientRect();
-        const mirrorMidY = mirrorRect.top + mirrorRect.height / 2;
 
+        // Calculate and clamp positions based on the LIVE mouse coordinates
+        const idealTop = currentMouse.y - dragOffsetY;
+        const clampedTop = Math.max(listRect.top, Math.min(idealTop, listRect.bottom - mirrorRect.height));
+
+        mirrorElement.style.top = `${clampedTop}px`;
+        mirrorElement.style.left = `${currentMouse.x - dragOffsetX}px`;
+
+        // DOM Reordering Logic
+        const rows = [...trackSequenceList.querySelectorAll('.drag-row')];
+        const mirrorMidY = clampedTop + mirrorRect.height / 2;
         const currentDragIndex = rows.indexOf(dragElement);
 
         for (let i = 0; i < rows.length; i++) {
@@ -241,23 +256,79 @@ function setupEventListeners() {
             const boxMidY = box.top + box.height / 2;
 
             if (i < currentDragIndex) {
-                // DRAGGING UPWARD
                 if (mirrorMidY < boxMidY) {
                     trackSequenceList.insertBefore(dragElement, targetRow);
                     break;
                 }
             } else {
-                // DRAGGING DOWNWARD
                 if (mirrorMidY > boxMidY) {
                     trackSequenceList.insertBefore(dragElement, targetRow.nextElementSibling);
                     break;
                 }
             }
         }
+    }
+
+    let isAutoScrolling = false; // Flag to prevent event loops
+
+    trackSequenceList.addEventListener('pointermove', (e) => {
+        if (!dragElement || !mirrorElement) return;
+
+        // CRITICAL: Continuously update the live mouse coordinates as the user physically moves
+        currentMouse.x = e.clientX;
+        currentMouse.y = e.clientY;
+
+        // Immediately update visual position
+        updateDragPositionAndSorting();
+
+        // AUTO-SCROLL EVALUATION
+        const listRect = trackSequenceList.getBoundingClientRect();
+        const scrollThreshold = 35;
+        const scrollSpeed = 6;
+
+        const distanceFromTop = currentMouse.y - listRect.top;
+        const distanceFromBottom = listRect.bottom - currentMouse.y;
+
+        let scrollDirection = 0;
+
+        if (distanceFromTop < scrollThreshold && trackSequenceList.scrollTop > 0) {
+            scrollDirection = -1;
+        } else if (distanceFromBottom < scrollThreshold && (trackSequenceList.scrollTop + listRect.height < trackSequenceList.scrollHeight)) {
+            scrollDirection = 1;
+        }
+
+        if (scrollDirection !== 0) {
+            if (!autoScrollFrameId) {
+                const performAutoScroll = () => {
+                    if (!dragElement || !mirrorElement) return;
+
+                    // Scroll the container
+                    trackSequenceList.scrollTop += scrollDirection * scrollSpeed;
+
+                    // Force an update reading the newly changed mouse location 
+                    // (even if it only changed on the X axis!)
+                    updateDragPositionAndSorting();
+
+                    autoScrollFrameId = requestAnimationFrame(performAutoScroll);
+                };
+                autoScrollFrameId = requestAnimationFrame(performAutoScroll);
+            }
+        } else {
+            if (autoScrollFrameId) {
+                cancelAnimationFrame(autoScrollFrameId);
+                autoScrollFrameId = null;
+            }
+        }
     });
 
     const handlePointerUpOrCancel = (e) => {
         if (!dragElement) return;
+
+        // Clean up the running animation loops
+        if (autoScrollFrameId) {
+            cancelAnimationFrame(autoScrollFrameId);
+            autoScrollFrameId = null;
+        }
 
         try {
             trackSequenceList.releasePointerCapture(e.pointerId);
