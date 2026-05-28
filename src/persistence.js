@@ -1,58 +1,109 @@
+// persistence.js
+import { auth, db } from './firebase-config.js';
+import { doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
 let stateRef = null;
+const STORAGE_KEY = 'itim_app_state';
 
 export function initPersistence(AppState) {
     stateRef = AppState;
 }
 
-/* 
-    LocalStorage logic
-*/
-
-const STORAGE_KEY = 'itim_app_state';
-
-// Saves user-configurable data from AppState (stateRef) to localStorage
-export function saveToLocalStorage() {
-    const stateToSave = {
+// Helper to grab only the user-customized state data
+function extractSavableState() {
+    return {
         trackSequence: stateRef.trackSequence,
         manualOverrides: stateRef.manualOverrides,
         userSettings: stateRef.userSettings
     };
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(stateToSave));
 }
 
-// Loads user-configurable data from localStorage to AppState (stateRef)
+/* 
+    LocalStorage logic
+*/
+export function saveToLocalStorage() {
+    const stateToSave = extractSavableState();
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(stateToSave));
+    
+    // Automatically try to back up to the cloud if a user is logged in
+    if (auth.currentUser) {
+        saveToFirebase();
+    }
+}
+
 export function loadFromLocalStorage() {
     try {
         const saved = localStorage.getItem(STORAGE_KEY);
         if (!saved) return;
-
-        const parsed = JSON.parse(saved);
-
-        // Use logical OR (||) fallbacks to ensure arrays/objects stay initialized
-        stateRef.trackSequence = parsed.trackSequence || [];
-        stateRef.manualOverrides = parsed.manualOverrides || {};
-
-        if (parsed.userSettings) {
-            stateRef.userSettings = { ...stateRef.userSettings, ...parsed.userSettings };
-        }
+        applyParsedState(JSON.parse(saved));
         console.log("State restored successfully from localStorage");
     } catch (e) {
         console.error("Error loading state from localStorage:", e);
     }
 }
 
+// Helper to map parsed JSON data onto the active AppState references
+function applyParsedState(parsed) {
+    stateRef.trackSequence = parsed.trackSequence || [];
+    stateRef.manualOverrides = parsed.manualOverrides || {};
+    if (parsed.userSettings) {
+        stateRef.userSettings = { ...stateRef.userSettings, ...parsed.userSettings };
+    }
+}
+
+/* 
+    Firebase Cloud Sync Logic
+*/
+
+// Push local state data up to Firestore
+export async function saveToFirebase() {
+    const user = auth.currentUser;
+    if (!user) return; // Silent return if guest user
+
+    try {
+        const stateToSave = extractSavableState();
+        await setDoc(doc(db, "users", user.uid), {
+            userData: stateToSave,
+            lastSynced: new Date().toISOString()
+        });
+        console.log("State successfully synchronized with Firestore cloud.");
+    } catch (error) {
+        console.error("Failed to sync state to Firestore:", error);
+    }
+}
+
+// Fetch cloud state and override local state
+export async function loadFromFirebase() {
+    const user = auth.currentUser;
+    if (!user) return;
+
+    try {
+        const docRef = doc(db, "users", user.uid);
+        const docSnap = await getDoc(docRef);
+
+        if (docSnap.exists()) {
+            const cloudData = docSnap.data().userData;
+            if (cloudData) {
+                // 1. Apply to active runtime state
+                applyParsedState(cloudData);
+                // 2. Mirror it to local storage for offline PWA capabilities
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(cloudData));
+                console.log("State synchronized from Firestore cloud successfully.");
+                return true; 
+            }
+        }
+    } catch (error) {
+        console.error("Failed to fetch state from Firestore:", error);
+    }
+    return false;
+}
+
 /* 
     Backup Logic
 */
-
-// Export app state to a JSON file
 export function exportStateBackup() {
     if (!stateRef) return;
-    const dataToBackup = {
-        trackSequence: stateRef.trackSequence,
-        manualOverrides: stateRef.manualOverrides,
-        userSettings: stateRef.userSettings
-    };
+    const dataToBackup = extractSavableState();
 
     const jsonString = JSON.stringify(dataToBackup, null, 4);
     const blob = new Blob([jsonString], { type: "application/json" });
@@ -68,7 +119,6 @@ export function exportStateBackup() {
     URL.revokeObjectURL(url);
 }
 
-// Import app state from a JSON file
 export function importStateBackup(event) {
     const file = event.target.files[0];
     if (!file) return;
@@ -82,14 +132,12 @@ export function importStateBackup(event) {
                 throw new Error("קובץ הגיבוי אינו תואם או פגום.");
             }
 
-            // 1. Save to localStorage
             localStorage.setItem(STORAGE_KEY, JSON.stringify(parsed));
+            applyParsedState(parsed);
 
-            // 2. Sync the in-memory stateRef
-            stateRef.trackSequence = Array.isArray(parsed.trackSequence) ? parsed.trackSequence : [];
-            stateRef.manualOverrides = parsed.manualOverrides || {};
-            if (parsed.userSettings) {
-                stateRef.userSettings = { ...stateRef.userSettings, ...parsed.userSettings };
+            // If logged in, push this newly uploaded backup up to their account immediately
+            if (auth.currentUser) {
+                await saveToFirebase();
             }
 
             alert("הגיבוי נטען בהצלחה! העמוד יתרענן כעת.");

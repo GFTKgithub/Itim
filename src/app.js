@@ -4,6 +4,16 @@ import { addToSequence, removeFromSequence, clearSequence } from './track-sequen
 import { generateSchedule, cycleDateOverride } from './scheduler.js';
 import { initPersistence, saveToLocalStorage, loadFromLocalStorage, exportStateBackup, importStateBackup } from './persistence.js';
 
+// Firebase
+import { auth } from './firebase-config.js';
+import { 
+    createUserWithEmailAndPassword, 
+    signInWithEmailAndPassword, 
+    signOut, 
+    onAuthStateChanged 
+} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+import { loadFromFirebase, saveToFirebase } from './persistence.js';
+
 const DEFAULT_USER_SETTINGS = {
     method: 'pace',
     pace: 1,
@@ -360,6 +370,80 @@ function setupEventListeners() {
 
     trackSequenceList.addEventListener('pointerup', handlePointerUpOrCancel);
     trackSequenceList.addEventListener('pointercancel', handlePointerUpOrCancel);
+
+    // --- Firebase Auth & Cloud Sync Listeners ---
+    const cloudLoggedOut = document.getElementById('cloudLoggedOut');
+    const cloudLoggedIn = document.getElementById('cloudLoggedIn');
+    const cloudUserEmail = document.getElementById('cloudUserEmail');
+    
+    const cloudEmail = document.getElementById('cloudEmail');
+    const cloudPassword = document.getElementById('cloudPassword');
+    
+    const cloudLoginBtn = document.getElementById('cloudLoginBtn');
+    const cloudRegisterBtn = document.getElementById('cloudRegisterBtn');
+    const cloudLogoutBtn = document.getElementById('cloudLogoutBtn');
+    const cloudFetchBtn = document.getElementById('cloudFetchBtn');
+
+    // Monitor authentication shifts automatically
+    onAuthStateChanged(auth, async (user) => {
+        if (user) {
+            // User logged in: flip UI cards
+            cloudLoggedOut.classList.add('hidden');
+            cloudLoggedIn.classList.remove('hidden');
+            cloudUserEmail.innerText = user.email;
+
+            // Optional power move: when they log in, save their current state automatically
+            saveToFirebase();
+        } else {
+            // User logged out: restore default inputs
+            cloudLoggedOut.classList.remove('hidden');
+            cloudLoggedIn.classList.add('hidden');
+            cloudUserEmail.innerText = '';
+        }
+    });
+
+    // Create account handling
+    cloudRegisterBtn.addEventListener('click', async () => {
+        const email = cloudEmail.value.trim();
+        const password = cloudPassword.value;
+        if (!email || !password) return alert("נא להזין אימייל וסיסמה");
+
+        try {
+            await createUserWithEmailAndPassword(auth, email, password);
+            alert("החשבון נוצר וחובר בהצלחה!");
+        } catch (err) {
+            alert(`שגיאת רישום: ${err.message}`);
+        }
+    });
+
+    // Login handling
+    cloudLoginBtn.addEventListener('click', async () => {
+        const email = cloudEmail.value.trim();
+        const password = cloudPassword.value;
+
+        try {
+            await signInWithEmailAndPassword(auth, email, password);
+        } catch (err) {
+            alert(`שגיאת התחברות: ${err.message}`);
+        }
+    });
+
+    // Logout handling
+    cloudLogoutBtn.addEventListener('click', () => signOut(auth));
+
+    // Forceful down-sync pulling action
+    cloudFetchBtn.addEventListener('click', async () => {
+        const success = await loadFromFirebase();
+        if (success) {
+            alert("הנתונים נמשכו מהענן בהצלחה! העמוד יתעדכן.");
+            
+            // Re-render UI views based on the freshly updated AppState variables
+            initUserConfigPanel(); 
+            handleScheduleGeneration();
+        } else {
+            alert("לא נמצאו נתונים שמורים בענן עבור משתמש זה.");
+        }
+    });
 }
 
 // Initiate calendar configuration control panel
