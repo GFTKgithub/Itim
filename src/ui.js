@@ -167,6 +167,7 @@ export function renderCalendar(containerId, schedule, config = {}) {
 
     const existingDays = container.querySelectorAll('.calendar-day[data-date]');
 
+    // --- Path A: Optimized Partial Update ---
     if (existingDays.length > 0 && existingDays.length === schedule.length) {
         schedule.forEach((day, index) => {
             const dayEl = existingDays[index];
@@ -197,6 +198,23 @@ export function renderCalendar(containerId, schedule, config = {}) {
                 indicatorEl.remove();
             }
 
+            // Sync structural background classes safely across updates
+            if (day.isSiyum) {
+                dayEl.classList.add('siyum-bg', 'bg-amber-50', 'border-amber-400', 'shadow-inner');
+                dayEl.classList.remove('shabbat-bg', 'holiday-bg');
+            } else {
+                dayEl.classList.remove('siyum-bg', 'bg-amber-50', 'border-amber-400', 'shadow-inner');
+                if (day.isShabbat) {
+                    dayEl.classList.add('shabbat-bg');
+                    dayEl.classList.remove('holiday-bg');
+                } else if (day.isHoliday) {
+                    dayEl.classList.add('holiday-bg');
+                    dayEl.classList.remove('shabbat-bg');
+                } else {
+                    dayEl.classList.remove('shabbat-bg', 'holiday-bg');
+                }
+            }
+
             // Update masechet element classes dynamically for review mode tracking
             const masechetEl = dayEl.querySelector('[data-masechet-label]');
             if (masechetEl) {
@@ -208,24 +226,26 @@ export function renderCalendar(containerId, schedule, config = {}) {
 
             const contentEl = dayEl.querySelector('.text-center.mt-1');
             if (contentEl) {
-                // Reset/Apply background or text formatting for Siyum dynamically
-                if (day.isSiyum) {
-                    dayEl.classList.add('bg-amber-50', 'border-amber-400', 'shadow-inner'); // Golden Siyum highlight
-                } else {
-                    dayEl.classList.remove('bg-amber-50', 'border-amber-400', 'shadow-inner');
-                }
-
                 contentEl.className = `text-[10px] font-bold text-center mt-1 leading-tight ${day.isEmpty ? 'text-slate-400 italic' : 'text-slate-800'}`;
 
-                // Append a tiny visual badge or change layout text if it's a Siyum
-                const siyumBadge = day.isSiyum ? `<span class="block text-[9px] text-amber-700 font-extrabold tracking-wide">★ סיום ★</span>` : '';
+                // Guaranteed uniform display string for both path matches
+                const siyumBadge = day.isSiyum ? `<span class="block text-[9px] text-amber-800 font-extrabold tracking-wide z-10">★ סיום מסכת ★</span>` : '';
 
                 const newContentHTML = day.isHoliday
-                    ? `<span class="holiday-label-small">${day.holidayTitle}</span>\n${day.content}`
+                    ? `<span class="holiday-label-small">${day.holidayTitle}</span>\n${day.content}${siyumBadge}`
                     : `${siyumBadge}${day.content}`;
 
                 if (contentEl.innerHTML.trim() !== newContentHTML.trim()) {
                     contentEl.innerHTML = newContentHTML;
+                }
+            }
+
+            // Update page numbers dynamic printout
+            const pagesEl = dayEl.querySelector('.mt-auto.text-\\[8px\\]');
+            if (pagesEl) {
+                const newPagesHTML = !day.isEmpty ? `${day.pages} דף` : '';
+                if (pagesEl.innerHTML.trim() !== newPagesHTML.trim()) {
+                    pagesEl.innerHTML = newPagesHTML;
                 }
             }
         });
@@ -233,6 +253,7 @@ export function renderCalendar(containerId, schedule, config = {}) {
         return;
     }
 
+    // --- Path B: Full Layout Render ---
     const savedGlobalY = window.scrollY;
     const scrollSnapshots = {};
     container.querySelectorAll('.calendar-month').forEach(monthEl => {
@@ -298,17 +319,19 @@ export function renderCalendar(containerId, schedule, config = {}) {
                 secondaryDateDisplay = formatGematria(hebrewDayNum, numberToHebrew(hebrewDayNum));
             }
 
+            // Clean background selection waterfall logic
             let dayBgClass = '';
-
             if (day.isSiyum) {
-                dayBgClass = 'siyum-bg'; // Priority 1
+                dayBgClass = 'siyum-bg bg-amber-50 border-amber-400 shadow-inner';
             } else if (day.isShabbat) {
-                dayBgClass = 'shabbat-bg'; // Priority 2
+                dayBgClass = 'shabbat-bg';
             } else if (day.isHoliday) {
-                dayBgClass = 'holiday-bg'; // Priority 3
+                dayBgClass = 'holiday-bg';
             } else {
-                dayBgClass = statusClass; // Default (e.g., completed, pending)
+                dayBgClass = statusClass;
             }
+
+            const siyumBadge = day.isSiyum ? `<span class="block text-[9px] text-amber-800 font-extrabold tracking-wide z-10">★ סיום מסכת ★</span>` : '';
 
             htmlBuffer.push(`
             <div data-date="${day.dateString}" 
@@ -331,8 +354,8 @@ export function renderCalendar(containerId, schedule, config = {}) {
 
                 <div class="text-[10px] font-bold text-center mt-1 leading-tight ${day.isEmpty ? 'text-slate-400 italic' : 'text-slate-800'}">
                     ${day.isHoliday ? `<span class="holiday-label-small">${day.holidayTitle}</span>` : ''}
+                    ${siyumBadge}
                     ${day.content}
-                    ${day.isSiyum ? `<span class="block text-[9px] text-amber-800 font-extrabold">★ סיום מסכת ★</span>` : ''}
                 </div>
 
                 <div class="mt-auto text-[8px] text-slate-400 text-left">
