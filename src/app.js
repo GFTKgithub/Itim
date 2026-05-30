@@ -1,16 +1,16 @@
 import { masechtot } from './data.js';
-import { hydrateHtmlFromAppState, toggleInputs, updateTrackSequenceUI, renderDateLabels, renderCalendar, showDialog } from './ui.js';
+import { hydrateHtmlFromAppState, toggleInputs, updateTrackSequenceUI, renderAmudGrid, updateModalProgressStats, renderDateLabels, renderCalendar, showDialog } from './ui.js';
 import { addToSequence, removeFromSequence, clearSequence } from './track-sequence.js';
 import { generateSchedule, cycleDateOverride } from './scheduler.js';
 import { initPersistence, saveToLocalStorage, loadFromLocalStorage, exportStateBackup, importStateBackup } from './persistence.js';
 
 // Firebase
 import { auth } from './firebase-config.js';
-import { 
-    createUserWithEmailAndPassword, 
-    signInWithEmailAndPassword, 
-    signOut, 
-    onAuthStateChanged 
+import {
+    createUserWithEmailAndPassword,
+    signInWithEmailAndPassword,
+    signOut,
+    onAuthStateChanged
 } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 import { loadFromFirebase, saveToFirebase } from './persistence.js';
 
@@ -34,6 +34,10 @@ let AppState = {
     calendarData: {},       // Data of special calendar events (DD.YY.MM)
     userSettings: { ...DEFAULT_USER_SETTINGS }       // User Settings (with default values)
 }
+
+let currentEditingIndex = null;
+let tempAmudStates = [];
+let isBunchedView = false; // Toggle state
 
 /* 
     Page initiation logic
@@ -279,8 +283,6 @@ function setupEventListeners() {
         }
     }
 
-    let isAutoScrolling = false; // Flag to prevent event loops
-
     trackSequenceList.addEventListener('pointermove', (e) => {
         if (!dragElement || !mirrorElement) return;
 
@@ -357,7 +359,14 @@ function setupEventListeners() {
 
         // Read out array indexes matching the updated structural layout order
         const finalDomRows = [...trackSequenceList.querySelectorAll('.drag-row')];
-        const updatedSequence = finalDomRows.map(row => AppState.trackSequence[Number(row.dataset.index)]);
+        const updatedSequence = finalDomRows.map(row => {
+            const entry = AppState.trackSequence[Number(row.dataset.index)];
+            // Normalize legacy string entries into full objects
+            if (typeof entry === 'string') {
+                return { name: entry, reviewDays: 0, amudStates: [] };
+            }
+            return entry;
+        });
 
         AppState.trackSequence = updatedSequence;
 
@@ -371,14 +380,113 @@ function setupEventListeners() {
     trackSequenceList.addEventListener('pointerup', handlePointerUpOrCancel);
     trackSequenceList.addEventListener('pointercancel', handlePointerUpOrCancel);
 
+    trackSequenceList.addEventListener('click', (e) => {
+        // 1. Correctly isolate the button element, even if they click the ⚙️ emoji text inside it
+        const configBtn = e.target.closest('.configure-btn');
+        if (!configBtn) return;
+
+        // 2. Parse string index explicitly to base-10 Integer
+        currentEditingIndex = parseInt(configBtn.getAttribute('data-index'), 10);
+
+        // 3. Safety check: does this index actually exist in your track array?
+        const masechet = AppState.trackSequence[currentEditingIndex];
+        if (!masechet) {
+            console.error(`Masechet not found at index: ${currentEditingIndex}`);
+            return;
+        }
+
+        // 4. Extract name safely supporting both legacy string format and new object format
+        const masechetName = typeof masechet === 'string' ? masechet : (masechet.name || "לא ידוע");
+
+        // 5. Hydrate Modal UI text inputs
+        document.getElementById('configModalTitle').innerText = `הגדרות מסכת ${masechetName}`;
+        document.getElementById('configReviewDays').value = masechet.reviewDays || 0;
+
+        // 6. Safeguard amudStates array generation if it doesn't exist yet
+        if (!masechet.amudStates || masechet.amudStates.length === 0) {
+            // Fallback: If your data.js doesn't map perfectly yet, initialize with default 120 amudim (60 daf)
+            tempAmudStates = new Array(120).fill(0);
+        } else {
+            tempAmudStates = [...masechet.amudStates];
+        }
+
+        // 7. Invoke the rendering functions
+        renderAmudGrid('amudGridContainer', tempAmudStates, isBunchedView);
+        updateModalProgressStats(tempAmudStates);
+
+        // 8. Open it
+        document.getElementById('masechetConfigModal').classList.remove('hidden');
+    });
+
+    // Grid Interaction (Cycling states)
+    document.getElementById('amudGridContainer').addEventListener('click', (e) => {
+        const btn = e.target.closest('.amud-btn');
+        if (!btn) return;
+
+        const idx = parseInt(btn.dataset.amudIdx);
+
+        if (isBunchedView) {
+            // Toggle both Amud A and B of the same Daf
+            const isAmudA = idx % 2 === 0;
+            const partnerIdx = isAmudA ? idx + 1 : idx - 1;
+            const nextState = (tempAmudStates[idx] + 1) % 3;
+
+            tempAmudStates[idx] = nextState;
+            if (partnerIdx >= 0 && partnerIdx < tempAmudStates.length) {
+                tempAmudStates[partnerIdx] = nextState;
+            }
+        } else {
+            // Individual cycle
+            tempAmudStates[idx] = (tempAmudStates[idx] + 1) % 3;
+        }
+
+        renderAmudGrid('amudGridContainer', tempAmudStates, isBunchedView);
+        updateModalProgressStats(tempAmudStates);
+    });
+
+    // Save Logic
+    document.getElementById('saveConfigBtn').addEventListener('click', () => {
+        let masechet = AppState.trackSequence[currentEditingIndex];
+
+        // Normalize legacy string entries into full objects before writing properties
+        if (typeof masechet === 'string') {
+            masechet = { name: masechet, reviewDays: 0, amudStates: [...tempAmudStates] };
+            AppState.trackSequence[currentEditingIndex] = masechet;
+        }
+
+        masechet.reviewDays = parseInt(document.getElementById('configReviewDays').value, 10) || 0;
+        masechet.amudStates = [...tempAmudStates];
+
+        saveToLocalStorage();
+        document.getElementById('masechetConfigModal').classList.add('hidden');
+        handleScheduleGeneration(); // Refresh the calendar with new start points
+    });
+
+    // Cancel/Close
+    const closeConfig = () => document.getElementById('masechetConfigModal').classList.add('hidden');
+    document.getElementById('closeConfigModal').addEventListener('click', closeConfig);
+    document.getElementById('cancelConfigBtn').addEventListener('click', closeConfig);
+
+    // View Toggles
+    document.getElementById('toggleViewBunched').addEventListener('click', () => {
+        isBunchedView = true;
+        renderAmudGrid('amudGridContainer', tempAmudStates, true);
+        // Update UI toggle styles here if desired
+    });
+
+    document.getElementById('toggleViewIndividual').addEventListener('click', () => {
+        isBunchedView = false;
+        renderAmudGrid('amudGridContainer', tempAmudStates, false);
+    });
+
     // --- Firebase Auth & Cloud Sync Listeners ---
     const cloudLoggedOut = document.getElementById('cloudLoggedOut');
     const cloudLoggedIn = document.getElementById('cloudLoggedIn');
     const cloudUserEmail = document.getElementById('cloudUserEmail');
-    
+
     const cloudEmail = document.getElementById('cloudEmail');
     const cloudPassword = document.getElementById('cloudPassword');
-    
+
     const cloudLoginBtn = document.getElementById('cloudLoginBtn');
     const cloudRegisterBtn = document.getElementById('cloudRegisterBtn');
     const cloudLogoutBtn = document.getElementById('cloudLogoutBtn');
@@ -433,9 +541,9 @@ function setupEventListeners() {
         const success = await loadFromFirebase();
         if (success) {
             alert("הנתונים נמשכו מהענן בהצלחה! העמוד יתעדכן.");
-            
+
             // Re-render UI views based on the freshly updated AppState variables
-            initUserConfigPanel(); 
+            initUserConfigPanel();
             handleScheduleGeneration();
         } else {
             alert("לא נמצאו נתונים שמורים בענן עבור משתמש זה.");

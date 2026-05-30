@@ -45,7 +45,10 @@ export async function generateSchedule({ trackSequence, userSettings, manualOver
     // --- Step 1: Flatten All Amudim Into a Single Master Pool with Instance Tracking ---
     let masterAmudPool = [];
 
-    trackSequence.forEach((name, idx) => {
+    trackSequence.forEach((entry, idx) => {
+        // Support both legacy string format and current object format
+        const name = typeof entry === 'string' ? entry : entry.name;
+
         let startIdx = 0;
         if (idx === 0) {
             const startDafHeb = startDaf.trim();
@@ -182,7 +185,10 @@ export async function generateSchedule({ trackSequence, userSettings, manualOver
             }
 
             const masechetCounts = [];
-            trackSequence.forEach((trackName, idx) => {
+            trackSequence.forEach((entry, idx) => {
+                // Support both legacy string format and current object format
+                const trackName = typeof entry === 'string' ? entry : entry.name;
+
                 // Filter strictly against unique track sequence indices
                 const count = masterAmudPool.filter(a => a.trackIdx === idx).length;
                 if (count > 0) {
