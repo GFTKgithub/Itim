@@ -391,9 +391,6 @@ function setupEventListeners() {
             cloudLoggedOut.classList.add('hidden');
             cloudLoggedIn.classList.remove('hidden');
             cloudUserEmail.innerText = user.email;
-
-            // Optional power move: when they log in, save their current state automatically
-            saveToFirebase();
         } else {
             // User logged out: restore default inputs
             cloudLoggedOut.classList.remove('hidden');
