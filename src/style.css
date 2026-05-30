@@ -84,6 +84,15 @@
     background-color: #f1efd9;
 }
 
+.review-bg {
+    background-color: #f0fdf4;
+    border: 1px solid #86efac;
+}
+
+.review-bg:hover {
+    background-color: #dcfce7;
+}
+
 .holiday-label-small {
     display: block;
     color: #b91c1c;

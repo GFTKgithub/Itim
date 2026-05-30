@@ -143,19 +143,37 @@ export async function generateSchedule({ trackSequence, userSettings, manualOver
         }
 
         let estimatedBreaksCount = breakDays * (trackSequence.length - 1);
+
+        // Count total review days across all masechtot (all except the last, which has no "between" slot)
+        const totalReviewDays = trackSequence.reduce((sum, entry, idx) => {
+            if (idx === trackSequence.length - 1) return sum; // last masechet: no review slot between it and the next
+            const reviewDays = (typeof entry === 'object' && entry?.reviewDays) ? entry.reviewDays : 0;
+            return sum + reviewDays;
+        }, 0);
+
+        const totalReservedDays = estimatedBreaksCount + totalReviewDays;
+
         let activeStudyDays = timelineDays.filter(d => d.isStudyDay);
-        let actualStudyDaysCount = activeStudyDays.length - estimatedBreaksCount;
+        let actualStudyDaysCount = activeStudyDays.length - totalReservedDays;
 
         if (actualStudyDaysCount <= 0) {
             actualStudyDaysCount = activeStudyDays.length;
         } else {
+            // Convert reserved days from the end of the timeline, breaks first then review days
             let breakConverted = 0;
+            let reviewConverted = 0;
             for (let i = timelineDays.length - 1; i >= 0; i--) {
-                if (breakConverted >= estimatedBreaksCount) break;
+                if (breakConverted >= estimatedBreaksCount && reviewConverted >= totalReviewDays) break;
                 if (timelineDays[i].isStudyDay) {
-                    timelineDays[i].isStudyDay = false;
-                    timelineDays[i].isBreakDay = true;
-                    breakConverted++;
+                    if (breakConverted < estimatedBreaksCount) {
+                        timelineDays[i].isStudyDay = false;
+                        timelineDays[i].isBreakDay = true;
+                        breakConverted++;
+                    } else if (reviewConverted < totalReviewDays) {
+                        timelineDays[i].isStudyDay = false;
+                        timelineDays[i].isReviewDay = true;
+                        reviewConverted++;
+                    }
                 }
             }
         }
@@ -258,10 +276,9 @@ export async function generateSchedule({ trackSequence, userSettings, manualOver
 
             let amudimToCountForDay = 0;
             let triggerBreak = false;
+            let currentTrackIdx = amudPoolCopy.length > 0 ? amudPoolCopy[0].trackIdx : -1;
 
             if (!isRestDay) {
-                const currentTrackIdx = amudPoolCopy[0].trackIdx;
-
                 // Enforce Rule 1: Never pull amudim beyond the current masechet instance boundary
                 let limit = 0;
                 while (limit < dailyAmudimPace && limit < amudPoolCopy.length && amudPoolCopy[limit].trackIdx === currentTrackIdx) {
@@ -288,12 +305,26 @@ export async function generateSchedule({ trackSequence, userSettings, manualOver
             });
 
             if (triggerBreak) {
+                // 1. Break days between masechtot
                 for (let b = 0; b < breakDays; b++) {
                     currentDate.setDate(currentDate.getDate() + 1);
                     const bStr = formatDateToIL(currentDate);
                     timelineDays.push({
                         date: new Date(currentDate), dateString: bStr,
                         isRestDay: false, isBreakDay: true, isStudyDay: false, isReviewDay: false, overrideState: 0, amudimToCount: 0
+                    });
+                }
+
+                // 2. Review days for the masechet that just finished
+                const finishedEntry = trackSequence[currentTrackIdx];
+                const reviewDaysCount = (typeof finishedEntry === 'object' && finishedEntry?.reviewDays) ? finishedEntry.reviewDays : 0;
+                for (let r = 0; r < reviewDaysCount; r++) {
+                    currentDate.setDate(currentDate.getDate() + 1);
+                    const rStr = formatDateToIL(currentDate);
+                    timelineDays.push({
+                        date: new Date(currentDate), dateString: rStr,
+                        isRestDay: false, isBreakDay: false, isStudyDay: false, isReviewDay: true, overrideState: 0, amudimToCount: 0,
+                        reviewMasechet: typeof finishedEntry === 'string' ? finishedEntry : finishedEntry.name
                     });
                 }
             }

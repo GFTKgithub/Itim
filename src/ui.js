@@ -40,23 +40,39 @@ export function updateTrackSequenceUI(sequence) {
         // Handle both string (old) and object (new) formats for backward compatibility during dev
         const masechetName = typeof m === 'string' ? m : m.name;
 
+        // Progress bar calculation
+        const amudStates = (typeof m === 'object' && m.amudStates) ? m.amudStates : [];
+        const total = amudStates.length;
+        const learned = amudStates.filter(s => s === 1).length;
+        const percent = total > 0 ? Math.round((learned / total) * 100) : 0;
+        const progressBar = total > 0 ? `
+            <div class="flex items-center gap-1.5 px-1 mt-1.5 mb-0.5">
+                <div class="flex-1 h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                    <div class="h-full bg-emerald-400 rounded-full transition-all duration-300" style="width: ${percent}%"></div>
+                </div>
+                <span class="text-[9px] text-slate-400 font-medium tabular-nums w-7 text-left">${percent}%</span>
+            </div>` : '';
+
         return `
         <div data-index="${i}" class="drag-row flex items-center gap-2 select-none w-full py-0.5 touch-pan-y">
             <span class="static-index text-slate-400 font-bold text-xs w-5 text-center select-none pointer-events-none tracking-tight"></span>
 
             <li class="drag-item flex-1 flex justify-between items-center bg-white border border-slate-200 hover:border-blue-300 px-4 py-2.5 rounded-xl shadow-xs transition-all duration-150 relative touch-pan-y">
                 
-                <div class="flex items-center gap-3">
-                    <div class="drag-handle text-slate-400 hover:text-slate-600 flex flex-col gap-0.5 justify-center leading-none select-none cursor-grab p-2 touch-none">
-                        <span class="block">•••</span>
-                        <span class="block -mt-1.5">•••</span>
+                <div class="flex flex-col flex-1 gap-0 min-w-0">
+                    <div class="flex items-center gap-3">
+                        <div class="drag-handle text-slate-400 hover:text-slate-600 flex flex-col gap-0.5 justify-center leading-none select-none cursor-grab p-2 touch-none">
+                            <span class="block">•••</span>
+                            <span class="block -mt-1.5">•••</span>
+                        </div>
+                        <span class="font-bold text-slate-700">
+                            מסכת ${masechetName}
+                        </span>
                     </div>
-                    <span class="font-bold text-slate-700">
-                        מסכת ${masechetName}
-                    </span>
+                    ${progressBar}
                 </div>
                 
-                <div class="flex items-center gap-1">
+                <div class="flex items-center gap-1 shrink-0 mr-2">
                     <button data-index="${i}" class="configure-btn flex items-center gap-1.5 bg-slate-50 hover:bg-blue-50 text-slate-500 hover:text-blue-600 px-3 py-1.5 rounded-lg text-xs font-bold transition-colors border border-slate-200 hover:border-blue-200" title="הגדרת התקדמות וחזרות">
                         <span>הגדר</span>
                         <span class="text-sm">⚙️</span>
@@ -248,9 +264,12 @@ export function renderCalendar(containerId, schedule, config = {}) {
             // Sync structural background classes safely across updates
             if (day.isSiyum) {
                 dayEl.classList.add('siyum-bg', 'bg-amber-50', 'border-amber-400', 'shadow-inner');
-                dayEl.classList.remove('shabbat-bg', 'holiday-bg');
+                dayEl.classList.remove('shabbat-bg', 'holiday-bg', 'review-bg');
+            } else if (day.isReviewDay) {
+                dayEl.classList.add('review-bg');
+                dayEl.classList.remove('siyum-bg', 'bg-amber-50', 'border-amber-400', 'shadow-inner', 'shabbat-bg', 'holiday-bg');
             } else {
-                dayEl.classList.remove('siyum-bg', 'bg-amber-50', 'border-amber-400', 'shadow-inner');
+                dayEl.classList.remove('siyum-bg', 'bg-amber-50', 'border-amber-400', 'shadow-inner', 'review-bg');
                 if (day.isShabbat) {
                     dayEl.classList.add('shabbat-bg');
                     dayEl.classList.remove('holiday-bg');
@@ -374,6 +393,8 @@ export function renderCalendar(containerId, schedule, config = {}) {
                 dayBgClass = 'shabbat-bg';
             } else if (day.isHoliday) {
                 dayBgClass = 'holiday-bg';
+            } else if (day.isReviewDay) {
+                dayBgClass = 'review-bg';
             } else {
                 dayBgClass = statusClass;
             }
