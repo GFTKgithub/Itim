@@ -46,7 +46,6 @@ export async function generateSchedule({ trackSequence, userSettings, manualOver
     let masterAmudPool = [];
 
     trackSequence.forEach((entry, idx) => {
-        // Support both legacy string format and current object format
         const name = typeof entry === 'string' ? entry : entry.name;
 
         let startIdx = 0;
@@ -60,7 +59,6 @@ export async function generateSchedule({ trackSequence, userSettings, manualOver
 
         const totalAmudim = getTotalAmudim(name);
         for (let i = startIdx; i < totalAmudim; i++) {
-            // trackIdx guarantees unique isolation for identical masechet names
             masterAmudPool.push({ masechet: name, amudIdx: i, trackIdx: idx });
         }
     });
@@ -75,9 +73,11 @@ export async function generateSchedule({ trackSequence, userSettings, manualOver
     } else {
         const dailyAmudimPace = Math.max(1, Math.ceil(parseFloat(pace) * 2));
         if (dailyAmudimPace > 0) {
+            // Rough estimation of years to parse
+            const totalReviewDays = trackSequence.reduce((sum, entry) => sum + ((typeof entry === 'object' ? entry.reviewDays : 0) || 0), 0);
             const estimatedStudyDays = Math.ceil(masterAmudPool.length / dailyAmudimPace);
             const totalStructuralBreakDays = breakDays * (trackSequence.length - 1);
-            const totalProjectedDays = (estimatedStudyDays + totalStructuralBreakDays) * 1.4;
+            const totalProjectedDays = (estimatedStudyDays + totalStructuralBreakDays + totalReviewDays) * 1.4;
 
             const projectedEndDate = new Date(startInputDate);
             projectedEndDate.setDate(projectedEndDate.getDate() + Math.ceil(totalProjectedDays));
@@ -123,10 +123,15 @@ export async function generateSchedule({ trackSequence, userSettings, manualOver
 
         if (endDate < startInputDate) throw new Error("תאריך היעד חייב להיות אחרי תאריך ההתחלה");
 
+        // Collect overall counts of breaks and reviews to safely deduct from total active capacity
+        let totalBreaksCount = breakDays * (trackSequence.length - 1);
+        const totalReviewDays = trackSequence.reduce((sum, entry) => sum + ((typeof entry === 'object' ? entry.reviewDays : 0) || 0), 0);
+        const totalReservedDays = totalBreaksCount + totalReviewDays;
+
+        // Build continuous base timeline days
         while (currentDate <= endDate) {
             const dateString = formatDateToIL(currentDate);
             const overrideState = manualOverrides[dateString] || 0;
-
             let isRestDay = (overrideState === 1) || (overrideState !== 2 && shouldDayBeRest(currentDate, studyDays, includeHolidays, calendarData));
 
             timelineDays.push({
@@ -142,121 +147,94 @@ export async function generateSchedule({ trackSequence, userSettings, manualOver
             currentDate.setDate(currentDate.getDate() + 1);
         }
 
-        let estimatedBreaksCount = breakDays * (trackSequence.length - 1);
-
-        // Count total review days across all masechtot (all except the last, which has no "between" slot)
-        const totalReviewDays = trackSequence.reduce((sum, entry, idx) => {
-            if (idx === trackSequence.length - 1) return sum; // last masechet: no review slot between it and the next
-            const reviewDays = (typeof entry === 'object' && entry?.reviewDays) ? entry.reviewDays : 0;
-            return sum + reviewDays;
-        }, 0);
-
-        const totalReservedDays = estimatedBreaksCount + totalReviewDays;
-
         let activeStudyDays = timelineDays.filter(d => d.isStudyDay);
-        let actualStudyDaysCount = activeStudyDays.length - totalReservedDays;
+        if (activeStudyDays.length <= totalReservedDays) {
+            throw new Error("אין מספיק ימי לימוד בטווח התאריכים המבוקש כדי להכיל את ימי החזרה וההפסקות.");
+        }
 
-        if (actualStudyDaysCount <= 0) {
-            actualStudyDaysCount = activeStudyDays.length;
-        } else {
-            // Convert reserved days from the end of the timeline, breaks first then review days
-            let breakConverted = 0;
-            let reviewConverted = 0;
-            for (let i = timelineDays.length - 1; i >= 0; i--) {
-                if (breakConverted >= estimatedBreaksCount && reviewConverted >= totalReviewDays) break;
-                if (timelineDays[i].isStudyDay) {
-                    if (breakConverted < estimatedBreaksCount) {
-                        timelineDays[i].isStudyDay = false;
-                        timelineDays[i].isBreakDay = true;
-                        breakConverted++;
-                    } else if (reviewConverted < totalReviewDays) {
-                        timelineDays[i].isStudyDay = false;
-                        timelineDays[i].isReviewDay = true;
-                        reviewConverted++;
-                    }
-                }
+        // Calculate dynamic mathematical load ratio for the active slots
+        const netStudyDaysCount = activeStudyDays.length - totalReservedDays;
+        const totalAmudim = masterAmudPool.length;
+
+        // Build precise item profiles
+        const masechetProfiles = trackSequence.map((entry, idx) => {
+            const trackName = typeof entry === 'string' ? entry : entry.name;
+            const rDays = (typeof entry === 'object' && entry?.reviewDays) ? parseInt(entry.reviewDays, 10) || 0 : 0;
+            const count = masterAmudPool.filter(a => a.trackIdx === idx).length;
+            return { name: trackName, trackIdx: idx, count: count, reviewDays: rDays, allocatedDays: 0 };
+        }).filter(m => m.count > 0);
+
+        // Distribute net study days proportionally across text targets
+        let totalAllocatedDays = 0;
+        masechetProfiles.forEach(m => {
+            const exactDays = netStudyDaysCount * (m.count / totalAmudim);
+            m.allocatedDays = Math.max(1, Math.floor(exactDays));
+            totalAllocatedDays += m.allocatedDays;
+        });
+
+        // Distribute remainder variations
+        let daysToDistribute = netStudyDaysCount - totalAllocatedDays;
+        if (daysToDistribute > 0) {
+            for (let i = 0; i < daysToDistribute; i++) {
+                masechetProfiles[i % masechetProfiles.length].allocatedDays++;
+            }
+        } else if (daysToDistribute < 0) {
+            for (let i = 0; i < Math.abs(daysToDistribute); i++) {
+                masechetProfiles.sort((a, b) => b.allocatedDays - a.allocatedDays);
+                if (masechetProfiles[0].allocatedDays > 1) masechetProfiles[0].allocatedDays--;
             }
         }
 
-        let trueStudyDays = timelineDays.filter(d => d.isStudyDay);
-        if (trueStudyDays.length === 0) throw new Error("אין מספיק ימי לימוד בטווח התאריכים המבוקש");
+        // Translate the calculated load matrix maps directly into a flat linear sequence plan array
+        let sequentialPlan = [];
+        masechetProfiles.forEach((m, profileIdx) => {
+            const baseAmudim = Math.floor(m.count / m.allocatedDays);
+            const remainder = m.count % m.allocatedDays;
 
-        const minAmudimPerDay = 1;
-        const maxDaysNeeded = Math.ceil(masterAmudPool.length / minAmudimPerDay);
+            // 1. Push actual text study quotas
+            for (let i = 0; i < m.allocatedDays; i++) {
+                const extra = (i >= m.allocatedDays - remainder) ? 1 : 0;
+                sequentialPlan.push({ type: 'study', count: baseAmudim + extra, masechet: m.name });
+            }
 
-        if (trueStudyDays.length > maxDaysNeeded) {
-            let studyDayCounter = 0;
-            timelineDays.forEach(day => {
-                if (day.isStudyDay) {
-                    if (studyDayCounter < maxDaysNeeded) {
-                        day.amudimToCount = minAmudimPerDay;
-                        studyDayCounter++;
-                    } else {
+            // 2. Inject structural structural intermissions immediately following completion
+            if (profileIdx < masechetProfiles.length - 1) {
+                for (let b = 0; b < breakDays; b++) {
+                    sequentialPlan.push({ type: 'break', count: 0, masechet: "הפסקה" });
+                }
+            }
+
+            // 3. Inject dedicated localized reviews immediately following completion
+            for (let r = 0; r < m.reviewDays; r++) {
+                sequentialPlan.push({ type: 'review', count: 0, masechet: m.name });
+            }
+        });
+
+        // Map sequential items to the timeline slots
+        let planPointer = 0;
+        timelineDays.forEach(day => {
+            if (day.isStudyDay) {
+                if (planPointer < sequentialPlan.length) {
+                    const currentPlan = sequentialPlan[planPointer];
+                    if (currentPlan.type === 'break') {
+                        day.isStudyDay = false;
+                        day.isBreakDay = true;
+                    } else if (currentPlan.type === 'review') {
                         day.isStudyDay = false;
                         day.isReviewDay = true;
+                        day.reviewMasechet = currentPlan.masechet;
+                    } else {
+                        day.amudimToCount = currentPlan.count;
                     }
-                }
-            });
-        } else {
-            if (trueStudyDays.length < trackSequence.length) {
-                throw new Error("אין מספיק ימי לימוד כדי להקצות לפחות יום אחד לכל מסכת.");
-            }
-
-            const masechetCounts = [];
-            trackSequence.forEach((entry, idx) => {
-                // Support both legacy string format and current object format
-                const trackName = typeof entry === 'string' ? entry : entry.name;
-
-                // Filter strictly against unique track sequence indices
-                const count = masterAmudPool.filter(a => a.trackIdx === idx).length;
-                if (count > 0) {
-                    masechetCounts.push({ name: trackName, trackIdx: idx, count: count });
-                }
-            });
-
-            const totalAmudim = masterAmudPool.length;
-            const totalDays = trueStudyDays.length;
-
-            let totalAllocatedDays = 0;
-            masechetCounts.forEach(m => {
-                m.exactDays = totalDays * (m.count / totalAmudim);
-                m.allocatedDays = Math.floor(m.exactDays);
-                if (m.allocatedDays === 0) m.allocatedDays = 1;
-                totalAllocatedDays += m.allocatedDays;
-            });
-
-            let daysToDistribute = totalDays - totalAllocatedDays;
-
-            if (daysToDistribute < 0) {
-                for (let i = 0; i < Math.abs(daysToDistribute); i++) {
-                    masechetCounts.sort((a, b) => (a.allocatedDays - a.exactDays) - (b.allocatedDays - b.exactDays));
-                    let target = masechetCounts.find(m => m.allocatedDays > 1);
-                    if (target) target.allocatedDays--;
-                }
-            } else if (daysToDistribute > 0) {
-                masechetCounts.sort((a, b) => (b.exactDays - b.allocatedDays) - (a.exactDays - a.allocatedDays));
-                for (let i = 0; i < daysToDistribute; i++) {
-                    masechetCounts[i % masechetCounts.length].allocatedDays++;
+                    planPointer++;
+                } else {
+                    // Fallback extra buffer
+                    day.isStudyDay = false;
+                    day.isReviewDay = true;
                 }
             }
+        });
 
-            const scheduleSequence = masechetCounts.sort((a, b) => a.trackIdx - b.trackIdx);
-
-            let dayPlans = [];
-            scheduleSequence.forEach(m => {
-                const baseAmudim = Math.floor(m.count / m.allocatedDays);
-                const remainder = m.count % m.allocatedDays;
-
-                for (let i = 0; i < m.allocatedDays; i++) {
-                    const extra = (i >= m.allocatedDays - remainder) ? 1 : 0;
-                    dayPlans.push(baseAmudim + extra);
-                }
-            });
-
-            trueStudyDays.forEach((d, idx) => {
-                d.amudimToCount = dayPlans[idx];
-            });
-        }
     } else {
         // Pace Mode
         let amudPoolCopy = [...masterAmudPool];
@@ -276,23 +254,23 @@ export async function generateSchedule({ trackSequence, userSettings, manualOver
 
             let amudimToCountForDay = 0;
             let triggerBreak = false;
-            let currentTrackIdx = amudPoolCopy.length > 0 ? amudPoolCopy[0].trackIdx : -1;
+            let currentTrackIdx = amudPoolCopy[0].trackIdx;
 
             if (!isRestDay) {
-                // Enforce Rule 1: Never pull amudim beyond the current masechet instance boundary
                 let limit = 0;
                 while (limit < dailyAmudimPace && limit < amudPoolCopy.length && amudPoolCopy[limit].trackIdx === currentTrackIdx) {
                     limit++;
                 }
 
                 let drained = amudPoolCopy.splice(0, limit);
-                amudimToCountForDay = drained.length; // Capture true dynamic allocation count
+                amudimToCountForDay = drained.length;
 
-                if (amudPoolCopy.length > 0 && amudPoolCopy[0].trackIdx !== currentTrackIdx) {
+                if (amudPoolCopy.length === 0 || amudPoolCopy[0].trackIdx !== currentTrackIdx) {
                     triggerBreak = true;
                 }
             }
 
+            // Push the actual study day (or study rest day)
             timelineDays.push({
                 date: new Date(currentDate),
                 dateString: dateString,
@@ -305,27 +283,55 @@ export async function generateSchedule({ trackSequence, userSettings, manualOver
             });
 
             if (triggerBreak) {
-                // 1. Break days between masechtot
-                for (let b = 0; b < breakDays; b++) {
-                    currentDate.setDate(currentDate.getDate() + 1);
-                    const bStr = formatDateToIL(currentDate);
-                    timelineDays.push({
-                        date: new Date(currentDate), dateString: bStr,
-                        isRestDay: false, isBreakDay: true, isStudyDay: false, isReviewDay: false, overrideState: 0, amudimToCount: 0
-                    });
+                // 1. Structural break management between tracks (skip non-study days)
+                const isAbsoluteLast = (currentTrackIdx === trackSequence.length - 1);
+                if (!isAbsoluteLast) {
+                    let b = 0;
+                    while (b < breakDays) {
+                        currentDate.setDate(currentDate.getDate() + 1);
+                        const bStr = formatDateToIL(currentDate);
+                        const bOverride = manualOverrides[bStr] || 0;
+                        let bIsRest = (bOverride === 1) || (bOverride !== 2 && shouldDayBeRest(currentDate, studyDays, includeHolidays, calendarData));
+
+                        if (bIsRest) {
+                            timelineDays.push({
+                                date: new Date(currentDate), dateString: bStr,
+                                isRestDay: true, isBreakDay: false, isStudyDay: false, isReviewDay: false, overrideState: bOverride, amudimToCount: 0
+                            });
+                        } else {
+                            timelineDays.push({
+                                date: new Date(currentDate), dateString: bStr,
+                                isRestDay: false, isBreakDay: true, isStudyDay: false, isReviewDay: false, overrideState: bOverride, amudimToCount: 0
+                            });
+                            b++; // Only count towards break days if it's a valid structural day
+                        }
+                    }
                 }
 
-                // 2. Review days for the masechet that just finished
+                // 2. Direct sequential inline execution for localized tracking (skip non-study days)
                 const finishedEntry = trackSequence[currentTrackIdx];
-                const reviewDaysCount = (typeof finishedEntry === 'object' && finishedEntry?.reviewDays) ? finishedEntry.reviewDays : 0;
-                for (let r = 0; r < reviewDaysCount; r++) {
+                const reviewDaysCount = (typeof finishedEntry === 'object' && finishedEntry?.reviewDays) ? parseInt(finishedEntry.reviewDays, 10) || 0 : 0;
+
+                let r = 0;
+                while (r < reviewDaysCount) {
                     currentDate.setDate(currentDate.getDate() + 1);
                     const rStr = formatDateToIL(currentDate);
-                    timelineDays.push({
-                        date: new Date(currentDate), dateString: rStr,
-                        isRestDay: false, isBreakDay: false, isStudyDay: false, isReviewDay: true, overrideState: 0, amudimToCount: 0,
-                        reviewMasechet: typeof finishedEntry === 'string' ? finishedEntry : finishedEntry.name
-                    });
+                    const rOverride = manualOverrides[rStr] || 0;
+                    let rIsRest = (rOverride === 1) || (rOverride !== 2 && shouldDayBeRest(currentDate, studyDays, includeHolidays, calendarData));
+
+                    if (rIsRest) {
+                        timelineDays.push({
+                            date: new Date(currentDate), dateString: rStr,
+                            isRestDay: true, isBreakDay: false, isStudyDay: false, isReviewDay: false, overrideState: rOverride, amudimToCount: 0
+                        });
+                    } else {
+                        timelineDays.push({
+                            date: new Date(currentDate), dateString: rStr,
+                            isRestDay: false, isBreakDay: false, isStudyDay: false, isReviewDay: true, overrideState: rOverride, amudimToCount: 0,
+                            reviewMasechet: typeof finishedEntry === 'string' ? finishedEntry : finishedEntry.name
+                        });
+                        r++; // Only count down a review day if it was actually available for reviewing
+                    }
                 }
             }
             currentDate.setDate(currentDate.getDate() + 1);
@@ -361,7 +367,7 @@ export async function generateSchedule({ trackSequence, userSettings, manualOver
             dayData.masechet = "הפסקה";
             dayData.content = "";
         } else if (day.isReviewDay) {
-            dayData.masechet = currentActiveMasechet;
+            dayData.masechet = day.reviewMasechet || currentActiveMasechet;
             dayData.content = "חזרה";
         } else if (day.isStudyDay || day.amudimToCount > 0) {
             let count = day.amudimToCount;
