@@ -458,6 +458,10 @@ function setupEventListeners() {
         masechet.amudStates = [...tempAmudStates];
 
         saveToLocalStorage();
+
+        // Re-render the progress bar
+        updateTrackSequenceUI(AppState.trackSequence);
+
         document.getElementById('masechetConfigModal').classList.add('hidden');
         handleScheduleGeneration(); // Refresh the calendar with new start points
     });
