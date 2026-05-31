@@ -1,5 +1,5 @@
 import { masechtot } from './data.js';
-import { hydrateHtmlFromAppState, toggleInputs, updateTrackSequenceUI, renderAmudGrid, updateModalProgressStats, renderDateLabels, renderCalendar, showDialog } from './ui.js';
+import { hydrateHtmlFromAppState, toggleInputs, updateTrackSequenceUI, renderAmudGrid, renderDailyView, updateModalProgressStats, renderDateLabels, renderCalendar, showDialog } from './ui.js';
 import { addToSequence, removeFromSequence, clearSequence } from './track-sequence.js';
 import { generateSchedule, cycleDateOverride } from './scheduler.js';
 import { initPersistence, saveToLocalStorage, loadFromLocalStorage, exportStateBackup, importStateBackup } from './persistence.js';
@@ -37,7 +37,8 @@ let AppState = {
 
 let currentEditingIndex = null;
 let tempAmudStates = [];
-let isBunchedView = false; // Toggle state
+let currentDaySlots = [];   // Pre-computed per-day amud ranges for the currently open masechet
+let isBunchedView = false;
 
 /* 
     Page initiation logic
@@ -404,17 +405,21 @@ function setupEventListeners() {
 
         // 6. Safeguard amudStates array generation if it doesn't exist yet
         if (!masechet.amudStates || masechet.amudStates.length === 0) {
-            // Fallback: If your data.js doesn't map perfectly yet, initialize with default 120 amudim (60 daf)
             tempAmudStates = new Array(120).fill(0);
         } else {
             tempAmudStates = [...masechet.amudStates];
         }
 
-        // 7. Invoke the rendering functions
-        renderAmudGrid('amudGridContainer', tempAmudStates, isBunchedView);
+        // 7. Pre-compute per-day amud slots for this masechet
+        currentDaySlots = computeDaySlots(AppState.schedule, masechetName, currentEditingIndex, AppState.trackSequence);
+
+        // 8. Always open in amud view; reset tab styling
+        isBunchedView = false;
+        setActiveView('individual');
+        renderAmudGrid('amudGridContainer', tempAmudStates, false);
         updateModalProgressStats(tempAmudStates);
 
-        // 8. Open it
+        // 9. Open it
         document.getElementById('masechetConfigModal').classList.remove('hidden');
     });
 
@@ -471,16 +476,145 @@ function setupEventListeners() {
     document.getElementById('closeConfigModal').addEventListener('click', closeConfig);
     document.getElementById('cancelConfigBtn').addEventListener('click', closeConfig);
 
-    // View Toggles
-    document.getElementById('toggleViewBunched').addEventListener('click', () => {
-        isBunchedView = true;
-        renderAmudGrid('amudGridContainer', tempAmudStates, true);
-        // Update UI toggle styles here if desired
-    });
+    // --- View Switching ---
+    // Helper: shows the right container and highlights the active tab button
+    function setActiveView(view) {
+        const amudGrid    = document.getElementById('amudGridContainer');
+        const dailyView   = document.getElementById('dailyViewContainer');
+        const btnIndividual = document.getElementById('toggleViewIndividual');
+        const btnBunched    = document.getElementById('toggleViewBunched');
+        const btnDaily      = document.getElementById('toggleViewDaily');
+
+        // Reset all tab styles
+        [btnIndividual, btnBunched, btnDaily].forEach(btn => {
+            btn.classList.remove('bg-white', 'shadow-sm');
+            btn.classList.add('text-slate-500');
+        });
+
+        if (view === 'daily') {
+            amudGrid.classList.add('hidden');
+            dailyView.classList.remove('hidden');
+            btnDaily.classList.add('bg-white', 'shadow-sm');
+            btnDaily.classList.remove('text-slate-500');
+        } else {
+            amudGrid.classList.remove('hidden');
+            dailyView.classList.add('hidden');
+            if (view === 'bunched') {
+                btnBunched.classList.add('bg-white', 'shadow-sm');
+                btnBunched.classList.remove('text-slate-500');
+            } else {
+                btnIndividual.classList.add('bg-white', 'shadow-sm');
+                btnIndividual.classList.remove('text-slate-500');
+            }
+        }
+    }
 
     document.getElementById('toggleViewIndividual').addEventListener('click', () => {
         isBunchedView = false;
+        setActiveView('individual');
         renderAmudGrid('amudGridContainer', tempAmudStates, false);
+    });
+
+    document.getElementById('toggleViewBunched').addEventListener('click', () => {
+        isBunchedView = true;
+        setActiveView('bunched');
+        renderAmudGrid('amudGridContainer', tempAmudStates, true);
+    });
+
+    document.getElementById('toggleViewDaily').addEventListener('click', () => {
+        setActiveView('daily');
+        renderDailyView('dailyViewContainer', currentDaySlots, tempAmudStates);
+    });
+
+    // Daily view: cycle day slot state — unlearned → all learned → all skipped → unlearned
+    document.getElementById('dailyViewContainer').addEventListener('click', (e) => {
+        const btn = e.target.closest('.day-slot-btn');
+        if (!btn) return;
+        const slot = currentDaySlots[parseInt(btn.dataset.slotIdx)];
+        if (!slot) return;
+
+        // Determine current aggregate state
+        let learnedCount = 0, skippedCount = 0;
+        for (let i = slot.amudStart; i < slot.amudStart + slot.amudCount; i++) {
+            if (i < tempAmudStates.length) {
+                if (tempAmudStates[i] === 1) learnedCount++;
+                else if (tempAmudStates[i] === 2) skippedCount++;
+            }
+        }
+        const isFullyLearned = learnedCount === slot.amudCount;
+        const isFullySkipped = skippedCount === slot.amudCount;
+
+        // Cycle: unlearned (or partial) → all learned → all skipped → unlearned
+        const newState = isFullyLearned ? 2 : isFullySkipped ? 0 : 1;
+        for (let i = slot.amudStart; i < slot.amudStart + slot.amudCount; i++) {
+            if (i < tempAmudStates.length) tempAmudStates[i] = newState;
+        }
+
+        renderDailyView('dailyViewContainer', currentDaySlots, tempAmudStates);
+        updateModalProgressStats(tempAmudStates);
+    });
+
+    // Mark today: finds today's slot and cycles its state (same 3-way cycle as above)
+    document.getElementById('markTodayBtn').addEventListener('click', () => {
+        const todayStr = new Date().toISOString().split('T')[0];
+        const slot = currentDaySlots.find(s => s.dateString === todayStr);
+
+        if (!slot) {
+            showDialog({ title: 'לא נמצא', message: 'לא נמצא שיעור מתוכנן להיום במסכת זו.', icon: '📅', confirmText: 'הבנתי' });
+            return;
+        }
+
+        let learnedCount = 0, skippedCount = 0;
+        for (let i = slot.amudStart; i < slot.amudStart + slot.amudCount; i++) {
+            if (i < tempAmudStates.length) {
+                if (tempAmudStates[i] === 1) learnedCount++;
+                else if (tempAmudStates[i] === 2) skippedCount++;
+            }
+        }
+        const isFullyLearned = learnedCount === slot.amudCount;
+        const isFullySkipped = skippedCount === slot.amudCount;
+        const newState = isFullyLearned ? 2 : isFullySkipped ? 0 : 1;
+
+        for (let i = slot.amudStart; i < slot.amudStart + slot.amudCount; i++) {
+            if (i < tempAmudStates.length) tempAmudStates[i] = newState;
+        }
+
+        renderAmudGrid('amudGridContainer', tempAmudStates, isBunchedView);
+        renderDailyView('dailyViewContainer', currentDaySlots, tempAmudStates);
+        updateModalProgressStats(tempAmudStates);
+    });
+
+    // Sync to today: marks all past study days for this masechet as learned (skips state=2)
+    document.getElementById('syncToTodayBtn').addEventListener('click', async () => {
+        if (currentDaySlots.length === 0) {
+            await showDialog({ title: 'אין נתונים', message: 'יש ליצור לוח לימוד קודם כדי לסנכרן.', icon: '📅', confirmText: 'הבנתי' });
+            return;
+        }
+
+        const confirmed = await showDialog({
+            title: 'סנכרן עד היום',
+            message: 'פעולה זו תסמן את כל ימי הלימוד שעברו במסכת זו (עד היום) כנלמדו. להמשיך?',
+            icon: '🔄',
+            showCancel: true,
+            confirmText: 'כן, סנכרן',
+            cancelText: 'ביטול'
+        });
+        if (!confirmed) return;
+
+        const todayStr = new Date().toISOString().split('T')[0];
+        currentDaySlots.forEach(slot => {
+            if (slot.dateString <= todayStr) {
+                for (let i = slot.amudStart; i < slot.amudStart + slot.amudCount; i++) {
+                    if (i < tempAmudStates.length && tempAmudStates[i] !== 2) {
+                        tempAmudStates[i] = 1;
+                    }
+                }
+            }
+        });
+
+        renderAmudGrid('amudGridContainer', tempAmudStates, isBunchedView);
+        renderDailyView('dailyViewContainer', currentDaySlots, tempAmudStates);
+        updateModalProgressStats(tempAmudStates);
     });
 
     // --- Firebase Auth & Cloud Sync Listeners ---
@@ -593,6 +727,57 @@ function init() {
 
 // Executes main initiation function upon page load
 document.addEventListener('DOMContentLoaded', init);
+
+/* 
+    Helpers
+*/
+
+// Builds a flat list of { dateString, label, amudStart, amudCount } for each study day
+// belonging to a specific masechet entry (identified by its index in trackSequence).
+// Works by replaying the amud pointer across the schedule in order.
+function computeDaySlots(schedule, masechetName, trackIdx, trackSequence) {
+    if (!schedule || schedule.length === 0) return [];
+
+    // Compute the global amud offset where this masechet's block starts.
+    // Each masechet before it in the sequence consumes amudCount amudim.
+    let blockStart = 0;
+    for (let i = 0; i < trackIdx; i++) {
+        const entry = trackSequence[i];
+        const name = typeof entry === 'string' ? entry : entry.name;
+        const data = masechtot.find(m => m.name === name);
+        if (data) blockStart += (data.amudCount || 0);
+    }
+
+    const targetEntry = trackSequence[trackIdx];
+    const targetName  = typeof targetEntry === 'string' ? targetEntry : targetEntry?.name;
+    const targetData  = masechtot.find(m => m.name === targetName);
+    const blockEnd    = blockStart + (targetData?.amudCount || 0);
+
+    const slots = [];
+    let globalPointer = 0; // Tracks position in the full masterAmudPool across the schedule
+
+    for (const day of schedule) {
+        if (day.isEmpty || day.isReviewDay || !day.pages || day.pages <= 0) continue;
+
+        const amudCount = Math.round(day.pages * 2);
+
+        // Check whether this day's amud range overlaps our target block
+        const dayEnd = globalPointer + amudCount;
+        if (day.masechet === masechetName && globalPointer >= blockStart && globalPointer < blockEnd) {
+            const localStart = globalPointer - blockStart;
+            slots.push({
+                dateString: day.dateString,
+                label: `${day.dateString} — ${day.content}`,
+                amudStart: localStart,
+                amudCount: Math.min(amudCount, blockEnd - globalPointer)
+            });
+        }
+
+        globalPointer += amudCount;
+    }
+
+    return slots;
+}
 
 /* 
     Handlers

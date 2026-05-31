@@ -309,8 +309,9 @@
                             <button id="toggleViewIndividual"
                                 class="px-4 py-1.5 rounded-md text-xs font-bold bg-white shadow-sm">עמודים</button>
                             <button id="toggleViewBunched"
-                                class="px-4 py-1.5 rounded-md text-xs font-bold text-slate-500 hover:text-slate-700">דפים
-                                (מרוכז)</button>
+                                class="px-4 py-1.5 rounded-md text-xs font-bold text-slate-500 hover:text-slate-700">דפים</button>
+                            <button id="toggleViewDaily"
+                                class="px-4 py-1.5 rounded-md text-xs font-bold text-slate-500 hover:text-slate-700">לפי תאריך</button>
                         </div>
                     </div>
     
@@ -325,15 +326,27 @@
     
                     <div id="amudGridContainer" class="grid grid-cols-5 sm:grid-cols-8 md:grid-cols-10 gap-2">
                     </div>
+                    <div id="dailyViewContainer" class="hidden"></div>
                 </div>
             </div>
     
-            <div class="p-4 bg-slate-50 border-t border-slate-100 flex justify-end gap-3">
-                <button id="cancelConfigBtn"
-                    class="px-6 py-2.5 font-bold text-slate-500 hover:bg-slate-200 rounded-xl transition-all">ביטול</button>
-                <button id="saveConfigBtn"
-                    class="px-8 py-2.5 bg-blue-800 text-white font-bold rounded-xl shadow-lg hover:bg-black transition-all">שמור
-                    שינויים</button>
+            <div class="p-4 bg-slate-50 border-t border-slate-100 flex flex-wrap justify-between items-center gap-3">
+                <div class="flex gap-2 flex-wrap">
+                    <button id="markTodayBtn"
+                        class="px-4 py-2 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 font-bold rounded-xl text-sm transition-all">
+                        ✓ סמן היום כנלמד
+                    </button>
+                    <button id="syncToTodayBtn"
+                        class="px-4 py-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 font-bold rounded-xl text-sm transition-all">
+                        🔄 סנכרן עד היום
+                    </button>
+                </div>
+                <div class="flex gap-3">
+                    <button id="cancelConfigBtn"
+                        class="px-6 py-2.5 font-bold text-slate-500 hover:bg-slate-200 rounded-xl transition-all">ביטול</button>
+                    <button id="saveConfigBtn"
+                        class="px-8 py-2.5 bg-blue-800 text-white font-bold rounded-xl shadow-lg hover:bg-black transition-all">שמור שינויים</button>
+                </div>
             </div>
         </div>
     </div>
