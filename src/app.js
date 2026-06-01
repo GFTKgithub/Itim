@@ -584,16 +584,18 @@ function setupEventListeners() {
         updateModalProgressStats(tempAmudStates);
     });
 
-    // Sync to today: marks all past study days for this masechet as learned (skips state=2)
+    // Sync to today (Global Version): marks past study days for ALL track sequence items as learned
     document.getElementById('syncToTodayBtn').addEventListener('click', async () => {
-        if (currentDaySlots.length === 0) {
+        // 1. Safety check using the global schedule
+        if (!AppState.schedule || AppState.schedule.length === 0) {
             await showDialog({ title: 'אין נתונים', message: 'יש ליצור לוח לימוד קודם כדי לסנכרן.', icon: '📅', confirmText: 'הבנתי' });
             return;
         }
 
+        // 2. Confirmation Dialog
         const confirmed = await showDialog({
             title: 'סנכרן עד היום',
-            message: 'פעולה זו תסמן את כל ימי הלימוד שעברו במסכת זו (עד היום) כנלמדו. להמשיך?',
+            message: 'פעולה זו תסמן את כל ימי הלימוד שעברו (עד היום) בכל המסכתות כנלמדו. להמשיך?',
             icon: '🔄',
             showCancel: true,
             confirmText: 'כן, סנכרן',
@@ -602,19 +604,49 @@ function setupEventListeners() {
         if (!confirmed) return;
 
         const todayStr = new Date().toISOString().split('T')[0];
-        currentDaySlots.forEach(slot => {
-            if (slot.dateString <= todayStr) {
-                for (let i = slot.amudStart; i < slot.amudStart + slot.amudCount; i++) {
-                    if (i < tempAmudStates.length && tempAmudStates[i] !== 2) {
-                        tempAmudStates[i] = 1;
+        let hasChanges = false;
+
+        // 3. Loop through every single Masechet inside your track sequence
+        AppState.trackSequence.forEach((masechet, trackIdx) => {
+            // Normalize legacy string entries into full objects if necessary
+            if (typeof masechet === 'string') {
+                masechet = { name: masechet, reviewDays: 0, amudStates: [] };
+                AppState.trackSequence[trackIdx] = masechet;
+            }
+
+            const masechetName = masechet.name || "לא ידוע";
+            
+            // Get target data to find amudCount
+            const targetData = masechtot.find(m => m.name === masechetName);
+            const totalAmudim = targetData ? (targetData.amudCount || 120) : 120;
+
+            // Ensure the amudStates array is instantiated
+            if (!masechet.amudStates || masechet.amudStates.length === 0) {
+                masechet.amudStates = new Array(totalAmudim).fill(0);
+            }
+
+            // 4. Dynamically compute the slots for this specific Masechet on the fly
+            const slots = computeDaySlots(AppState.schedule, masechetName, trackIdx, AppState.trackSequence);
+
+            // 5. Apply the sync logic over this Masechet's slots
+            slots.forEach(slot => {
+                if (slot.dateString <= todayStr) {
+                    for (let i = slot.amudStart; i < slot.amudStart + slot.amudCount; i++) {
+                        if (i < masechet.amudStates.length && masechet.amudStates[i] !== 2) {
+                            masechet.amudStates[i] = 1;
+                            hasChanges = true;
+                        }
                     }
                 }
-            }
+            });
         });
 
-        renderAmudGrid('amudGridContainer', tempAmudStates, isBunchedView);
-        renderDailyView('dailyViewContainer', currentDaySlots, tempAmudStates);
-        updateModalProgressStats(tempAmudStates);
+        // 6. Save data and refresh the master UI views
+        if (hasChanges) {
+            saveToLocalStorage();
+            updateTrackSequenceUI(AppState.trackSequence);
+            handleScheduleGeneration(); // Refreshes calendar view
+        }
     });
 
     // --- Firebase Auth & Cloud Sync Listeners ---
