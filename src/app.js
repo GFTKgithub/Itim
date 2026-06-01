@@ -95,12 +95,12 @@ function setupEventListeners() {
 
     addToSequenceBtn.addEventListener('click', () => {
         AppState.trackSequence = addToSequence(AppState.trackSequence);
-        saveToLocalStorage();
+        saveState();
     });
 
     clearSequenceBtn.addEventListener('click', async () => {
         AppState.trackSequence = await clearSequence(AppState.trackSequence);
-        saveToLocalStorage();
+        saveState();
         handleScheduleGeneration(); // Update to remove ghost calendar UI
     });
 
@@ -124,7 +124,7 @@ function setupEventListeners() {
         const removeBtn = event.target.closest('.remove-btn');
         if (removeBtn) {
             AppState.trackSequence = removeFromSequence(AppState.trackSequence, Number(removeBtn.dataset.index));
-            saveToLocalStorage();
+            saveState();
         }
     });
 
@@ -139,13 +139,13 @@ function setupEventListeners() {
     calcMethod.addEventListener('change', (e) => {
         AppState.userSettings.method = e.target.value;
         toggleInputs();
-        saveToLocalStorage();
+        saveState();
     });
 
     calendarType.addEventListener('change', (e) => {
         AppState.userSettings.calendarType = e.target.value;
         handleScheduleGeneration();
-        saveToLocalStorage();
+        saveState();
     });
 
     // Dynamic Tracking for Study Days Checkboxes
@@ -155,34 +155,34 @@ function setupEventListeners() {
                 .map(cb => parseInt(cb.value, 10));
 
             AppState.userSettings.studyDays = checkedDays;
-            saveToLocalStorage();
+            saveState();
         });
     });
 
     includeHolidaysInput.addEventListener('change', (e) => {
         AppState.userSettings.includeHolidays = e.target.checked;
-        saveToLocalStorage();
+        saveState();
         handleScheduleGeneration();
     });
 
     breakDaysInput.addEventListener('input', (e) => {
         AppState.userSettings.breakDays = parseInt(e.target.value, 10) || 0;
-        saveToLocalStorage();
+        saveState();
     });
 
     startDafInput.addEventListener('change', (e) => {
         AppState.userSettings.startDaf = e.target.value;
-        saveToLocalStorage();
+        saveState();
     });
 
     startAmudInput.addEventListener('change', (e) => {
         AppState.userSettings.startAmud = e.target.value;
-        saveToLocalStorage();
+        saveState();
     });
 
     paceInput.addEventListener('change', (e) => {
         AppState.userSettings.pace = e.target.value;
-        saveToLocalStorage();
+        saveState();
     })
 
     // --- Date Inputs Sync ---
@@ -190,7 +190,7 @@ function setupEventListeners() {
         AppState.userSettings.startDate = startDateInput.value;
         AppState.userSettings.targetDate = targetDateInput.value;
         renderDateLabels(AppState.userSettings.startDate, AppState.userSettings.targetDate);
-        saveToLocalStorage();
+        saveState();
     };
 
     startDateInput.addEventListener('change', handleDateChange);
@@ -373,7 +373,7 @@ function setupEventListeners() {
 
         // Fully synchronizes clean tracking configurations
         updateTrackSequenceUI(AppState.trackSequence);
-        saveToLocalStorage();
+        saveState();
 
         dragElement = null;
     };
@@ -462,7 +462,7 @@ function setupEventListeners() {
         masechet.reviewDays = parseInt(document.getElementById('configReviewDays').value, 10) || 0;
         masechet.amudStates = [...tempAmudStates];
 
-        saveToLocalStorage();
+        saveState();
 
         // Re-render the progress bar
         updateTrackSequenceUI(AppState.trackSequence);
@@ -643,7 +643,7 @@ function setupEventListeners() {
 
         // 6. Save data and refresh the master UI views
         if (hasChanges) {
-            saveToLocalStorage();
+            saveState();
             updateTrackSequenceUI(AppState.trackSequence);
             handleScheduleGeneration(); // Refreshes calendar view
         }
@@ -870,7 +870,7 @@ async function handleScheduleGeneration() {
 function handleDateOverrideClick(dateString) {
     AppState.manualOverrides = cycleDateOverride(AppState.manualOverrides, dateString);
 
-    saveToLocalStorage();
+    saveState();
     handleScheduleGeneration();
 }
 
@@ -891,7 +891,7 @@ async function handleResetSettings() {
     AppState.trackSequence = [];
 
     // Synchronize your local files, view layout, and engine calculations
-    saveToLocalStorage();
+    saveState();
     initUserConfigPanel();    // Repopulates form inputs with the fresh AppState.userSettings values
     updateTrackSequenceUI(AppState.trackSequence);    // Re-renders the list layout (now empty)
     handleScheduleGeneration(); // Generates empty/default state layout cleanly
@@ -923,7 +923,7 @@ async function handleResetManualOverrides() {
     AppState.manualOverrides = {};
 
     // Save state changes and re-run calculations
-    saveToLocalStorage();
+    saveState();
     handleScheduleGeneration();
 }
 

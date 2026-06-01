@@ -21,14 +21,11 @@ function extractSavableState() {
 /* 
     LocalStorage logic
 */
+
+// ONLY saves to LocalStorage
 export function saveToLocalStorage() {
     const stateToSave = extractSavableState();
     localStorage.setItem(STORAGE_KEY, JSON.stringify(stateToSave));
-    
-    // Automatically try to back up to the cloud if a user is logged in
-    if (auth.currentUser) {
-        saveToFirebase();
-    }
 }
 
 export function loadFromLocalStorage() {
@@ -98,6 +95,19 @@ export async function loadFromFirebase() {
     return false;
 }
 
+/*
+    Combined Master Saving Logic (The "Ultimate" Default)
+*/
+export async function saveState() {
+    // 1. Save locally instantly for rapid UI responsiveness
+    saveToLocalStorage();
+
+    // 2. Automatically try to back up to the cloud if a user is logged in
+    if (auth.currentUser) {
+        await saveToFirebase();
+    }
+}
+
 /* 
     Backup Logic
 */
@@ -135,7 +145,7 @@ export function importStateBackup(event) {
             localStorage.setItem(STORAGE_KEY, JSON.stringify(parsed));
             applyParsedState(parsed);
 
-            // If logged in, push this newly uploaded backup up to their account immediately
+            // Utilizing the split Firebase logic cleanly here
             if (auth.currentUser) {
                 await saveToFirebase();
             }
