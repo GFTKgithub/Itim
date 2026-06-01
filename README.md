@@ -1,5 +1,6 @@
 # Itim (עיתים) — Dynamic Torah Study Scheduler and Tracker
-Itim is a fast, lightweight calendar and scheduling builder designed to help people map out their learning goals for central Jewish texts. It’s written completely in native vanilla JavaScript with zero clunky dependencies.
+Itim is a fast, lightweight calendar and scheduling builder designed to help people map out their learning goals for central Jewish texts and encourage them to set times for Torah study (לקבוע עיתים לתורה). 
+It’s written completely in native vanilla JavaScript with zero clunky dependencies.
 
 Whether you want to finish a book by a specific target date or set a steady daily pace, Itim handles all the complex Hebrew-Gregorian date math behind the scenes to keep your schedule flawless.
 
@@ -8,7 +9,7 @@ Whether you want to finish a book by a specific target date or set a steady dail
 ## The Core Philosophy
 Instead of generating a massive, rigid schedule and dumping thousands of rows into a database, Itim calculates your calendar locally, in real-time. Your database only needs to store basic user preferences, settings, and manual adjustments. The schedule itself is built instantly on the fly.
 
-This approach keeps the app fast, keeps cloud hosting costs near zero, and makes it incredibly easy to adapt to your life when things change.
+This approach keeps the app fast, keeps cloud hosting costs near zero, and makes it incredibly easy to adapt to your life when things change and ensure Torah study remains the most pleasant and accessible experience possible.
 
 ---
 
@@ -26,7 +27,7 @@ This approach keeps the app fast, keeps cloud hosting costs near zero, and makes
 
 * Persistence: Beyond the syncing methods, there are options to export a generated calendar to excel, print it out or backup export/import the entire configuration to your device.
 
-## What's coming next
+### What's coming next
 * The "Eifo Ata Ochez" Engine: Soon, you'll be able to save your original calendar as a "baseline." If you get sick, take an unexpected trip, or fall behind, a single button will let you update the app where you're currently holding in your study and it will "refit" your plan from that point forward to get you back on track smoothly.
 
 * Beyond Talmud Bavli: The current version is focused entirely on the Talmud, but we are expanding the data structures to support all central Jewish texts (Mishnah, Shulchan Aruch, Tanakh, etc.), each with its own custom settings.
@@ -45,4 +46,4 @@ Share your bug reports, feature request and other ideas here in this form:
 https://tally.so/r/44zqkO
 
 
-- Itim
+–Itim
