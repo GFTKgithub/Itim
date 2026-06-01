@@ -34,7 +34,7 @@ export async function generateSchedule({ trackSequence, userSettings, manualOver
         return [];
     }
 
-    const { studyDays, includeHolidays, breakDays, method, calendarType, startDate, targetDate, startDaf, startAmud, pace } = userSettings;
+    const { studyDays, includeHolidays, method, calendarType, startDate, targetDate, startDaf, startAmud, pace } = userSettings;
 
     if (!startDate) {
         throw new Error("נא לבחור תאריך התחלה");
@@ -77,8 +77,7 @@ export async function generateSchedule({ trackSequence, userSettings, manualOver
             // Rough estimation of years to parse
             const totalReviewDays = trackSequence.reduce((sum, entry) => sum + ((typeof entry === 'object' ? entry.reviewDays : 0) || 0), 0);
             const estimatedStudyDays = Math.ceil(masterAmudPool.length / dailyAmudimPace);
-            const totalStructuralBreakDays = breakDays * (trackSequence.length - 1);
-            const totalProjectedDays = (estimatedStudyDays + totalStructuralBreakDays + totalReviewDays) * 1.4;
+            const totalProjectedDays = (estimatedStudyDays + totalReviewDays) * 1.4;
 
             const projectedEndDate = new Date(startInputDate);
             projectedEndDate.setDate(projectedEndDate.getDate() + Math.ceil(totalProjectedDays));
@@ -124,10 +123,8 @@ export async function generateSchedule({ trackSequence, userSettings, manualOver
 
         if (endDate < startInputDate) throw new Error("תאריך היעד חייב להיות אחרי תאריך ההתחלה");
 
-        // Collect overall counts of breaks and reviews to safely deduct from total active capacity
-        let totalBreaksCount = breakDays * (trackSequence.length - 1);
+        // Collect overall counts of reviews to safely deduct from total active capacity
         const totalReviewDays = trackSequence.reduce((sum, entry) => sum + ((typeof entry === 'object' ? entry.reviewDays : 0) || 0), 0);
-        const totalReservedDays = totalBreaksCount + totalReviewDays;
 
         // Build continuous base timeline days
         while (currentDate <= endDate) {
@@ -139,7 +136,6 @@ export async function generateSchedule({ trackSequence, userSettings, manualOver
                 date: new Date(currentDate),
                 dateString: dateString,
                 isRestDay: isRestDay,
-                isBreakDay: false,
                 isStudyDay: !isRestDay,
                 isReviewDay: false,
                 overrideState: overrideState,
@@ -149,12 +145,12 @@ export async function generateSchedule({ trackSequence, userSettings, manualOver
         }
 
         let activeStudyDays = timelineDays.filter(d => d.isStudyDay);
-        if (activeStudyDays.length <= totalReservedDays) {
-            throw new Error("אין מספיק ימי לימוד בטווח התאריכים המבוקש כדי להכיל את ימי החזרה וההפסקות.");
+        if (activeStudyDays.length <= totalReviewDays) {
+            throw new Error("אין מספיק ימי לימוד בטווח התאריכים המבוקש כדי להכיל את ימי החזרה.");
         }
 
         // Calculate dynamic mathematical load ratio for the active slots
-        const netStudyDaysCount = activeStudyDays.length - totalReservedDays;
+        const netStudyDaysCount = activeStudyDays.length - totalReviewDays;
         const totalAmudim = masterAmudPool.length;
 
         // Build precise item profiles
@@ -186,9 +182,9 @@ export async function generateSchedule({ trackSequence, userSettings, manualOver
             }
         }
 
-        // Translate the calculated load matrix maps directly into a flat linear sequence plan array
+        // Translate calculated profiles directly into a flat linear sequence plan array
         let sequentialPlan = [];
-        masechetProfiles.forEach((m, profileIdx) => {
+        masechetProfiles.forEach((m) => {
             const baseAmudim = Math.floor(m.count / m.allocatedDays);
             const remainder = m.count % m.allocatedDays;
 
@@ -198,14 +194,7 @@ export async function generateSchedule({ trackSequence, userSettings, manualOver
                 sequentialPlan.push({ type: 'study', count: baseAmudim + extra, masechet: m.name });
             }
 
-            // 2. Inject structural structural intermissions immediately following completion
-            if (profileIdx < masechetProfiles.length - 1) {
-                for (let b = 0; b < breakDays; b++) {
-                    sequentialPlan.push({ type: 'break', count: 0, masechet: "הפסקה" });
-                }
-            }
-
-            // 3. Inject dedicated localized reviews immediately following completion
+            // 2. Inject dedicated localized reviews immediately following completion
             for (let r = 0; r < m.reviewDays; r++) {
                 sequentialPlan.push({ type: 'review', count: 0, masechet: m.name });
             }
@@ -217,10 +206,7 @@ export async function generateSchedule({ trackSequence, userSettings, manualOver
             if (day.isStudyDay) {
                 if (planPointer < sequentialPlan.length) {
                     const currentPlan = sequentialPlan[planPointer];
-                    if (currentPlan.type === 'break') {
-                        day.isStudyDay = false;
-                        day.isBreakDay = true;
-                    } else if (currentPlan.type === 'review') {
+                    if (currentPlan.type === 'review') {
                         day.isStudyDay = false;
                         day.isReviewDay = true;
                         day.reviewMasechet = currentPlan.masechet;
@@ -254,7 +240,7 @@ export async function generateSchedule({ trackSequence, userSettings, manualOver
             let isRestDay = (overrideState === 1) || (overrideState !== 2 && shouldDayBeRest(currentDate, studyDays, includeHolidays, calendarData));
 
             let amudimToCountForDay = 0;
-            let triggerBreak = false;
+            let triggerReviewPhase = false;
             let currentTrackIdx = amudPoolCopy[0].trackIdx;
 
             if (!isRestDay) {
@@ -267,7 +253,7 @@ export async function generateSchedule({ trackSequence, userSettings, manualOver
                 amudimToCountForDay = drained.length;
 
                 if (amudPoolCopy.length === 0 || amudPoolCopy[0].trackIdx !== currentTrackIdx) {
-                    triggerBreak = true;
+                    triggerReviewPhase = true;
                 }
             }
 
@@ -276,40 +262,14 @@ export async function generateSchedule({ trackSequence, userSettings, manualOver
                 date: new Date(currentDate),
                 dateString: dateString,
                 isRestDay: isRestDay,
-                isBreakDay: false,
                 isStudyDay: !isRestDay,
                 isReviewDay: false,
                 overrideState: overrideState,
                 amudimToCount: amudimToCountForDay
             });
 
-            if (triggerBreak) {
-                // 1. Structural break management between tracks (skip non-study days)
-                const isAbsoluteLast = (currentTrackIdx === trackSequence.length - 1);
-                if (!isAbsoluteLast) {
-                    let b = 0;
-                    while (b < breakDays) {
-                        currentDate.setDate(currentDate.getDate() + 1);
-                        const bStr = formatDateToIL(currentDate);
-                        const bOverride = manualOverrides[bStr] || 0;
-                        let bIsRest = (bOverride === 1) || (bOverride !== 2 && shouldDayBeRest(currentDate, studyDays, includeHolidays, calendarData));
-
-                        if (bIsRest) {
-                            timelineDays.push({
-                                date: new Date(currentDate), dateString: bStr,
-                                isRestDay: true, isBreakDay: false, isStudyDay: false, isReviewDay: false, overrideState: bOverride, amudimToCount: 0
-                            });
-                        } else {
-                            timelineDays.push({
-                                date: new Date(currentDate), dateString: bStr,
-                                isRestDay: false, isBreakDay: true, isStudyDay: false, isReviewDay: false, overrideState: bOverride, amudimToCount: 0
-                            });
-                            b++; // Only count towards break days if it's a valid structural day
-                        }
-                    }
-                }
-
-                // 2. Direct sequential inline execution for localized tracking (skip non-study days)
+            if (triggerReviewPhase) {
+                // Direct sequential inline execution for localized tracking (skip non-study days)
                 const finishedEntry = trackSequence[currentTrackIdx];
                 const reviewDaysCount = (typeof finishedEntry === 'object' && finishedEntry?.reviewDays) ? parseInt(finishedEntry.reviewDays, 10) || 0 : 0;
 
@@ -323,12 +283,12 @@ export async function generateSchedule({ trackSequence, userSettings, manualOver
                     if (rIsRest) {
                         timelineDays.push({
                             date: new Date(currentDate), dateString: rStr,
-                            isRestDay: true, isBreakDay: false, isStudyDay: false, isReviewDay: false, overrideState: rOverride, amudimToCount: 0
+                            isRestDay: true, isStudyDay: false, isReviewDay: false, overrideState: rOverride, amudimToCount: 0
                         });
                     } else {
                         timelineDays.push({
                             date: new Date(currentDate), dateString: rStr,
-                            isRestDay: false, isBreakDay: false, isStudyDay: false, isReviewDay: true, overrideState: rOverride, amudimToCount: 0,
+                            isRestDay: false, isStudyDay: false, isReviewDay: true, overrideState: rOverride, amudimToCount: 0,
                             reviewMasechet: typeof finishedEntry === 'string' ? finishedEntry : finishedEntry.name
                         });
                         r++; // Only count down a review day if it was actually available for reviewing
@@ -354,7 +314,7 @@ export async function generateSchedule({ trackSequence, userSettings, manualOver
             isShabbat: isShabbat || traits.isParasha,
             isHoliday: !!calendarData[day.dateString]?.displayText,
             holidayTitle: calendarData[day.dateString]?.displayText || "",
-            isEmpty: day.isRestDay || day.isBreakDay || day.isReviewDay,
+            isEmpty: day.isRestDay || day.isReviewDay,
             override: day.overrideState,
             content: "",
             pages: 0,
@@ -364,9 +324,6 @@ export async function generateSchedule({ trackSequence, userSettings, manualOver
 
         if (day.isRestDay) {
             dayData.content = (day.overrideState === 1) ? "הפסקה" : "";
-        } else if (day.isBreakDay) {
-            dayData.masechet = "הפסקה";
-            dayData.content = "";
         } else if (day.isReviewDay) {
             dayData.masechet = day.reviewMasechet || currentActiveMasechet;
             dayData.content = "חזרה";

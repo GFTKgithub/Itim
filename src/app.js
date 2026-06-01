@@ -22,12 +22,11 @@ import {
     signOut,
     onAuthStateChanged
 } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
-import { loadFromFirebase, saveToFirebase } from './persistence.js';
+import { loadFromFirebase } from './persistence.js';
 
 const DEFAULT_USER_SETTINGS = {
     method: 'pace',
     pace: 1,
-    breakDays: 0,
     startDate: new Date().toISOString().split('T')[0],
     targetDate: '',
     startDaf: 'ב',

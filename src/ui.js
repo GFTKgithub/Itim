@@ -7,7 +7,6 @@ export function hydrateHtmlFromAppState(AppState) {
     document.getElementById('calcMethod').value = AppState.userSettings.method;
     document.getElementById('calendarType').value = AppState.userSettings.calendarType;
     document.getElementById('includeHolidaysInput').checked = AppState.userSettings.includeHolidays;
-    document.getElementById('breakDaysInput').value = AppState.userSettings.breakDays;
     document.getElementById('startDateInput').value = AppState.userSettings.startDate;
     document.getElementById('targetDateInput').value = AppState.userSettings.targetDate;
     document.getElementById('paceInput').value = AppState.userSettings.pace;

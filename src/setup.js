@@ -55,7 +55,6 @@ export function setupSettings({onUpdateSetting, onToggleInputs, onGenerate, onRe
     const calcMethod = document.getElementById('calcMethod');
     const calendarType = document.getElementById('calendarType');
     const includeHolidaysInput = document.getElementById('includeHolidaysInput');
-    const breakDaysInput = document.getElementById('breakDaysInput');
     const startDafInput = document.getElementById('startDafInput');
     const startAmudInput = document.getElementById('startAmudInput');
     const paceInput = document.getElementById('paceInput');
@@ -83,11 +82,6 @@ export function setupSettings({onUpdateSetting, onToggleInputs, onGenerate, onRe
 
     includeHolidaysInput?.addEventListener('change', (e) => {
         onUpdateSetting('includeHolidays', e.target.checked);
-    });
-
-    breakDaysInput?.addEventListener('input', (e) => {
-        const breakDays = parseInt(e.target.value, 10) || 0;
-        onUpdateSetting('breakDays', breakDays);
     });
 
     startDafInput?.addEventListener('change', (e) => { onUpdateSetting('startDaf', e.target.value); });

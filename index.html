@@ -123,20 +123,13 @@
                             הגדרות וקצב
                         </label>
 
-                        <div class="grid grid-cols-2 gap-4">
-                            <div>
-                                <label class="block text-xs font-bold text-slate-500 mb-1 mr-1">שיטת חישוב</label>
-                                <select id="calcMethod"
-                                    class="w-full border border-slate-300 rounded-lg p-2.5 bg-white font-medium">
-                                    <option value="pace">קצב דפים קבוע</option>
-                                    <option value="targetDate">יעד סיום סופי</option>
-                                </select>
-                            </div>
-                            <div>
-                                <label class="block text-xs font-bold text-slate-500 mb-1 mr-1">הפסקה (ימים)</label>
-                                <input type="number" id="breakDaysInput" value="0" min="0"
-                                    class="w-full border border-slate-300 rounded-lg p-2.5" placeholder="0">
-                            </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-500 mb-1 mr-1">שיטת חישוב</label>
+                            <select id="calcMethod"
+                                class="w-full border border-slate-300 rounded-lg p-2.5 bg-white font-medium">
+                                <option value="pace">קצב דפים קבוע</option>
+                                <option value="targetDate">יעד סיום סופי</option>
+                            </select>
                         </div>
 
                         <div id="paceSection" class="bg-blue-50/50 p-3 rounded-lg border border-blue-100">
@@ -299,7 +292,7 @@
             <div class="flex-1 overflow-y-auto p-6 space-y-8">
                 <div class="bg-blue-50/50 p-4 rounded-xl border border-blue-100 flex items-center justify-between">
                     <div>
-                        <h4 class="font-bold text-blue-900">ימי חזרה</h4>
+                        <h4 class="font-bold text-blue-900">ימי חזרה/הפסקה</h4>
                         <p class="text-xs text-blue-700/70">כמה ימי הפסקה להקצות לחזרה לאחר סיום המסכת?</p>
                     </div>
                     <input type="number" id="configReviewDays" min="0"
