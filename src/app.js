@@ -1,7 +1,7 @@
 import { masechtot } from './data.js';
 import { hydrateHtmlFromAppState, toggleInputs, updateTrackSequenceUI, renderAmudGrid, renderDailyView, updateModalProgressStats, renderDateLabels, renderCalendar, showDialog } from './ui.js';
 import { addToSequence, removeFromSequence, clearSequence } from './track-sequence.js';
-import { generateSchedule, cycleDateOverride } from './scheduler.js';
+import { generateSchedule, cycleDateOverride, computeDaySlots } from './scheduler.js';
 import { initPersistence, saveState, loadFromLocalStorage, exportStateBackup, importStateBackup } from './persistence.js';
 import { exportScheduleToExcel } from './excel-export.js';
 
@@ -193,7 +193,6 @@ function init() {
 
     loadFromLocalStorage();
 
-    // setupEventListeners();
     initializeApp()
 
     window.addEventListener('load', initUserConfigPanel);
@@ -202,56 +201,6 @@ function init() {
 // Executes main initiation function upon page load
 document.addEventListener('DOMContentLoaded', init);
 
-/* 
-    Helpers
-*/
-
-// Builds a flat list of { dateString, label, amudStart, amudCount } for each study day
-// belonging to a specific masechet entry (identified by its index in trackSequence).
-// Works by replaying the amud pointer across the schedule in order.
-function computeDaySlots(schedule, masechetName, trackIdx, trackSequence) {
-    if (!schedule || schedule.length === 0) return [];
-
-    // Compute the global amud offset where this masechet's block starts.
-    // Each masechet before it in the sequence consumes amudCount amudim.
-    let blockStart = 0;
-    for (let i = 0; i < trackIdx; i++) {
-        const entry = trackSequence[i];
-        const name = typeof entry === 'string' ? entry : entry.name;
-        const data = masechtot.find(m => m.name === name);
-        if (data) blockStart += (data.amudCount || 0);
-    }
-
-    const targetEntry = trackSequence[trackIdx];
-    const targetName  = typeof targetEntry === 'string' ? targetEntry : targetEntry?.name;
-    const targetData  = masechtot.find(m => m.name === targetName);
-    const blockEnd    = blockStart + (targetData?.amudCount || 0);
-
-    const slots = [];
-    let globalPointer = 0; // Tracks position in the full masterAmudPool across the schedule
-
-    for (const day of schedule) {
-        if (day.isEmpty || day.isReviewDay || !day.pages || day.pages <= 0) continue;
-
-        const amudCount = Math.round(day.pages * 2);
-
-        // Check whether this day's amud range overlaps our target block
-        const dayEnd = globalPointer + amudCount;
-        if (day.masechet === masechetName && globalPointer >= blockStart && globalPointer < blockEnd) {
-            const localStart = globalPointer - blockStart;
-            slots.push({
-                dateString: day.dateString,
-                label: `${day.dateString} — ${day.content}`,
-                amudStart: localStart,
-                amudCount: Math.min(amudCount, blockEnd - globalPointer)
-            });
-        }
-
-        globalPointer += amudCount;
-    }
-
-    return slots;
-}
 
 /* 
     Handlers
