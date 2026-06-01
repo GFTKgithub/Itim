@@ -2,7 +2,7 @@ import { masechtot } from './data.js';
 import { hydrateHtmlFromAppState, toggleInputs, updateTrackSequenceUI, renderAmudGrid, renderDailyView, updateModalProgressStats, renderDateLabels, renderCalendar, showDialog } from './ui.js';
 import { addToSequence, removeFromSequence, clearSequence } from './track-sequence.js';
 import { generateSchedule, cycleDateOverride } from './scheduler.js';
-import { initPersistence, saveToLocalStorage, loadFromLocalStorage, exportStateBackup, importStateBackup } from './persistence.js';
+import { initPersistence, saveState, loadFromLocalStorage, exportStateBackup, importStateBackup } from './persistence.js';
 
 // Firebase
 import { auth } from './firebase-config.js';
