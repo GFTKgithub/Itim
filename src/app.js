@@ -45,11 +45,6 @@ let AppState = {
     userSettings: { ...DEFAULT_USER_SETTINGS }       // User Settings (with default values)
 }
 
-let currentEditingIndex = null;
-let tempAmudStates = [];
-let currentDaySlots = [];   // Pre-computed per-day amud ranges for the currently open masechet
-let isBunchedView = false;
-
 /* 
     Page initiation logic
 */
@@ -66,7 +61,7 @@ function initializeApp() {
             saveState();
             handleScheduleGeneration();
         },
-        onExportExcel: exportScheduleToExcel(AppState.schedule)
+        onExportExcel: () => exportScheduleToExcel(AppState.schedule)
     });
 
     setupBackupManagement({

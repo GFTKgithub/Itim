@@ -1,7 +1,4 @@
-// Note: Assuming AppState, saveState, auth, etc., are imported here.
-
 // --- 1. Main Controls ---
-// setup.js
 export function setupMainControls({ onGenerate, onAddToSequence, onClearSequence, onExportExcel }) {
     const generateBtn = document.getElementById('generateBtn');
     const addToSequenceBtn = document.getElementById('addToSequenceBtn');
