@@ -259,7 +259,7 @@ export function setupBookConfigModal({ getSchedule, getTrackSequence, computeDay
     const trackSequenceList = document.getElementById('trackSequenceList');
     const amudGridContainer = document.getElementById('amudGridContainer');
     const dailyViewContainer = document.getElementById('dailyViewContainer');
-    const masechetConfigModal = document.getElementById('masechetConfigModal');
+    const bookConfigModal = document.getElementById('bookConfigModal');
 
     function setActiveView(view) {
         const btnIndividual = document.getElementById('toggleViewIndividual');
@@ -316,7 +316,7 @@ export function setupBookConfigModal({ getSchedule, getTrackSequence, computeDay
         setActiveView('individual');
         renderAmudGrid('amudGridContainer', tempAmudStates, false);
         updateModalProgressStats(tempAmudStates);
-        masechetConfigModal.classList.remove('hidden');
+        bookConfigModal.classList.remove('hidden');
     });
 
     amudGridContainer?.addEventListener('click', (e) => {
@@ -367,10 +367,10 @@ export function setupBookConfigModal({ getSchedule, getTrackSequence, computeDay
             amudStates: [...tempAmudStates]
         });
 
-        masechetConfigModal.classList.add('hidden');
+        bookConfigModal.classList.add('hidden');
     });
 
-    const closeConfig = () => masechetConfigModal.classList.add('hidden');
+    const closeConfig = () => bookConfigModal.classList.add('hidden');
     document.getElementById('closeConfigModal')?.addEventListener('click', closeConfig);
     document.getElementById('cancelConfigBtn')?.addEventListener('click', closeConfig);
 
