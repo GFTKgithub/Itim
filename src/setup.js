@@ -1,8 +1,9 @@
 // --- 1. Main Controls ---
-export function setupMainControls({ onGenerate, onAddToSequence, onClearSequence, onExportExcel }) {
+export function setupMainControls({ onGenerate, onAddToSequence, onClearSequence, onExportExcel, onExportICal }) {
     const generateBtn = document.getElementById('generateBtn');
     const addToSequenceBtn = document.getElementById('addToSequenceBtn');
     const clearSequenceBtn = document.getElementById('clearSequenceBtn');
+    const icalBtn = document.getElementById('exportToICalBtn');
     const exportBtn = document.getElementById('exportToExcelBtn');
     const printBtn = document.getElementById('printBtn');
 
@@ -26,6 +27,10 @@ export function setupMainControls({ onGenerate, onAddToSequence, onClearSequence
 
     clearSequenceBtn?.addEventListener('click', () => {
         onClearSequence();
+    });
+
+    icalBtn?.addEventListener('click', () => {
+        onExportICal();
     });
 
     exportBtn?.addEventListener('click', () => {

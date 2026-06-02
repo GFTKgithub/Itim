@@ -129,3 +129,106 @@ export async function exportScheduleToExcel(schedule) {
     const buffer = await workbook.xlsx.writeBuffer();
     saveAs(new Blob([buffer]), 'עיתים_תכנית_לימוד.xlsx');
 }
+
+// Generates a standard universal iCal (.ics) file from the computed schedule array.
+export async function exportScheduleToICal(schedule) {
+    if (!schedule || schedule.length === 0) {
+        return await showDialog({
+            title: 'אזהרה',
+            message: 'יש ליצור לוח לימוד קודם',
+            icon: '⚠️',
+            confirmText: 'המשך'
+        });
+    }
+
+    let icsContent = [
+        "BEGIN:VCALENDAR",
+        "VERSION:2.0",
+        "PRODID:-//Itim//Torah Study Scheduler//EN",
+        "CALSCALE:GREGORIAN",
+        "METHOD:PUBLISH"
+    ];
+
+    // Formats a JS Date object to strict iCal All-Day Date format: YYYYMMDD
+    const formatICalAllDayDate = (dateObj) => {
+        const pad = (num) => String(num).padStart(2, '0');
+        return "" + 
+            dateObj.getFullYear() + 
+            pad(dateObj.getMonth() + 1) + 
+            pad(dateObj.getDate());
+    };
+
+    schedule.forEach((day) => {
+        // Skip empty spacer/padding days
+        if (day.isEmpty && day.content !== "חזרה") {
+            return; 
+        }
+
+        // 1. Calculate inclusive start date
+        const startDate = new Date(day.date);
+        const startDateFormatted = formatICalAllDayDate(startDate);
+
+        // 2. Calculate the non-inclusive end date (Advance exactly by +1 day)
+        const nextDate = new Date(startDate);
+        nextDate.setDate(nextDate.getDate() + 1);
+        const endDateFormatted = formatICalAllDayDate(nextDate);
+
+        let summary = "עיתים: ";
+        let description = "";
+
+        if (day.content === "חזרה") {
+            summary += `חזרה - ${day.book}`;
+            description = `זמן חזרה מתוכנן עבור מסכת ${day.book}.`;
+        } else {
+            summary += `${day.book} (${day.content})`;
+            description = `לימוד יומי מתוכנן בתוכנית עיתים.\\nספר/מסכת: ${day.book}\\nהספק: ${day.content}`;
+        }
+
+        if (day.isSiyum) {
+            summary = `🎉 סיום! ${summary}`;
+            description += `\\n\\nמזל טוב! הגעת לסיום של ${day.book}!`;
+        }
+
+        if (day.holidayTitle) {
+            description += `\\nמועד: ${day.holidayTitle}`;
+        }
+
+        const dStr = day.dateString || startDateFormatted;
+
+        // 3. Output structural components utilizing the implicit VALUE=DATE selector flags
+        icsContent.push(
+            "BEGIN:VEVENT",
+            `UID:itim-slot-${dStr}@studyscheduler`,
+            `DTSTAMP:${formatICalAllDayDate(new Date())}T000000Z`,
+            `DTSTART;VALUE=DATE:${startDateFormatted}`,
+            `DTEND;VALUE=DATE:${endDateFormatted}`,
+            `SUMMARY:${summary}`,
+            `DESCRIPTION:${description}`,
+            "STATUS:CONFIRMED",
+            "END:VEVENT"
+        );
+    });
+
+    icsContent.push("END:VCALENDAR");
+
+    const finalIcsString = icsContent.join("\r\n") + "\r\n";
+    
+    try {
+        const blob = new Blob([finalIcsString], { type: "text/calendar;charset=utf-8;" });
+        const link = document.createElement("a");
+        
+        link.href = URL.createObjectURL(blob);
+        link.download = `עיתים_תכנית_לימוד_${new Date().toISOString().slice(0,10)}.ics`;
+        
+        document.body.appendChild(link);
+        link.click();
+        
+        setTimeout(() => {
+            document.body.removeChild(link);
+            URL.revokeObjectURL(link.href);
+        }, 100);
+        
+    } catch (error) {
+        console.error("iCal generation failed:", error);
+    }
+}

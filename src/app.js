@@ -3,7 +3,7 @@ import { hydrateHtmlFromAppState, toggleInputs, updateBookSequenceUI as updateBo
 import { addToSequence, removeFromSequence, clearSequence } from './book-sequence.js';
 import { generateSchedule, cycleDateOverride, computeDaySlots } from './scheduler.js';
 import { initPersistence, saveState, loadFromLocalStorage, exportStateBackup, importStateBackup } from './persistence.js';
-import { exportScheduleToExcel } from './excel-export.js';
+import { exportScheduleToExcel, exportScheduleToICal } from './exports.js';
 
 import {
     setupMainControls,
@@ -60,7 +60,8 @@ function initializeApp() {
             saveState();
             handleScheduleGeneration();
         },
-        onExportExcel: () => exportScheduleToExcel(AppState.schedule)
+        onExportExcel: () => exportScheduleToExcel(AppState.schedule),
+        onExportICal: () => exportScheduleToICal(AppState.schedule)
     });
 
     setupBackupManagement({
