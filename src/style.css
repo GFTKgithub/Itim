@@ -175,6 +175,25 @@ select:focus {
         font-size: 9px !important;
         line-height: 1.1 !important;
     }
+
+    #action-dock {
+        padding: 0.5rem 1rem !important; /* Slim down dock padding */
+        gap: 0.5rem !important; /* Tighter gap between buttons */
+    }
+
+    #action-dock button {
+        padding: 0.5rem 0.75rem !important; /* Prevent fat/tall buttons */
+        border-radius: 0.75rem !important; /* Slightly tighter rounding for smaller size */
+        font-size: 13px !important; /* Scale text down */
+        gap: 0.35rem !important; /* Bring icons and text closer */
+        box-shadow: 0 4px 12px rgba(0,0,0,0.08) !important; /* Softer, low-profile mobile shadow */
+        flex: 1; /* Allows buttons to share space equally on tiny screens */
+        justify-content: center;
+    }
+
+    #action-dock button span.text-xl {
+        font-size: 1rem !important; /* Shrink the emoji sizes */
+    }
 }
 
 /* --- PRINT STYLES (Strictly for Paper/PDF) --- */

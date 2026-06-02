@@ -221,7 +221,7 @@ async function handleScheduleGeneration() {
             `;
         }
 
-        document.getElementById('output').classList.add('hidden');
+        document.getElementById('action-dock').classList.add('hidden');
         return;
     }
 
@@ -250,7 +250,7 @@ async function handleScheduleGeneration() {
             overrides: AppState.manualOverrides
         });
 
-        document.getElementById('output').classList.remove('hidden');
+        document.getElementById('action-dock').classList.remove('hidden');
 
     } catch (error) {
         alert(error.message);
