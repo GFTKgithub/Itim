@@ -6,300 +6,31 @@ import { hebrewToNumber } from './utils/gematria.js';
 import { indexToDaf, getTotalAmudim } from './utils/talmud.js';
 import { formatDateToIL } from './utils/dates.js';
 
+/* 
+    Core generation functions 
+*/
 
-// Calculate if a given day should be marked as a rest day based on settings
-export function shouldDayBeRest(dateObj, studyDays, includeHolidays, calendarData) {
-    const dateString = formatDateToIL(dateObj);
-    const day = calendarData[dateString];
-    const traits = day?.traits || {};
-    const dayOfWeek = dateObj.getDay(); // 0 = Sunday, 6 = Shabbat
-
-    // 1. Force break on Standard Chagim if includeHolidays is false
-    if (traits.isChag && !includeHolidays) return true;
-
-    // 2. Check if this weekday is NOT in the user's selected study days array
-    // (Also treats calendar-marked Parasha days as Shabbat if Saturday is unchecked)
-    const isScheduledStudyDay = studyDays.includes(dayOfWeek);
-    if (!isScheduledStudyDay) return true;
-
-    if (traits.isRoshChodesh) return false;     // Study by default on Rosh Chodesh
-    if (traits.isModernException) return false;     // Study by default on Modern Exceptions
-
-    return false;   // Not rest day by default
-}
-
-// Generate a full schedule data array of day objects based on user input
+// Main function to generate the full schedule based on user settings, book sequence, manual overrides, and calendar data. It orchestrates the entire process from building the master amud pool to mapping content onto the timeline and adding necessary padding for calendar grid display.
 export async function generateSchedule({ bookSequence, userSettings, manualOverrides, calendarData }) {
-    if (bookSequence.length === 0) {
-        return [];
-    }
+    if (!bookSequence || bookSequence.length === 0) return [];
 
-    const { studyDays, includeHolidays, method, calendarType, startDate, targetDate, startDaf, startAmud, pace } = userSettings;
-
-    if (!startDate) {
-        throw new Error("נא לבחור תאריך התחלה");
-    }
+    const { startDate, startDaf, startAmud, calendarType } = userSettings;
+    if (!startDate) throw new Error("נא לבחור תאריך התחלה");
 
     const startInputDate = new Date(startDate);
     startInputDate.setHours(0, 0, 0, 0);
 
-    // --- Step 1: Flatten All Amudim Into a Single Master Pool with Instance Tracking ---
-    let masterAmudPool = [];
+    // Step 1: Flatten All Amudim Into a Single Master Pool
+    const masterAmudPool = buildMasterAmudPool(bookSequence, startDaf, startAmud);
 
-    bookSequence.forEach((entry, idx) => {
-        const name = typeof entry === 'string' ? entry : entry.name;
+    // Step 2: Fetch Calendar Events dynamically based on pacing math
+    await ensureCalendarData(startInputDate, userSettings, bookSequence, masterAmudPool, calendarData);
 
-        let startIdx = 0;
-        if (idx === 0) {
-            const startDafHeb = startDaf.trim();
-            if (startDafHeb) {
-                startIdx = Math.max(0, (hebrewToNumber(startDafHeb) * 2) - 4);
-                if (startAmud === "ב") startIdx += 1;
-            }
-        }
+    // Step 3: Build the Strict Timeline Map (Target Date vs. Pace)
+    const timelineDays = generateTimelineDays(startInputDate, userSettings, bookSequence, masterAmudPool, manualOverrides, calendarData);
 
-        const totalAmudim = getTotalAmudim(name);
-        for (let i = startIdx; i < totalAmudim; i++) {
-            masterAmudPool.push({ book: name, amudIdx: i, bookIdx: idx });
-        }
-    });
-
-    // --- Step 2: Fetch Calendar Events ---
-    const startYear = startInputDate.getFullYear();
-    let endYear = startYear;
-
-    if (method === 'targetDate') {
-        if (!targetDate) throw new Error("נא לבחור תאריך יעד");
-        endYear = new Date(targetDate).getFullYear();
-    } else {
-        const dailyAmudimPace = Math.max(1, Math.ceil(parseFloat(pace) * 2));
-        if (dailyAmudimPace > 0) {
-            // Rough estimation of years to parse
-            const totalReviewDays = bookSequence.reduce((sum, entry) => sum + ((typeof entry === 'object' ? entry.reviewDays : 0) || 0), 0);
-            const estimatedStudyDays = Math.ceil(masterAmudPool.length / dailyAmudimPace);
-            const totalProjectedDays = (estimatedStudyDays + totalReviewDays) * 1.4;
-
-            const projectedEndDate = new Date(startInputDate);
-            projectedEndDate.setDate(projectedEndDate.getDate() + Math.ceil(totalProjectedDays));
-            endYear = projectedEndDate.getFullYear();
-        } else {
-            endYear = startYear + 1;
-        }
-    }
-
-    for (let y = startYear - 1; y <= endYear + 1; y++) {
-        await fetchCalendarEvents(y, calendarData);
-    }
-
+    // Step 4: Map Text Progression Content onto Timeline Slots
     const outputSchedule = [];
-
-    // --- Step 3: Build Front Padding First ---
-    let tempDate = new Date(startInputDate);
-    if (calendarType === 'hebrew') {
-        while (parseInt(new Intl.DateTimeFormat('he-IL-u-ca-hebrew', { day: 'numeric' }).format(tempDate)) > 1) {
-            tempDate.setDate(tempDate.getDate() - 1);
-        }
-    } else {
-        tempDate.setDate(1);
-    }
-
-    while (tempDate < startInputDate) {
-        const dStr = formatDateToIL(tempDate);
-        outputSchedule.push({
-            date: new Date(tempDate), dateString: dStr, book: "-",
-            isShabbat: tempDate.getDay() === 6, isHoliday: !!calendarData[dStr]?.displayText,
-            holidayTitle: calendarData[dStr]?.displayText, isEmpty: true, content: "", pages: 0
-        });
-        tempDate.setDate(tempDate.getDate() + 1);
-    }
-
-    // --- Step 4: Build the Strict Timeline Map ---
-    let timelineDays = [];
-    let currentDate = new Date(startInputDate);
-
-    if (method === 'targetDate') {
-        const endDate = new Date(targetDate);
-        endDate.setHours(0, 0, 0, 0);
-
-        if (endDate < startInputDate) throw new Error("תאריך היעד חייב להיות אחרי תאריך ההתחלה");
-
-        // Collect overall counts of reviews to safely deduct from total active capacity
-        const totalReviewDays = bookSequence.reduce((sum, entry) => sum + ((typeof entry === 'object' ? entry.reviewDays : 0) || 0), 0);
-
-        // Build continuous base timeline days
-        while (currentDate <= endDate) {
-            const dateString = formatDateToIL(currentDate);
-            const overrideState = manualOverrides[dateString] || 0;
-            let isRestDay = (overrideState === 1) || (overrideState !== 2 && shouldDayBeRest(currentDate, studyDays, includeHolidays, calendarData));
-
-            timelineDays.push({
-                date: new Date(currentDate),
-                dateString: dateString,
-                isRestDay: isRestDay,
-                isStudyDay: !isRestDay,
-                isReviewDay: false,
-                overrideState: overrideState,
-                amudimToCount: 0
-            });
-            currentDate.setDate(currentDate.getDate() + 1);
-        }
-
-        let activeStudyDays = timelineDays.filter(d => d.isStudyDay);
-        if (activeStudyDays.length <= totalReviewDays) {
-            throw new Error("אין מספיק ימי לימוד בטווח התאריכים המבוקש כדי להכיל את ימי החזרה.");
-        }
-
-        // Calculate dynamic mathematical load ratio for the active slots
-        const netStudyDaysCount = activeStudyDays.length - totalReviewDays;
-        const totalAmudim = masterAmudPool.length;
-
-        // Build precise item profiles
-        const bookProfiles = bookSequence.map((entry, idx) => {
-            const bookName = typeof entry === 'string' ? entry : entry.name;
-            const rDays = (typeof entry === 'object' && entry?.reviewDays) ? parseInt(entry.reviewDays, 10) || 0 : 0;
-            const count = masterAmudPool.filter(a => a.bookIdx === idx).length;
-            return { name: bookName, bookIdx: idx, count: count, reviewDays: rDays, allocatedDays: 0 };
-        }).filter(m => m.count > 0);
-
-        // Distribute net study days proportionally across text targets
-        let totalAllocatedDays = 0;
-        bookProfiles.forEach(m => {
-            const exactDays = netStudyDaysCount * (m.count / totalAmudim);
-            m.allocatedDays = Math.max(1, Math.floor(exactDays));
-            totalAllocatedDays += m.allocatedDays;
-        });
-
-        // Distribute remainder variations
-        let daysToDistribute = netStudyDaysCount - totalAllocatedDays;
-        if (daysToDistribute > 0) {
-            for (let i = 0; i < daysToDistribute; i++) {
-                bookProfiles[i % bookProfiles.length].allocatedDays++;
-            }
-        } else if (daysToDistribute < 0) {
-            for (let i = 0; i < Math.abs(daysToDistribute); i++) {
-                bookProfiles.sort((a, b) => b.allocatedDays - a.allocatedDays);
-                if (bookProfiles[0].allocatedDays > 1) bookProfiles[0].allocatedDays--;
-            }
-        }
-
-        // Translate calculated profiles directly into a flat linear sequence plan array
-        let sequentialPlan = [];
-        bookProfiles.forEach((m) => {
-            const baseAmudim = Math.floor(m.count / m.allocatedDays);
-            const remainder = m.count % m.allocatedDays;
-
-            // 1. Push actual text study quotas
-            for (let i = 0; i < m.allocatedDays; i++) {
-                const extra = (i >= m.allocatedDays - remainder) ? 1 : 0;
-                sequentialPlan.push({ type: 'study', count: baseAmudim + extra, book: m.name });
-            }
-
-            // 2. Inject dedicated localized reviews immediately following completion
-            for (let r = 0; r < m.reviewDays; r++) {
-                sequentialPlan.push({ type: 'review', count: 0, book: m.name });
-            }
-        });
-
-        // Map sequential items to the timeline slots
-        let planPointer = 0;
-        timelineDays.forEach(day => {
-            if (day.isStudyDay) {
-                if (planPointer < sequentialPlan.length) {
-                    const currentPlan = sequentialPlan[planPointer];
-                    if (currentPlan.type === 'review') {
-                        day.isStudyDay = false;
-                        day.isReviewDay = true;
-                        day.reviewBook = currentPlan.book;
-                    } else {
-                        day.amudimToCount = currentPlan.count;
-                    }
-                    planPointer++;
-                } else {
-                    // Fallback extra buffer
-                    day.isStudyDay = false;
-                    day.isReviewDay = true;
-                }
-            }
-        });
-
-    } else {
-        // Pace Mode
-        let amudPoolCopy = [...masterAmudPool];
-        const parsedPace = parseFloat(pace);
-        const enforcedPace = parsedPace < 0.5 ? 0.5 : parsedPace;
-        const dailyAmudimPace = Math.max(1, Math.ceil(enforcedPace * 2));
-
-        let safetyLoopCount = 0;
-        const maxSafetyIterations = masterAmudPool.length * 10 + 5000;
-
-        while (amudPoolCopy.length > 0 && safetyLoopCount < maxSafetyIterations) {
-            safetyLoopCount++;
-
-            const dateString = formatDateToIL(currentDate);
-            const overrideState = manualOverrides[dateString] || 0;
-            let isRestDay = (overrideState === 1) || (overrideState !== 2 && shouldDayBeRest(currentDate, studyDays, includeHolidays, calendarData));
-
-            let amudimToCountForDay = 0;
-            let triggerReviewPhase = false;
-            let currentBookIdx = amudPoolCopy[0].bookIdx;
-
-            if (!isRestDay) {
-                let limit = 0;
-                while (limit < dailyAmudimPace && limit < amudPoolCopy.length && amudPoolCopy[limit].bookIdx === currentBookIdx) {
-                    limit++;
-                }
-
-                let drained = amudPoolCopy.splice(0, limit);
-                amudimToCountForDay = drained.length;
-
-                if (amudPoolCopy.length === 0 || amudPoolCopy[0].bookIdx !== currentBookIdx) {
-                    triggerReviewPhase = true;
-                }
-            }
-
-            // Push the actual study day (or study rest day)
-            timelineDays.push({
-                date: new Date(currentDate),
-                dateString: dateString,
-                isRestDay: isRestDay,
-                isStudyDay: !isRestDay,
-                isReviewDay: false,
-                overrideState: overrideState,
-                amudimToCount: amudimToCountForDay
-            });
-
-            if (triggerReviewPhase) {
-                // Direct sequential inline execution for localized tracking (skip non-study days)
-                const finishedEntry = bookSequence[currentBookIdx];
-                const reviewDaysCount = (typeof finishedEntry === 'object' && finishedEntry?.reviewDays) ? parseInt(finishedEntry.reviewDays, 10) || 0 : 0;
-
-                let r = 0;
-                while (r < reviewDaysCount) {
-                    currentDate.setDate(currentDate.getDate() + 1);
-                    const rStr = formatDateToIL(currentDate);
-                    const rOverride = manualOverrides[rStr] || 0;
-                    let rIsRest = (rOverride === 1) || (rOverride !== 2 && shouldDayBeRest(currentDate, studyDays, includeHolidays, calendarData));
-
-                    if (rIsRest) {
-                        timelineDays.push({
-                            date: new Date(currentDate), dateString: rStr,
-                            isRestDay: true, isStudyDay: false, isReviewDay: false, overrideState: rOverride, amudimToCount: 0
-                        });
-                    } else {
-                        timelineDays.push({
-                            date: new Date(currentDate), dateString: rStr,
-                            isRestDay: false, isStudyDay: false, isReviewDay: true, overrideState: rOverride, amudimToCount: 0,
-                            reviewBook: typeof finishedEntry === 'string' ? finishedEntry : finishedEntry.name
-                        });
-                        r++; // Only count down a review day if it was actually available for reviewing
-                    }
-                }
-            }
-            currentDate.setDate(currentDate.getDate() + 1);
-        }
-    }
-
-    // --- Step 5: Process Main Timeline Mapping ---
     let amudPointer = 0;
     let currentActiveBook = "-";
 
@@ -354,11 +85,289 @@ export async function generateSchedule({ bookSequence, userSettings, manualOverr
                 dayData.content = "חזרה";
             }
         }
-
         outputSchedule.push(dayData);
     });
 
-    // --- Step 6: Back Monthly Layout Padding ---
+    // Step 5: Inject Grid UI Padding (Front & Back padding)
+    addCalendarGridPadding(outputSchedule, timelineDays, startInputDate, calendarType, calendarData);
+
+    return outputSchedule;
+}
+
+// --- Strategy A: Target Date ---
+function generateTargetDateTimeline(startInputDate, userSettings, bookSequence, masterAmudPool, manualOverrides, calendarData) {
+    const { targetDate, studyDays, includeHolidays } = userSettings;
+    const endDate = new Date(targetDate);
+    endDate.setHours(0, 0, 0, 0);
+
+    if (endDate < startInputDate) throw new Error("תאריך היעד חייב להיות אחרי תאריך ההתחלה");
+
+    let timelineDays = [];
+    let currentDate = new Date(startInputDate);
+    const totalReviewDays = bookSequence.reduce((sum, entry) => sum + ((typeof entry === 'object' ? entry.reviewDays : 0) || 0), 0);
+
+    while (currentDate <= endDate) {
+        const dateString = formatDateToIL(currentDate);
+        const overrideState = manualOverrides[dateString] || 0;
+        let isRestDay = (overrideState === 1) || (overrideState !== 2 && shouldDayBeRest(currentDate, studyDays, includeHolidays, calendarData));
+
+        timelineDays.push({
+            date: new Date(currentDate),
+            dateString: dateString,
+            isRestDay: isRestDay,
+            isStudyDay: !isRestDay,
+            isReviewDay: false,
+            overrideState: overrideState,
+            amudimToCount: 0
+        });
+        currentDate.setDate(currentDate.getDate() + 1);
+    }
+
+    let activeStudyDays = timelineDays.filter(d => d.isStudyDay);
+    if (activeStudyDays.length <= totalReviewDays) {
+        throw new Error("אין מספיק ימי לימוד בטווח התאריכים המבוקש כדי להכיל את ימי החזרה.");
+    }
+
+    const netStudyDaysCount = activeStudyDays.length - totalReviewDays;
+    const totalAmudim = masterAmudPool.length;
+
+    const bookProfiles = bookSequence.map((entry, idx) => {
+        const bookName = typeof entry === 'string' ? entry : entry.name;
+        const rDays = (typeof entry === 'object' && entry?.reviewDays) ? parseInt(entry.reviewDays, 10) || 0 : 0;
+        const count = masterAmudPool.filter(a => a.bookIdx === idx).length;
+        return { name: bookName, bookIdx: idx, count: count, reviewDays: rDays, allocatedDays: 0 };
+    }).filter(m => m.count > 0);
+
+    let totalAllocatedDays = 0;
+    bookProfiles.forEach(m => {
+        const exactDays = netStudyDaysCount * (m.count / totalAmudim);
+        m.allocatedDays = Math.max(1, Math.floor(exactDays));
+        totalAllocatedDays += m.allocatedDays;
+    });
+
+    let daysToDistribute = netStudyDaysCount - totalAllocatedDays;
+    if (daysToDistribute > 0) {
+        for (let i = 0; i < daysToDistribute; i++) {
+            bookProfiles[i % bookProfiles.length].allocatedDays++;
+        }
+    } else if (daysToDistribute < 0) {
+        for (let i = 0; i < Math.abs(daysToDistribute); i++) {
+            bookProfiles.sort((a, b) => b.allocatedDays - a.allocatedDays);
+            if (bookProfiles[0].allocatedDays > 1) bookProfiles[0].allocatedDays--;
+        }
+    }
+
+    let sequentialPlan = [];
+    bookProfiles.forEach((m) => {
+        const baseAmudim = Math.floor(m.count / m.allocatedDays);
+        const remainder = m.count % m.allocatedDays;
+
+        for (let i = 0; i < m.allocatedDays; i++) {
+            const extra = (i >= m.allocatedDays - remainder) ? 1 : 0;
+            sequentialPlan.push({ type: 'study', count: baseAmudim + extra, book: m.name });
+        }
+
+        for (let r = 0; r < m.reviewDays; r++) {
+            sequentialPlan.push({ type: 'review', count: 0, book: m.name });
+        }
+    });
+
+    let planPointer = 0;
+    timelineDays.forEach(day => {
+        if (day.isStudyDay) {
+            if (planPointer < sequentialPlan.length) {
+                const currentPlan = sequentialPlan[planPointer];
+                if (currentPlan.type === 'review') {
+                    day.isStudyDay = false;
+                    day.isReviewDay = true;
+                    day.reviewBook = currentPlan.book;
+                } else {
+                    day.amudimToCount = currentPlan.count;
+                }
+                planPointer++;
+            } else {
+                day.isStudyDay = false;
+                day.isReviewDay = true;
+            }
+        }
+    });
+
+    return timelineDays;
+}
+
+// --- Strategy B: Daily Pace ---
+function generatePaceTimeline(startInputDate, userSettings, bookSequence, masterAmudPool, manualOverrides, calendarData) {
+    const { pace, studyDays, includeHolidays } = userSettings;
+    let amudPoolCopy = [...masterAmudPool];
+    let currentDate = new Date(startInputDate);
+    let timelineDays = [];
+
+    const parsedPace = parseFloat(pace);
+    const enforcedPace = parsedPace < 0.5 ? 0.5 : parsedPace;
+    const dailyAmudimPace = Math.max(1, Math.ceil(enforcedPace * 2));
+
+    let safetyLoopCount = 0;
+    const maxSafetyIterations = masterAmudPool.length * 10 + 5000;
+
+    while (amudPoolCopy.length > 0 && safetyLoopCount < maxSafetyIterations) {
+        safetyLoopCount++;
+
+        const dateString = formatDateToIL(currentDate);
+        const overrideState = manualOverrides[dateString] || 0;
+        let isRestDay = (overrideState === 1) || (overrideState !== 2 && shouldDayBeRest(currentDate, studyDays, includeHolidays, calendarData));
+
+        let amudimToCountForDay = 0;
+        let triggerReviewPhase = false;
+        let currentBookIdx = amudPoolCopy[0].bookIdx;
+
+        if (!isRestDay) {
+            let limit = 0;
+            while (limit < dailyAmudimPace && limit < amudPoolCopy.length && amudPoolCopy[limit].bookIdx === currentBookIdx) {
+                limit++;
+            }
+
+            let drained = amudPoolCopy.splice(0, limit);
+            amudimToCountForDay = drained.length;
+
+            if (amudPoolCopy.length === 0 || amudPoolCopy[0].bookIdx !== currentBookIdx) {
+                triggerReviewPhase = true;
+            }
+        }
+
+        timelineDays.push({
+            date: new Date(currentDate),
+            dateString: dateString,
+            isRestDay: isRestDay,
+            isStudyDay: !isRestDay,
+            isReviewDay: false,
+            overrideState: overrideState,
+            amudimToCount: amudimToCountForDay
+        });
+
+        if (triggerReviewPhase) {
+            const finishedEntry = bookSequence[currentBookIdx];
+            const reviewDaysCount = (typeof finishedEntry === 'object' && finishedEntry?.reviewDays) ? parseInt(finishedEntry.reviewDays, 10) || 0 : 0;
+
+            let r = 0;
+            while (r < reviewDaysCount) {
+                currentDate.setDate(currentDate.getDate() + 1);
+                const rStr = formatDateToIL(currentDate);
+                const rOverride = manualOverrides[rStr] || 0;
+                let rIsRest = (rOverride === 1) || (rOverride !== 2 && shouldDayBeRest(currentDate, studyDays, includeHolidays, calendarData));
+
+                if (rIsRest) {
+                    timelineDays.push({
+                        date: new Date(currentDate), dateString: rStr,
+                        isRestDay: true, isStudyDay: false, isReviewDay: false, overrideState: rOverride, amudimToCount: 0
+                    });
+                } else {
+                    timelineDays.push({
+                        date: new Date(currentDate), dateString: rStr,
+                        isRestDay: false, isStudyDay: false, isReviewDay: true, overrideState: rOverride, amudimToCount: 0,
+                        reviewBook: typeof finishedEntry === 'string' ? finishedEntry : finishedEntry.name
+                    });
+                    r++;
+                }
+            }
+        }
+        currentDate.setDate(currentDate.getDate() + 1);
+    }
+    return timelineDays;
+}
+
+/* 
+    Helper functions for schedule generation and mapping
+*/
+
+
+// Main dispatcher to select the appropriate timeline generation strategy based on user settings
+function generateTimelineDays(startInputDate, userSettings, bookSequence, masterAmudPool, manualOverrides, calendarData) {
+    if (userSettings.method === 'targetDate') {
+        return generateTargetDateTimeline(startInputDate, userSettings, bookSequence, masterAmudPool, manualOverrides, calendarData);
+    } else {
+        return generatePaceTimeline(startInputDate, userSettings, bookSequence, masterAmudPool, manualOverrides, calendarData);
+    }
+}
+
+// Builds a flat master pool of all amudim across the selected books, starting from the specified daf/amud if given.
+function buildMasterAmudPool(bookSequence, startDaf, startAmud) {
+    if (!bookSequence || bookSequence.length === 0) return [];
+    
+    let masterAmudPool = [];
+    bookSequence.forEach((entry, idx) => {
+        const name = typeof entry === 'string' ? entry : entry.name;
+
+        let startIdx = 0;
+        if (idx === 0 && startDaf) {
+            const startDafHeb = startDaf.trim();
+            if (startDafHeb) {
+                startIdx = Math.max(0, (hebrewToNumber(startDafHeb) * 2) - 4);
+                if (startAmud === "ב") startIdx += 1;
+            }
+        }
+
+        const totalAmudim = getTotalAmudim(name);
+        for (let i = startIdx; i < totalAmudim; i++) {
+            masterAmudPool.push({ book: name, amudIdx: i, bookIdx: idx });
+        }
+    });
+    return masterAmudPool;
+}
+
+// Pre-fetches calendar events for all years that fall within the schedule's potential range based on user settings and strategy.
+async function ensureCalendarData(startInputDate, userSettings, bookSequence, masterAmudPool, calendarData) {
+    const { method, targetDate, pace } = userSettings;
+    const startYear = startInputDate.getFullYear();
+    let endYear = startYear;
+
+    if (method === 'targetDate') {
+        if (!targetDate) throw new Error("נא לבחור תאריך יעד");
+        endYear = new Date(targetDate).getFullYear();
+    } else {
+        const dailyAmudimPace = Math.max(1, Math.ceil(parseFloat(pace) * 2));
+        if (dailyAmudimPace > 0) {
+            const totalReviewDays = bookSequence.reduce((sum, entry) => sum + ((typeof entry === 'object' ? entry.reviewDays : 0) || 0), 0);
+            const estimatedStudyDays = Math.ceil(masterAmudPool.length / dailyAmudimPace);
+            const totalProjectedDays = (estimatedStudyDays + totalReviewDays) * 1.4;
+
+            const projectedEndDate = new Date(startInputDate);
+            projectedEndDate.setDate(projectedEndDate.getDate() + Math.ceil(totalProjectedDays));
+            endYear = projectedEndDate.getFullYear();
+        } else {
+            endYear = startYear + 1;
+        }
+    }
+
+    for (let y = startYear - 1; y <= endYear + 1; y++) {
+        await fetchCalendarEvents(y, calendarData);
+    }
+}
+
+// Adds empty padding days to the start and end of the schedule to ensure full monthly calendar grid rows, based on the calendar type and the actual scheduled timeline.
+function addCalendarGridPadding(outputSchedule, timelineDays, startInputDate, calendarType, calendarData) {
+    // Front Padding
+    let tempDate = new Date(startInputDate);
+    if (calendarType === 'hebrew') {
+        while (parseInt(new Intl.DateTimeFormat('he-IL-u-ca-hebrew', { day: 'numeric' }).format(tempDate)) > 1) {
+            tempDate.setDate(tempDate.getDate() - 1);
+        }
+    } else {
+        tempDate.setDate(1);
+    }
+
+    const frontPadding = [];
+    while (tempDate < startInputDate) {
+        const dStr = formatDateToIL(tempDate);
+        frontPadding.push({
+            date: new Date(tempDate), dateString: dStr, book: "-",
+            isShabbat: tempDate.getDay() === 6, isHoliday: !!calendarData[dStr]?.displayText,
+            holidayTitle: calendarData[dStr]?.displayText, isEmpty: true, content: "", pages: 0
+        });
+        tempDate.setDate(tempDate.getDate() + 1);
+    }
+    outputSchedule.unshift(...frontPadding);
+
+    // Back Padding
     const isEndOfMonth = (d) => {
         const nextDay = new Date(d);
         nextDay.setDate(nextDay.getDate() + 1);
@@ -383,11 +392,30 @@ export async function generateSchedule({ bookSequence, userSettings, manualOverr
             });
         }
     }
-
-    return outputSchedule;
 }
 
-// Cycles the date's manual schedule override: Default -> Force Break -> Force Study -> Reset.
+// Determines whether a given date should be treated as a rest day based on the user's selected study days, holiday inclusion preference, and the calendar traits of that specific day.
+function shouldDayBeRest(dateObj, studyDays, includeHolidays, calendarData) {
+    const dateString = formatDateToIL(dateObj);
+    const day = calendarData[dateString];
+    const traits = day?.traits || {};
+    const dayOfWeek = dateObj.getDay(); // 0 = Sunday, 6 = Shabbat
+
+    // 1. Force break on Standard Chagim if includeHolidays is false
+    if (traits.isChag && !includeHolidays) return true;
+
+    // 2. Check if this weekday is NOT in the user's selected study days array
+    // (Also treats calendar-marked Parasha days as Shabbat if Saturday is unchecked)
+    const isScheduledStudyDay = studyDays.includes(dayOfWeek);
+    if (!isScheduledStudyDay) return true;
+
+    if (traits.isRoshChodesh) return false;     // Study by default on Rosh Chodesh
+    if (traits.isModernException) return false;     // Study by default on Modern Exceptions
+
+    return false;   // Not rest day by default
+}
+
+// Handles cycling through manual override states for a given date string, returning a new overrides object with the updated state. The cycle goes: 0 (no override) → 1 (force rest) → 2 (force study) → back to 0.
 export function cycleDateOverride(currentOverrides, dateString) {
     // 1. Shallow copy the overrides to prevent direct state mutation bugs
     const updatedOverrides = { ...currentOverrides };
@@ -404,7 +432,6 @@ export function cycleDateOverride(currentOverrides, dateString) {
     // 2. Return the new calculated data state
     return updatedOverrides;
 }
-
 
 // Builds a flat list of { dateString, label, amudStart, amudCount } for each study day
 // belonging to a specific book entry (identified by its index in bookSequence).
