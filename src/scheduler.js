@@ -1,5 +1,5 @@
 import { fetchCalendarEvents } from './api.js';
-import { masechtot } from './data.js';
+import { talmud_bavli_masechtot } from './data.js';
 
 // utils
 import { hebrewToNumber } from './utils/gematria.js';
@@ -29,8 +29,8 @@ export function shouldDayBeRest(dateObj, studyDays, includeHolidays, calendarDat
 }
 
 // Generate a full schedule data array of day objects based on user input
-export async function generateSchedule({ trackSequence, userSettings, manualOverrides, calendarData }) {
-    if (trackSequence.length === 0) {
+export async function generateSchedule({ bookSequence, userSettings, manualOverrides, calendarData }) {
+    if (bookSequence.length === 0) {
         return [];
     }
 
@@ -46,7 +46,7 @@ export async function generateSchedule({ trackSequence, userSettings, manualOver
     // --- Step 1: Flatten All Amudim Into a Single Master Pool with Instance Tracking ---
     let masterAmudPool = [];
 
-    trackSequence.forEach((entry, idx) => {
+    bookSequence.forEach((entry, idx) => {
         const name = typeof entry === 'string' ? entry : entry.name;
 
         let startIdx = 0;
@@ -60,7 +60,7 @@ export async function generateSchedule({ trackSequence, userSettings, manualOver
 
         const totalAmudim = getTotalAmudim(name);
         for (let i = startIdx; i < totalAmudim; i++) {
-            masterAmudPool.push({ masechet: name, amudIdx: i, trackIdx: idx });
+            masterAmudPool.push({ book: name, amudIdx: i, bookIdx: idx });
         }
     });
 
@@ -75,7 +75,7 @@ export async function generateSchedule({ trackSequence, userSettings, manualOver
         const dailyAmudimPace = Math.max(1, Math.ceil(parseFloat(pace) * 2));
         if (dailyAmudimPace > 0) {
             // Rough estimation of years to parse
-            const totalReviewDays = trackSequence.reduce((sum, entry) => sum + ((typeof entry === 'object' ? entry.reviewDays : 0) || 0), 0);
+            const totalReviewDays = bookSequence.reduce((sum, entry) => sum + ((typeof entry === 'object' ? entry.reviewDays : 0) || 0), 0);
             const estimatedStudyDays = Math.ceil(masterAmudPool.length / dailyAmudimPace);
             const totalProjectedDays = (estimatedStudyDays + totalReviewDays) * 1.4;
 
@@ -106,7 +106,7 @@ export async function generateSchedule({ trackSequence, userSettings, manualOver
     while (tempDate < startInputDate) {
         const dStr = formatDateToIL(tempDate);
         outputSchedule.push({
-            date: new Date(tempDate), dateString: dStr, masechet: "-",
+            date: new Date(tempDate), dateString: dStr, book: "-",
             isShabbat: tempDate.getDay() === 6, isHoliday: !!calendarData[dStr]?.displayText,
             holidayTitle: calendarData[dStr]?.displayText, isEmpty: true, content: "", pages: 0
         });
@@ -124,7 +124,7 @@ export async function generateSchedule({ trackSequence, userSettings, manualOver
         if (endDate < startInputDate) throw new Error("תאריך היעד חייב להיות אחרי תאריך ההתחלה");
 
         // Collect overall counts of reviews to safely deduct from total active capacity
-        const totalReviewDays = trackSequence.reduce((sum, entry) => sum + ((typeof entry === 'object' ? entry.reviewDays : 0) || 0), 0);
+        const totalReviewDays = bookSequence.reduce((sum, entry) => sum + ((typeof entry === 'object' ? entry.reviewDays : 0) || 0), 0);
 
         // Build continuous base timeline days
         while (currentDate <= endDate) {
@@ -154,16 +154,16 @@ export async function generateSchedule({ trackSequence, userSettings, manualOver
         const totalAmudim = masterAmudPool.length;
 
         // Build precise item profiles
-        const masechetProfiles = trackSequence.map((entry, idx) => {
-            const trackName = typeof entry === 'string' ? entry : entry.name;
+        const bookProfiles = bookSequence.map((entry, idx) => {
+            const bookName = typeof entry === 'string' ? entry : entry.name;
             const rDays = (typeof entry === 'object' && entry?.reviewDays) ? parseInt(entry.reviewDays, 10) || 0 : 0;
-            const count = masterAmudPool.filter(a => a.trackIdx === idx).length;
-            return { name: trackName, trackIdx: idx, count: count, reviewDays: rDays, allocatedDays: 0 };
+            const count = masterAmudPool.filter(a => a.bookIdx === idx).length;
+            return { name: bookName, bookIdx: idx, count: count, reviewDays: rDays, allocatedDays: 0 };
         }).filter(m => m.count > 0);
 
         // Distribute net study days proportionally across text targets
         let totalAllocatedDays = 0;
-        masechetProfiles.forEach(m => {
+        bookProfiles.forEach(m => {
             const exactDays = netStudyDaysCount * (m.count / totalAmudim);
             m.allocatedDays = Math.max(1, Math.floor(exactDays));
             totalAllocatedDays += m.allocatedDays;
@@ -173,30 +173,30 @@ export async function generateSchedule({ trackSequence, userSettings, manualOver
         let daysToDistribute = netStudyDaysCount - totalAllocatedDays;
         if (daysToDistribute > 0) {
             for (let i = 0; i < daysToDistribute; i++) {
-                masechetProfiles[i % masechetProfiles.length].allocatedDays++;
+                bookProfiles[i % bookProfiles.length].allocatedDays++;
             }
         } else if (daysToDistribute < 0) {
             for (let i = 0; i < Math.abs(daysToDistribute); i++) {
-                masechetProfiles.sort((a, b) => b.allocatedDays - a.allocatedDays);
-                if (masechetProfiles[0].allocatedDays > 1) masechetProfiles[0].allocatedDays--;
+                bookProfiles.sort((a, b) => b.allocatedDays - a.allocatedDays);
+                if (bookProfiles[0].allocatedDays > 1) bookProfiles[0].allocatedDays--;
             }
         }
 
         // Translate calculated profiles directly into a flat linear sequence plan array
         let sequentialPlan = [];
-        masechetProfiles.forEach((m) => {
+        bookProfiles.forEach((m) => {
             const baseAmudim = Math.floor(m.count / m.allocatedDays);
             const remainder = m.count % m.allocatedDays;
 
             // 1. Push actual text study quotas
             for (let i = 0; i < m.allocatedDays; i++) {
                 const extra = (i >= m.allocatedDays - remainder) ? 1 : 0;
-                sequentialPlan.push({ type: 'study', count: baseAmudim + extra, masechet: m.name });
+                sequentialPlan.push({ type: 'study', count: baseAmudim + extra, book: m.name });
             }
 
             // 2. Inject dedicated localized reviews immediately following completion
             for (let r = 0; r < m.reviewDays; r++) {
-                sequentialPlan.push({ type: 'review', count: 0, masechet: m.name });
+                sequentialPlan.push({ type: 'review', count: 0, book: m.name });
             }
         });
 
@@ -209,7 +209,7 @@ export async function generateSchedule({ trackSequence, userSettings, manualOver
                     if (currentPlan.type === 'review') {
                         day.isStudyDay = false;
                         day.isReviewDay = true;
-                        day.reviewMasechet = currentPlan.masechet;
+                        day.reviewBook = currentPlan.book;
                     } else {
                         day.amudimToCount = currentPlan.count;
                     }
@@ -241,18 +241,18 @@ export async function generateSchedule({ trackSequence, userSettings, manualOver
 
             let amudimToCountForDay = 0;
             let triggerReviewPhase = false;
-            let currentTrackIdx = amudPoolCopy[0].trackIdx;
+            let currentBookIdx = amudPoolCopy[0].bookIdx;
 
             if (!isRestDay) {
                 let limit = 0;
-                while (limit < dailyAmudimPace && limit < amudPoolCopy.length && amudPoolCopy[limit].trackIdx === currentTrackIdx) {
+                while (limit < dailyAmudimPace && limit < amudPoolCopy.length && amudPoolCopy[limit].bookIdx === currentBookIdx) {
                     limit++;
                 }
 
                 let drained = amudPoolCopy.splice(0, limit);
                 amudimToCountForDay = drained.length;
 
-                if (amudPoolCopy.length === 0 || amudPoolCopy[0].trackIdx !== currentTrackIdx) {
+                if (amudPoolCopy.length === 0 || amudPoolCopy[0].bookIdx !== currentBookIdx) {
                     triggerReviewPhase = true;
                 }
             }
@@ -270,7 +270,7 @@ export async function generateSchedule({ trackSequence, userSettings, manualOver
 
             if (triggerReviewPhase) {
                 // Direct sequential inline execution for localized tracking (skip non-study days)
-                const finishedEntry = trackSequence[currentTrackIdx];
+                const finishedEntry = bookSequence[currentBookIdx];
                 const reviewDaysCount = (typeof finishedEntry === 'object' && finishedEntry?.reviewDays) ? parseInt(finishedEntry.reviewDays, 10) || 0 : 0;
 
                 let r = 0;
@@ -289,7 +289,7 @@ export async function generateSchedule({ trackSequence, userSettings, manualOver
                         timelineDays.push({
                             date: new Date(currentDate), dateString: rStr,
                             isRestDay: false, isStudyDay: false, isReviewDay: true, overrideState: rOverride, amudimToCount: 0,
-                            reviewMasechet: typeof finishedEntry === 'string' ? finishedEntry : finishedEntry.name
+                            reviewBook: typeof finishedEntry === 'string' ? finishedEntry : finishedEntry.name
                         });
                         r++; // Only count down a review day if it was actually available for reviewing
                     }
@@ -301,7 +301,7 @@ export async function generateSchedule({ trackSequence, userSettings, manualOver
 
     // --- Step 5: Process Main Timeline Mapping ---
     let amudPointer = 0;
-    let currentActiveMasechet = "-";
+    let currentActiveBook = "-";
 
     timelineDays.forEach(day => {
         const isShabbat = day.date.getDay() === 6;
@@ -310,7 +310,7 @@ export async function generateSchedule({ trackSequence, userSettings, manualOver
         let dayData = {
             date: day.date,
             dateString: day.dateString,
-            masechet: "-",
+            book: "-",
             isShabbat: isShabbat || traits.isParasha,
             isHoliday: !!calendarData[day.dateString]?.displayText,
             holidayTitle: calendarData[day.dateString]?.displayText || "",
@@ -325,7 +325,7 @@ export async function generateSchedule({ trackSequence, userSettings, manualOver
         if (day.isRestDay) {
             dayData.content = (day.overrideState === 1) ? "הפסקה" : "";
         } else if (day.isReviewDay) {
-            dayData.masechet = day.reviewMasechet || currentActiveMasechet;
+            dayData.book = day.reviewBook || currentActiveBook;
             dayData.content = "חזרה";
         } else if (day.isStudyDay || day.amudimToCount > 0) {
             let count = day.amudimToCount;
@@ -334,23 +334,23 @@ export async function generateSchedule({ trackSequence, userSettings, manualOver
                 let lastAvailableIdx = Math.min(amudPointer + count - 1, masterAmudPool.length - 1);
                 let endAmud = masterAmudPool[lastAvailableIdx];
 
-                dayData.masechet = startAmud.masechet;
-                currentActiveMasechet = startAmud.masechet;
+                dayData.book = startAmud.book;
+                currentActiveBook = startAmud.book;
 
-                dayData.content = (startAmud.amudIdx === endAmud.amudIdx && startAmud.trackIdx === endAmud.trackIdx)
+                dayData.content = (startAmud.amudIdx === endAmud.amudIdx && startAmud.bookIdx === endAmud.bookIdx)
                     ? indexToDaf(startAmud.amudIdx)
                     : `${indexToDaf(startAmud.amudIdx)} - ${indexToDaf(endAmud.amudIdx)}`;
 
                 dayData.pages = count / 2;
 
-                const totalAmudimForThisTrack = getTotalAmudim(startAmud.masechet);
+                const totalAmudimForThisTrack = getTotalAmudim(startAmud.book);
                 if (endAmud.amudIdx === totalAmudimForThisTrack - 1) {
                     dayData.isSiyum = true;
                 }
 
                 amudPointer += count;
             } else {
-                dayData.masechet = currentActiveMasechet;
+                dayData.book = currentActiveBook;
                 dayData.content = "חזרה";
             }
         }
@@ -377,7 +377,7 @@ export async function generateSchedule({ trackSequence, userSettings, manualOver
             runnerDate.setDate(runnerDate.getDate() + 1);
             const ds = formatDateToIL(runnerDate);
             outputSchedule.push({
-                date: new Date(runnerDate), dateString: ds, masechet: "-",
+                date: new Date(runnerDate), dateString: ds, book: "-",
                 isShabbat: runnerDate.getDay() === 6, isHoliday: !!calendarData[ds]?.displayText,
                 holidayTitle: calendarData[ds]?.displayText, isEmpty: true, content: "", pages: 0
             });
@@ -407,24 +407,24 @@ export function cycleDateOverride(currentOverrides, dateString) {
 
 
 // Builds a flat list of { dateString, label, amudStart, amudCount } for each study day
-// belonging to a specific masechet entry (identified by its index in trackSequence).
+// belonging to a specific book entry (identified by its index in bookSequence).
 // Works by replaying the amud pointer across the schedule in order.
-export function computeDaySlots(schedule, masechetName, trackIdx, trackSequence) {
+export function computeDaySlots(schedule, bookName, bookIdx, bookSequence) {
     if (!schedule || schedule.length === 0) return [];
 
-    // Compute the global amud offset where this masechet's block starts.
-    // Each masechet before it in the sequence consumes amudCount amudim.
+    // Compute the global amud offset where this book's block starts.
+    // Each book before it in the sequence consumes amudCount amudim.
     let blockStart = 0;
-    for (let i = 0; i < trackIdx; i++) {
-        const entry = trackSequence[i];
+    for (let i = 0; i < bookIdx; i++) {
+        const entry = bookSequence[i];
         const name = typeof entry === 'string' ? entry : entry.name;
-        const data = masechtot.find(m => m.name === name);
+        const data = talmud_bavli_masechtot.find(m => m.name === name);
         if (data) blockStart += (data.amudCount || 0);
     }
 
-    const targetEntry = trackSequence[trackIdx];
+    const targetEntry = bookSequence[bookIdx];
     const targetName  = typeof targetEntry === 'string' ? targetEntry : targetEntry?.name;
-    const targetData  = masechtot.find(m => m.name === targetName);
+    const targetData  = talmud_bavli_masechtot.find(m => m.name === targetName);
     const blockEnd    = blockStart + (targetData?.amudCount || 0);
 
     const slots = [];
@@ -436,7 +436,7 @@ export function computeDaySlots(schedule, masechetName, trackIdx, trackSequence)
         const amudCount = Math.round(day.pages * 2);
 
         // Check whether this day's amud range overlaps our target block
-        if (day.masechet === masechetName && globalPointer >= blockStart && globalPointer < blockEnd) {
+        if (day.book === bookName && globalPointer >= blockStart && globalPointer < blockEnd) {
             const localStart = globalPointer - blockStart;
             slots.push({
                 dateString: day.dateString,

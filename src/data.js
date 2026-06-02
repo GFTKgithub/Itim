@@ -1,5 +1,5 @@
 // Data for all masechtot
-export const masechtot = [
+export const talmud_bavli_masechtot = [
     // Zeraim
     { name: "ברכות", end: { daf: "סד", amud: "א" }, amudCount: 125 },      // (64-2)*2+1 = 125
 

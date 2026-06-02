@@ -87,7 +87,7 @@ export async function exportScheduleToExcel(schedule) {
             let cellContent = `${RTL_MARK}${mainDate} (${secDate})\n`;
 
             if (!day.isEmpty) {
-                cellContent += `${RTL_MARK}${day.masechet}\n${RTL_MARK}${day.content}`;
+                cellContent += `${RTL_MARK}${day.book}\n${RTL_MARK}${day.content}`;
             } else if (day.override === 1) {
                 cellContent += `${RTL_MARK}הפסקה`;
             } else if (day.holidayTitle) {

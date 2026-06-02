@@ -11,7 +11,7 @@ export function setupMainControls({ onGenerate, onAddToSequence, onClearSequence
         await onGenerate();
         
         // 2. Pure UI Behavior: Handle smooth scrolling locally
-        const listContainer = document.getElementById('trackSequenceList');
+        const listContainer = document.getElementById('bookSequenceList');
         if (listContainer && listContainer.children.length > 0) {
             document.getElementById('calendarContainer')?.scrollIntoView({ 
                 behavior: 'smooth', 
@@ -102,10 +102,10 @@ export function setupSettings({onUpdateSetting, onToggleInputs, onGenerate, onRe
     });
 }
 
-// --- 4. Track Sequence Drag and Drop Interaction ---
-export function setupTrackSequenceDragAndDrop({ onReorder, onRemove }) {
-    const trackSequenceList = document.getElementById('trackSequenceList');
-    if (!trackSequenceList) return;
+// --- 4. Book Sequence Drag and Drop Interaction ---
+export function setupBookSequenceDragAndDrop({ onReorder, onRemove }) {
+    const bookSequenceList = document.getElementById('bookSequenceList');
+    if (!bookSequenceList) return;
 
     let dragElement = null;
     let mirrorElement = null;
@@ -116,7 +116,7 @@ export function setupTrackSequenceDragAndDrop({ onReorder, onRemove }) {
 
     function updateDragPositionAndSorting() {
         if (!dragElement || !mirrorElement) return;
-        const listRect = trackSequenceList.getBoundingClientRect();
+        const listRect = bookSequenceList.getBoundingClientRect();
         const mirrorRect = mirrorElement.getBoundingClientRect();
         const idealTop = currentMouse.y - dragOffsetY;
         const clampedTop = Math.max(listRect.top, Math.min(idealTop, listRect.bottom - mirrorRect.height));
@@ -124,7 +124,7 @@ export function setupTrackSequenceDragAndDrop({ onReorder, onRemove }) {
         mirrorElement.style.top = `${clampedTop}px`;
         mirrorElement.style.left = `${currentMouse.x - dragOffsetX}px`;
 
-        const rows = [...trackSequenceList.querySelectorAll('.drag-row')];
+        const rows = [...bookSequenceList.querySelectorAll('.drag-row')];
         const mirrorMidY = clampedTop + mirrorRect.height / 2;
         const currentDragIndex = rows.indexOf(dragElement);
 
@@ -136,23 +136,23 @@ export function setupTrackSequenceDragAndDrop({ onReorder, onRemove }) {
             const boxMidY = box.top + box.height / 2;
 
             if (i < currentDragIndex && mirrorMidY < boxMidY) {
-                trackSequenceList.insertBefore(dragElement, targetRow);
+                bookSequenceList.insertBefore(dragElement, targetRow);
                 break;
             } else if (i > currentDragIndex && mirrorMidY > boxMidY) {
-                trackSequenceList.insertBefore(dragElement, targetRow.nextElementSibling);
+                bookSequenceList.insertBefore(dragElement, targetRow.nextElementSibling);
                 break;
             }
         }
     }
 
-    trackSequenceList.addEventListener('pointerdown', (e) => {
+    bookSequenceList.addEventListener('pointerdown', (e) => {
         const handle = e.target.closest('.drag-handle');
         const row = e.target.closest('.drag-row');
         if (!handle || !row) return;
 
         e.preventDefault();
         dragElement = row;
-        trackSequenceList.setPointerCapture(e.pointerId);
+        bookSequenceList.setPointerCapture(e.pointerId);
 
         currentMouse.x = e.clientX;
         currentMouse.y = e.clientY;
@@ -178,26 +178,26 @@ export function setupTrackSequenceDragAndDrop({ onReorder, onRemove }) {
         document.body.style.cursor = 'grabbing';
     });
 
-    trackSequenceList.addEventListener('pointermove', (e) => {
+    bookSequenceList.addEventListener('pointermove', (e) => {
         if (!dragElement || !mirrorElement) return;
         currentMouse.x = e.clientX;
         currentMouse.y = e.clientY;
         updateDragPositionAndSorting();
 
-        const listRect = trackSequenceList.getBoundingClientRect();
+        const listRect = bookSequenceList.getBoundingClientRect();
         const scrollThreshold = 35;
         const distanceFromTop = currentMouse.y - listRect.top;
         const distanceFromBottom = listRect.bottom - currentMouse.y;
         let scrollDirection = 0;
 
-        if (distanceFromTop < scrollThreshold && trackSequenceList.scrollTop > 0) scrollDirection = -1;
-        else if (distanceFromBottom < scrollThreshold && (trackSequenceList.scrollTop + listRect.height < trackSequenceList.scrollHeight)) scrollDirection = 1;
+        if (distanceFromTop < scrollThreshold && bookSequenceList.scrollTop > 0) scrollDirection = -1;
+        else if (distanceFromBottom < scrollThreshold && (bookSequenceList.scrollTop + listRect.height < bookSequenceList.scrollHeight)) scrollDirection = 1;
 
         if (scrollDirection !== 0) {
             if (!autoScrollFrameId) {
                 const performAutoScroll = () => {
                     if (!dragElement || !mirrorElement) return;
-                    trackSequenceList.scrollTop += scrollDirection * 6;
+                    bookSequenceList.scrollTop += scrollDirection * 6;
                     updateDragPositionAndSorting();
                     autoScrollFrameId = requestAnimationFrame(performAutoScroll);
                 };
@@ -213,7 +213,7 @@ export function setupTrackSequenceDragAndDrop({ onReorder, onRemove }) {
         if (!dragElement) return;
         if (autoScrollFrameId) { cancelAnimationFrame(autoScrollFrameId); autoScrollFrameId = null; }
         
-        try { trackSequenceList.releasePointerCapture(e.pointerId); } catch (err) { }
+        try { bookSequenceList.releasePointerCapture(e.pointerId); } catch (err) { }
         
         if (mirrorElement) { mirrorElement.remove(); mirrorElement = null; }
         
@@ -222,7 +222,7 @@ export function setupTrackSequenceDragAndDrop({ onReorder, onRemove }) {
         document.body.style.cursor = '';
 
         // Extract the new order of indices from the DOM layout
-        const finalDomRows = [...trackSequenceList.querySelectorAll('.drag-row')];
+        const finalDomRows = [...bookSequenceList.querySelectorAll('.drag-row')];
         const newOrderOfIndices = finalDomRows.map(row => Number(row.dataset.index));
 
         // Pass the pure data back up to the controller
@@ -231,10 +231,10 @@ export function setupTrackSequenceDragAndDrop({ onReorder, onRemove }) {
         dragElement = null;
     };
 
-    trackSequenceList.addEventListener('pointerup', handlePointerUpOrCancel);
-    trackSequenceList.addEventListener('pointercancel', handlePointerUpOrCancel);
+    bookSequenceList.addEventListener('pointerup', handlePointerUpOrCancel);
+    bookSequenceList.addEventListener('pointercancel', handlePointerUpOrCancel);
 
-    trackSequenceList.addEventListener('click', (event) => {
+    bookSequenceList.addEventListener('click', (event) => {
         const removeBtn = event.target.closest('.remove-btn');
         if (removeBtn) {
             // Alert the controller that an item wants to be removed
@@ -244,13 +244,13 @@ export function setupTrackSequenceDragAndDrop({ onReorder, onRemove }) {
 }
 
 // --- 5. Book Config Modal ---
-export function setupBookConfigModal({ getSchedule, getTrackSequence, computeDaySlots, renderAmudGrid, renderDailyView, updateModalProgressStats, onSaveConfig, onDateOverride }) {
+export function setupBookConfigModal({ getSchedule, getBookSequence, computeDaySlots, renderAmudGrid, renderDailyView, updateModalProgressStats, onSaveConfig, onDateOverride }) {
     let currentEditingIndex = null;
     let tempAmudStates = [];
     let currentDaySlots = [];
     let isBunchedView = false;
 
-    const trackSequenceList = document.getElementById('trackSequenceList');
+    const bookSequenceList = document.getElementById('bookSequenceList');
     const amudGridContainer = document.getElementById('amudGridContainer');
     const dailyViewContainer = document.getElementById('dailyViewContainer');
     const bookConfigModal = document.getElementById('bookConfigModal');
@@ -283,29 +283,29 @@ export function setupBookConfigModal({ getSchedule, getTrackSequence, computeDay
         }
     }
 
-    trackSequenceList?.addEventListener('click', (e) => {
+    bookSequenceList?.addEventListener('click', (e) => {
         const configBtn = e.target.closest('.configure-btn');
         if (!configBtn) return;
 
         currentEditingIndex = parseInt(configBtn.getAttribute('data-index'), 10);
         
         // FETCH LIVE DATA HERE by calling the functions
-        const currentTrackSequence = getTrackSequence();
+        const currentBookSequence = getBookSequence();
         const currentSchedule = getSchedule();
 
-        const masechet = currentTrackSequence[currentEditingIndex];
-        if (!masechet) return;
+        const book = currentBookSequence[currentEditingIndex];
+        if (!book) return;
 
-        const masechetName = typeof masechet === 'string' ? masechet : (masechet.name || "לא ידוע");
-        document.getElementById('configModalTitle').innerText = `הגדרות מסכת ${masechetName}`;
-        document.getElementById('configReviewDays').value = masechet.reviewDays || 0;
+        const bookName = typeof book === 'string' ? book : (book.name || "לא ידוע");
+        document.getElementById('configModalTitle').innerText = `הגדרות מסכת ${bookName}`;
+        document.getElementById('configReviewDays').value = book.reviewDays || 0;
 
-        tempAmudStates = (!masechet.amudStates || masechet.amudStates.length === 0) 
+        tempAmudStates = (!book.amudStates || book.amudStates.length === 0) 
             ? new Array(120).fill(0) 
-            : [...masechet.amudStates];
+            : [...book.amudStates];
 
-        // DECOUPLED: Changed AppState.schedule/trackSequence to the passed-in variables
-        currentDaySlots = computeDaySlots(currentSchedule, masechetName, currentEditingIndex, currentTrackSequence);
+        // DECOUPLED: Changed AppState.schedule/bookSequence to the passed-in variables
+        currentDaySlots = computeDaySlots(currentSchedule, bookName, currentEditingIndex, currentBookSequence);
         isBunchedView = false;
         setActiveView('individual');
         renderAmudGrid('amudGridContainer', tempAmudStates, false);

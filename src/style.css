@@ -22,17 +22,17 @@
 }
 
 /* Initializes list container tracking */
-.ordered-track-list {
-    counter-reset: track-sequence;
+.ordered-book-list {
+    counter-reset: book-sequence;
 }
 
 /* Increments and injects the static number layout automatically */
-.ordered-track-list .drag-row {
-    counter-increment: track-sequence;
+.ordered-book-list .drag-row {
+    counter-increment: book-sequence;
 }
 
-.ordered-track-list .static-index::before {
-    content: counter(track-sequence) ".";
+.ordered-book-list .static-index::before {
+    content: counter(book-sequence) ".";
 }
 
 .calendar-grid {

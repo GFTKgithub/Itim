@@ -20,9 +20,9 @@ export function hydrateHtmlFromAppState(AppState) {
     });
 }
 
-// Updates UI of Track sequence 
-export function updateTrackSequenceUI(sequence) {
-    const list = document.getElementById('trackSequenceList');
+// Updates UI of Book sequence 
+export function updateBookSequenceUI(sequence) {
+    const list = document.getElementById('bookSequenceList');
 
     if (!sequence || sequence.length === 0) {
         list.className = "max-h-56 overflow-y-auto bg-slate-50 p-4 rounded-xl border-2 border-dashed border-slate-300 min-h-[80px]";
@@ -33,11 +33,11 @@ export function updateTrackSequenceUI(sequence) {
         return;
     }
 
-    list.className = "ordered-track-list space-y-2 max-h-56 overflow-y-auto bg-slate-50 py-3 px-2 rounded-xl border-2 border-dashed border-slate-300 min-h-[80px] touch-pan-y";
+    list.className = "ordered-book-list space-y-2 max-h-56 overflow-y-auto bg-slate-50 py-3 px-2 rounded-xl border-2 border-dashed border-slate-300 min-h-[80px] touch-pan-y";
 
     list.innerHTML = sequence.map((m, i) => {
         // Handle both string (old) and object (new) formats for backward compatibility during dev
-        const masechetName = typeof m === 'string' ? m : m.name;
+        const bookName = typeof m === 'string' ? m : m.name;
 
         // Progress bar calculation
         const amudStates = (typeof m === 'object' && m.amudStates) ? m.amudStates : [];
@@ -65,7 +65,7 @@ export function updateTrackSequenceUI(sequence) {
                             <span class="block -mt-1.5">•••</span>
                         </div>
                         <span class="font-bold text-slate-700">
-                            מסכת ${masechetName}
+                            מסכת ${bookName}
                         </span>
                     </div>
                     ${progressBar}
@@ -136,7 +136,7 @@ export function renderAmudGrid(containerId, amudStates, isBunched = false) {
     container.innerHTML = htmlBuffer.join('');
 }
 
-// Renders the daily study requirement view — one button per scheduled day for this masechet
+// Renders the daily study requirement view — one button per scheduled day for this Book, colored by progress and with badges for today and completion status
 export function renderDailyView(containerId, daySlots, amudStates) {
     const container = document.getElementById(containerId);
     if (!container) return;
@@ -359,13 +359,13 @@ export function renderCalendar(containerId, schedule, config = {}) {
                 }
             }
 
-            // Update masechet element classes dynamically for review mode tracking
-            const masechetEl = dayEl.querySelector('[data-masechet-label]');
-            if (masechetEl) {
-                if (masechetEl.textContent !== day.masechet) {
-                    masechetEl.textContent = day.masechet;
+            // Update book element classes dynamically for review mode tracking
+            const bookEl = dayEl.querySelector('[data-book-label]');
+            if (bookEl) {
+                if (bookEl.textContent !== day.book) {
+                    bookEl.textContent = day.book;
                 }
-                masechetEl.className = `text-[10px] font-bold whitespace-nowrap ${day.isReviewDay ? 'text-slate-500 font-medium' : 'text-blue-800'}`;
+                bookEl.className = `text-[10px] font-bold whitespace-nowrap ${day.isReviewDay ? 'text-slate-500 font-medium' : 'text-blue-800'}`;
             }
 
             const contentEl = dayEl.querySelector('.text-center.mt-1');
@@ -491,8 +491,8 @@ export function renderCalendar(containerId, schedule, config = {}) {
                             ${secondaryDateDisplay}
                         </span>
                     </div>
-                    <span data-masechet-label class="text-[10px] font-bold whitespace-nowrap ${day.isReviewDay ? 'text-slate-500 font-medium' : 'text-blue-800'}">
-                        ${day.masechet}
+                    <span data-book-label class="text-[10px] font-bold whitespace-nowrap ${day.isReviewDay ? 'text-slate-500 font-medium' : 'text-blue-800'}">
+                        ${day.book}
                     </span>
                 </div>
                 

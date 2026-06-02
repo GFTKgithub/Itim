@@ -1,47 +1,47 @@
-import { updateTrackSequenceUI, showDialog } from "./ui.js";
-import { masechtot } from "./data.js"; // Import the data to get page counts
+import { updateBookSequenceUI, showDialog } from "./ui.js";
+import { talmud_bavli_masechtot } from "./data.js"; // Import the data to get page counts
 
 /*
-    Masechet sequence list logic
+    Book sequence list logic
 */
 
 export function addToSequence(sequence) {
-    const selectEl = document.getElementById('masechetSelect');
+    const selectEl = document.getElementById('bookSelect');
     const selectedName = selectEl.value;
 
     if (!selectedName) return sequence;
 
     // 1. Find the real data object from your database array
-    const masechetData = masechtot.find(m => m.name === selectedName);
+    const bookData = talmud_bavli_masechtot.find(m => m.name === selectedName);
 
     // 2. Safely read total amudim, default to 120 if missing
-    const totalAmudim = masechetData && masechetData.amudCount ? masechetData.amudCount : 120;
+    const totalAmudim = bookData && bookData.amudCount ? bookData.amudCount : 120;
 
     // 3. Construct our dynamic tracker state structure
-    const newMasechetEntry = {
+    const newBookEntry = {
         name: selectedName,
         reviewDays: 0,
-        // Array dynamically scaled exactly to this masechet's volume layout
+        // Array dynamically scaled exactly to this book's volume layout
         amudStates: new Array(totalAmudim).fill(0)
     };
 
     // 4. Update the tracker array state memory reference
-    sequence.push(newMasechetEntry);
+    sequence.push(newBookEntry);
 
     // 5. Fire your beautiful UI rendering pipeline
-    updateTrackSequenceUI(sequence);
+    updateBookSequenceUI(sequence);
 
     return sequence;
 }
 
-// Removes the selected masechet from the Track's masechet sequence list
+// Removes the selected book from the book sequence list
 export function removeFromSequence(sequence, index) {
     sequence.splice(index, 1);
-    updateTrackSequenceUI(sequence);
+    updateBookSequenceUI(sequence);
     return sequence;
 }
 
-// Clears the entire sequence of masechtot from the Track's masechet sequence list
+// Clears the entire sequence of books from the book sequence list
 export async function clearSequence(sequence) {
     const confirmed = await showDialog({
             title: 'ניקוי רשימת המסכתות במסלול',
@@ -53,7 +53,7 @@ export async function clearSequence(sequence) {
         });
     if (confirmed) {
         sequence = [];
-        updateTrackSequenceUI(sequence);
+        updateBookSequenceUI(sequence);
     }
     return sequence;
 }

@@ -12,7 +12,7 @@ export function initPersistence(AppState) {
 // Helper to grab only the user-customized state data
 function extractSavableState() {
     return {
-        trackSequence: stateRef.trackSequence,
+        bookSequence: stateRef.bookSequence,
         manualOverrides: stateRef.manualOverrides,
         userSettings: stateRef.userSettings
     };
@@ -41,7 +41,7 @@ export function loadFromLocalStorage() {
 
 // Helper to map parsed JSON data onto the active AppState references
 function applyParsedState(parsed) {
-    stateRef.trackSequence = parsed.trackSequence || [];
+    stateRef.bookSequence = parsed.bookSequence || [];
     stateRef.manualOverrides = parsed.manualOverrides || {};
     if (parsed.userSettings) {
         stateRef.userSettings = { ...stateRef.userSettings, ...parsed.userSettings };
@@ -138,7 +138,7 @@ export function importStateBackup(event) {
         try {
             const parsed = JSON.parse(e.target.result);
 
-            if (!parsed.trackSequence && !parsed.userSettings && !parsed.manualOverrides) {
+            if (!parsed.bookSequence && !parsed.userSettings && !parsed.manualOverrides) {
                 throw new Error("קובץ הגיבוי אינו תואם או פגום.");
             }
 

@@ -1,6 +1,6 @@
-import { masechtot } from './data.js';
-import { hydrateHtmlFromAppState, toggleInputs, updateTrackSequenceUI, renderAmudGrid, renderDailyView, updateModalProgressStats, renderDateLabels, renderCalendar, showDialog } from './ui.js';
-import { addToSequence, removeFromSequence, clearSequence } from './track-sequence.js';
+import { talmud_bavli_masechtot } from './data.js';
+import { hydrateHtmlFromAppState, toggleInputs, updateBookSequenceUI as updateBookSequenceUI, renderAmudGrid, renderDailyView, updateModalProgressStats, renderDateLabels, renderCalendar, showDialog } from './ui.js';
+import { addToSequence, removeFromSequence, clearSequence } from './book-sequence.js';
 import { generateSchedule, cycleDateOverride, computeDaySlots } from './scheduler.js';
 import { initPersistence, saveState, loadFromLocalStorage, exportStateBackup, importStateBackup } from './persistence.js';
 import { exportScheduleToExcel } from './excel-export.js';
@@ -9,7 +9,7 @@ import {
     setupMainControls,
     setupBackupManagement,
     setupSettings,
-    setupTrackSequenceDragAndDrop,
+    setupBookSequenceDragAndDrop as setupBookSequenceDragAndDrop,
     setupBookConfigModal,
     setupCloudAuth
 } from './setup.js';
@@ -37,7 +37,7 @@ const DEFAULT_USER_SETTINGS = {
 }
 
 let AppState = {
-    trackSequence: [],      // Masechet sequence list
+    bookSequence: [],       // Book sequence list
     schedule: [],           // Data of the entire schedule
     manualOverrides: {},    // Manual overrides of calendar days study status (0 = Default, 1 = Force Break, 2 = Force Study)
     calendarData: {},       // Data of special calendar events (DD.YY.MM)
@@ -52,11 +52,11 @@ function initializeApp() {
     setupMainControls({
         onGenerate: handleScheduleGeneration,
         onAddToSequence: () => { 
-            AppState.trackSequence = addToSequence(AppState.trackSequence);
+            AppState.bookSequence = addToSequence(AppState.bookSequence);
             saveState();
         },
         onClearSequence: async () => {
-            AppState.trackSequence = await clearSequence(AppState.trackSequence);
+            AppState.bookSequence = await clearSequence(AppState.bookSequence);
             saveState();
             handleScheduleGeneration();
         },
@@ -78,18 +78,18 @@ function initializeApp() {
         onSyncToToday: handleSyncToToday
     });
 
-    setupTrackSequenceDragAndDrop({
+    setupBookSequenceDragAndDrop({
         onRemove: (indexToRemove) => {
-            AppState.trackSequence = removeFromSequence(AppState.trackSequence, indexToRemove);
+            AppState.bookSequence = removeFromSequence(AppState.bookSequence, indexToRemove);
             saveState();
-            updateTrackSequenceUI(AppState.trackSequence); // Make sure the layout stays synced
+            updateBookSequenceUI(AppState.bookSequence); // Make sure the layout stays synced
         },
-        onReorder: handleTrackReorder
+        onReorder: handleBookSequenceReorder
     });
 
     setupBookConfigModal({
         // Pass global data down so the function can read it safely
-        getTrackSequence: () => AppState.trackSequence,
+        getBookSequence: () => AppState.bookSequence,
         getSchedule: () => AppState.schedule,
 
         // Helper logic functions (temporary)
@@ -100,17 +100,17 @@ function initializeApp() {
 
         // Handle the data adjustments and app side-effects here
         onSaveConfig: ({ index, reviewDays, amudStates }) => {
-            let masechet = AppState.trackSequence[index];
-            if (typeof masechet === 'string') {
-                masechet = { name: masechet, reviewDays: 0, amudStates: [] };
+            let book = AppState.bookSequence[index];
+            if (typeof book === 'string') {
+                book = { name: book, reviewDays: 0, amudStates: [] };
             }
             
-            masechet.reviewDays = reviewDays;
-            masechet.amudStates = amudStates;
-            AppState.trackSequence[index] = masechet;
+            book.reviewDays = reviewDays;
+            book.amudStates = amudStates;
+            AppState.bookSequence[index] = book;
     
             saveState();
-            updateTrackSequenceUI(AppState.trackSequence);
+            updateBookSequenceUI(AppState.bookSequence);
             handleScheduleGeneration(); 
         },
     
@@ -163,9 +163,9 @@ function initializeApp() {
 
 // Initiate calendar configuration control panel
 function initUserConfigPanel() {
-    // 1. Populate Masechet dropdown select element
-    const select = document.getElementById('masechetSelect');
-    masechtot.forEach(m => {
+    // 1. Populate Book dropdown select element
+    const select = document.getElementById('bookSelect');
+    talmud_bavli_masechtot.forEach(m => {
         const opt = document.createElement('option');
         opt.value = m.name;
         opt.innerText = m.name;
@@ -177,9 +177,9 @@ function initUserConfigPanel() {
     toggleInputs();
     renderDateLabels(AppState.userSettings.startDate, AppState.userSettings.targetDate);
 
-    updateTrackSequenceUI(AppState.trackSequence);
+    updateBookSequenceUI(AppState.bookSequence);
 
-    if (AppState.trackSequence.length > 0) {
+    if (AppState.bookSequence.length > 0) {
         handleScheduleGeneration();
     }
 }
@@ -207,7 +207,7 @@ document.addEventListener('DOMContentLoaded', init);
 
 // Orchestrates schedule calculation by piping AppState inputs into the engine and rendering the resulting timeline grid
 async function handleScheduleGeneration() {
-    if (!AppState.trackSequence || AppState.trackSequence.length === 0) {
+    if (!AppState.bookSequence || AppState.bookSequence.length === 0) {
         AppState.schedule = [];
 
         // Wipe the UI container completely or replace it with a placeholder
@@ -226,7 +226,7 @@ async function handleScheduleGeneration() {
 
     try {
         const updatedSchedule = await generateSchedule({
-            trackSequence: AppState.trackSequence,
+            bookSequence: AppState.bookSequence,
             userSettings: AppState.userSettings,
             manualOverrides: AppState.manualOverrides,
             calendarData: AppState.calendarData
@@ -240,8 +240,8 @@ async function handleScheduleGeneration() {
             .map(day => ({
                 dateString: day.dateString,
                 date: day.date,
-                masechet: day.masechet,
-                title: `סיום מסכת ${day.masechet}`
+                book: day.book,
+                title: `סיום מסכת ${day.book}`
             }));
 
         renderCalendar('calendarContainer', AppState.schedule, {
@@ -285,12 +285,12 @@ async function handleResetSettings() {
     if (!confirmed) return;
 
     AppState.userSettings = { ...DEFAULT_USER_SETTINGS };
-    AppState.trackSequence = [];
+    AppState.bookSequence = [];
 
     // Synchronize your local files, view layout, and engine calculations
     saveState();
     initUserConfigPanel();    // Repopulates form inputs with the fresh AppState.userSettings values
-    updateTrackSequenceUI(AppState.trackSequence);    // Re-renders the list layout (now empty)
+    updateBookSequenceUI(AppState.bookSequence);    // Re-renders the list layout (now empty)
     handleScheduleGeneration(); // Generates empty/default state layout cleanly
 }
 
@@ -324,11 +324,11 @@ async function handleResetManualOverrides() {
     handleScheduleGeneration();
 }
 
-// Handles re-ordering of items in track sequence list
-function handleTrackReorder(newOrderOfIndices) {
+// Handles re-ordering of items in book sequence list
+function handleBookSequenceReorder(newOrderOfIndices) {
     // Map old state array items to their new positions using the indices sent from the UI
-    AppState.trackSequence = newOrderOfIndices.map(oldIndex => {
-        const entry = AppState.trackSequence[oldIndex];
+    AppState.bookSequence = newOrderOfIndices.map(oldIndex => {
+        const entry = AppState.bookSequence[oldIndex];
         // Standardize string entries to objects if needed
         return typeof entry === 'string' 
             ? { name: entry, reviewDays: 0, amudStates: [] } 
@@ -336,7 +336,7 @@ function handleTrackReorder(newOrderOfIndices) {
     });
 
     saveState();
-    updateTrackSequenceUI(AppState.trackSequence); 
+    updateBookSequenceUI(AppState.bookSequence); 
 }
 
 // Handle global book "sync to today"
@@ -361,32 +361,32 @@ async function handleSyncToToday() {
     const todayStr = new Date().toISOString().split('T')[0];
     let hasChanges = false;
 
-    // 3. Loop through every single Masechet inside your track sequence
-    AppState.trackSequence.forEach((masechet, trackIdx) => {
-        if (typeof masechet === 'string') {
-            masechet = { name: masechet, reviewDays: 0, amudStates: [] };
-            AppState.trackSequence[trackIdx] = masechet;
+    // 3. Loop through every single Book inside your book sequence
+    AppState.bookSequence.forEach((book, bookIdx) => {
+        if (typeof book === 'string') {
+            book = { name: book, reviewDays: 0, amudStates: [] };
+            AppState.bookSequence[bookIdx] = book;
         }
 
-        const masechetName = masechet.name || "לא ידוע";
+        const bookName = book.name || "לא ידוע";
         
-        // Ensure masechtot is accessible/imported in app.js
-        const targetData = masechtot.find(m => m.name === masechetName);
+        // Ensure books is accessible/imported in app.js
+        const targetData = talmud_bavli_masechtot.find(m => m.name === bookName);
         const totalAmudim = targetData ? (targetData.amudCount || 120) : 120;
 
-        if (!masechet.amudStates || masechet.amudStates.length === 0) {
-            masechet.amudStates = new Array(totalAmudim).fill(0);
+        if (!book.amudStates || book.amudStates.length === 0) {
+            book.amudStates = new Array(totalAmudim).fill(0);
         }
 
         // 4. Dynamically compute the slots 
-        const slots = computeDaySlots(AppState.schedule, masechetName, trackIdx, AppState.trackSequence);
+        const slots = computeDaySlots(AppState.schedule, bookName, bookIdx, AppState.bookSequence);
 
-        // 5. Apply the sync logic over this Masechet's slots
+        // 5. Apply the sync logic over this Book's slots
         slots.forEach(slot => {
             if (slot.dateString <= todayStr) {
                 for (let i = slot.amudStart; i < slot.amudStart + slot.amudCount; i++) {
-                    if (i < masechet.amudStates.length && masechet.amudStates[i] !== 2) {
-                        masechet.amudStates[i] = 1;
+                    if (i < book.amudStates.length && book.amudStates[i] !== 2) {
+                        book.amudStates[i] = 1;
                         hasChanges = true;
                     }
                 }
@@ -397,7 +397,7 @@ async function handleSyncToToday() {
     // 6. Save data and refresh the master UI views
     if (hasChanges) {
         saveState();
-        updateTrackSequenceUI(AppState.trackSequence);
+        updateBookSequenceUI(AppState.bookSequence);
         handleScheduleGeneration(); // Refreshes calendar view
     }
 }
