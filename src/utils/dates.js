@@ -23,6 +23,11 @@ export function formatDateToIL(date) {
     return formatter.format(date);
 }
 
+// 
+export function formatDateToISO(d) {
+    return d.toISOString().split('T')[0];
+}
+
 // Converts a 'YYYY-MM-DD' string into a local Date object set to noon
 export function parseDateToIL(dateString) {
     const [year, month, day] = dateString.split('-').map(Number);

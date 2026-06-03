@@ -249,7 +249,7 @@ export function setupBookSequenceDragAndDrop({ onReorder, onRemove }) {
 }
 
 // --- 5. Book Config Modal ---
-export function setupBookConfigModal({ getSchedule, getBookSequence, computeDaySlots, renderAmudGrid, renderDailyView, updateModalProgressStats, onSaveConfig, onDateOverride }) {
+export function setupBookConfigModal({ getSchedule, getBookSequence, getBookRangeLimits, computeDaySlots, renderAmudGrid, renderDailyView, updateModalProgressStats, onSaveConfig, onDateOverride }) {
     let currentEditingIndex = null;
     let tempAmudStates = [];
     let currentDaySlots = [];
@@ -258,7 +258,30 @@ export function setupBookConfigModal({ getSchedule, getBookSequence, computeDayS
     const bookSequenceList = document.getElementById('bookSequenceList');
     const amudGridContainer = document.getElementById('amudGridContainer');
     const dailyViewContainer = document.getElementById('dailyViewContainer');
-    const bookConfigModal = document.getElementById('bookConfigModal');
+    const configModal = document.getElementById('bookConfigModal');
+
+    // Modal Injected Control Elements
+    const configCalcMethod = document.getElementById('bookConfigCalcMethod');
+    const configPaceSection = document.getElementById('bookConfigPaceSection');
+    const configTargetDateSection = document.getElementById('bookConfigTargetDateSection');
+    const configPaceInput = document.getElementById('bookConfigPaceInput');
+    const configTargetDateInput = document.getElementById('bookConfigTargetDateInput');
+
+    // Dynamic Visibility Toggle Engine for Modal Inputs
+    function toggleModalFields(method) {
+        if (method === 'targetDate') {
+            configPaceSection?.classList.add('hidden');
+            configTargetDateSection?.classList.remove('hidden');
+        } else {
+            configPaceSection?.classList.remove('hidden');
+            configTargetDateSection?.classList.add('hidden');
+        }
+    }
+
+    // Bind change listener for internal modal dropdown
+    configCalcMethod?.addEventListener('change', (e) => {
+        toggleModalFields(e.target.value);
+    });
 
     function setActiveView(view) {
         const btnIndividual = document.getElementById('toggleViewIndividual');
@@ -294,7 +317,6 @@ export function setupBookConfigModal({ getSchedule, getBookSequence, computeDayS
 
         currentEditingIndex = parseInt(configBtn.getAttribute('data-index'), 10);
         
-        // FETCH LIVE DATA HERE by calling the functions
         const currentBookSequence = getBookSequence();
         const currentSchedule = getSchedule();
 
@@ -302,39 +324,69 @@ export function setupBookConfigModal({ getSchedule, getBookSequence, computeDayS
         if (!book) return;
 
         const bookName = typeof book === 'string' ? book : (book.name || "לא ידוע");
-        document.getElementById('configModalTitle').innerText = `הגדרות מסכת ${bookName}`;
-        document.getElementById('configReviewDays').value = book.reviewDays || 0;
+        document.getElementById('bookConfigModalTitle').innerText = `הגדרות מסכת ${bookName}`;
+        document.getElementById('bookConfigReviewDays').value = book.reviewDays || 0;
+
+        // --- ENFORCE SYNCHRONOUS CONSTRAINTS ---
+        const limits = getBookRangeLimits(currentEditingIndex);
+        if (configTargetDateInput && limits.minDate) {
+            // This safely forces the native HTML popup UI to gray out and disable invalid dates
+            configTargetDateInput.min = limits.minDate; 
+            
+            // Validation fallback correction
+            if (book.targetDate && book.targetDate < limits.minDate) {
+                book.targetDate = limits.minDate;
+            }
+        }
+
+        const savedMethod = book.calcMethod || 'pace';
+        const savedPace = book.paceValue !== undefined ? book.paceValue : 1;
+        const savedTargetDate = book.targetDate || limits.minDate || ''; // Fallback to min acceptable baseline date
+
+        if (configCalcMethod) configCalcMethod.value = savedMethod;
+        if (configPaceInput) configPaceInput.value = savedPace;
+        if (configTargetDateInput) configTargetDateInput.value = savedTargetDate;
+
+        toggleModalFields(savedMethod);
 
         tempAmudStates = (!book.amudStates || book.amudStates.length === 0) 
             ? new Array(120).fill(0) 
             : [...book.amudStates];
 
-        // DECOUPLED: Changed AppState.schedule/bookSequence to the passed-in variables
         currentDaySlots = computeDaySlots(currentSchedule, bookName, currentEditingIndex, currentBookSequence);
         isBunchedView = false;
         setActiveView('individual');
         renderAmudGrid('amudGridContainer', tempAmudStates, false);
         updateModalProgressStats(tempAmudStates);
-        bookConfigModal.classList.remove('hidden');
+        configModal.classList.remove('hidden');
     });
 
     amudGridContainer?.addEventListener('click', (e) => {
         const btn = e.target.closest('.amud-btn');
         if (!btn) return;
-        const idx = parseInt(btn.dataset.amudIdx);
+        
+        const idx = parseInt(btn.dataset.amudIdx, 10);
+        if (isNaN(idx)) return;
 
         if (isBunchedView) {
+            // Bunched shifts toggle logic for both Amud Alef (.) and Amud Bet (:) at once
             const partnerIdx = (idx % 2 === 0) ? idx + 1 : idx - 1;
-            const nextState = (tempAmudStates[idx] + 1) % 3;
+            const nextState = (tempAmudStates[idx] + 1) % 3; // Cycle cleanly: 0 (Unlearned) -> 1 (Learned) -> 2 (Skipped)
+            
             tempAmudStates[idx] = nextState;
-            if (partnerIdx >= 0 && partnerIdx < tempAmudStates.length) tempAmudStates[partnerIdx] = nextState;
+            if (partnerIdx >= 0 && partnerIdx < tempAmudStates.length) {
+                tempAmudStates[partnerIdx] = nextState;
+            }
         } else {
+            // Individual item toggling sequence state calculation
             tempAmudStates[idx] = (tempAmudStates[idx] + 1) % 3;
         }
+
+        // Force structural redrawing profiles immediately
         renderAmudGrid('amudGridContainer', tempAmudStates, isBunchedView);
         updateModalProgressStats(tempAmudStates);
     });
-
+    
     dailyViewContainer?.addEventListener('click', (e) => {
         const btn = e.target.closest('.day-slot-btn');
         if (!btn) return;
@@ -357,20 +409,19 @@ export function setupBookConfigModal({ getSchedule, getBookSequence, computeDayS
     });
 
     document.getElementById('saveConfigBtn')?.addEventListener('click', () => {
-        const reviewDays = parseInt(document.getElementById('configReviewDays').value, 10) || 0;
+        const reviewDays = parseInt(document.getElementById('bookConfigReviewDays').value, 10) || 0;
         
-        // Pass the raw data back to the orchestrator
         onSaveConfig({
             index: currentEditingIndex,
             reviewDays: reviewDays,
             amudStates: [...tempAmudStates]
         });
 
-        bookConfigModal.classList.add('hidden');
+        configModal.classList.add('hidden');
     });
 
-    const closeConfig = () => bookConfigModal.classList.add('hidden');
-    document.getElementById('closeConfigModal')?.addEventListener('click', closeConfig);
+    const closeConfig = () => configModal.classList.add('hidden');
+    document.getElementById('closeBookConfigModal')?.addEventListener('click', closeConfig);
     document.getElementById('cancelConfigBtn')?.addEventListener('click', closeConfig);
 
     document.getElementById('toggleViewIndividual')?.addEventListener('click', () => { isBunchedView = false; setActiveView('individual'); renderAmudGrid('amudGridContainer', tempAmudStates, false); });
@@ -379,8 +430,6 @@ export function setupBookConfigModal({ getSchedule, getBookSequence, computeDayS
 
     document.getElementById('calendarContainer')?.addEventListener('click', (event) => {
         const calendarDay = event.target.closest('.calendar-day');
-        
-        // Pass the date string up
         if (calendarDay?.dataset.date) {
             onDateOverride(calendarDay.dataset.date);
         }
@@ -391,7 +440,6 @@ export function setupBookConfigModal({ getSchedule, getBookSequence, computeDayS
         const slot = currentDaySlots.find(s => s.dateString === todayStr);
 
         if (!slot) {
-            // If showDialog isn't in this file, you can use alert() or pass showDialog in
             alert('לא נמצא שיעור מתוכנן להיום במסכת זו.');
             return;
         }

@@ -287,20 +287,57 @@
             class="bg-white w-full max-w-4xl max-h-[90vh] rounded-2xl shadow-2xl flex flex-col overflow-hidden border border-slate-200">
             <div class="p-6 border-b border-slate-100 bg-slate-50 flex justify-between items-center">
                 <div>
-                    <h2 id="configModalTitle" class="text-2xl font-black text-slate-800">הגדרות מסכת</h2>
-                    <div id="configModalProgressInfo" class="text-sm text-slate-500 font-medium">התקדמות: 0/0 עמודים (0%)
+                    <h2 id="bookConfigModalTitle" class="text-2xl font-black text-slate-800">הגדרות מסכת</h2>
+                    <div id="bookConfigModalProgressInfo" class="text-sm text-slate-500 font-medium">התקדמות: 0/0 עמודים (0%)
                     </div>
                 </div>
-                <button id="closeConfigModal" class="text-slate-400 hover:text-slate-600 text-2xl p-2">✕</button>
+                <button id="closeBookConfigModal" class="text-slate-400 hover:text-slate-600 text-2xl p-2">✕</button>
             </div>
     
+            <div class="bg-slate-50 p-5 rounded-2xl border border-slate-200 max-w-2xl mx-auto font-sans">
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    
+                    <div class="flex flex-col bg-white p-4 rounded-xl border border-slate-200/80 shadow-sm">
+                        <label for="bookConfigCalcMethod" class="block text-xs font-bold text-slate-500 mb-2 tracking-wide">
+                            שיטת לימוד עבור ספר זה
+                        </label>
+                        <div class="relative mt-auto">
+                            <select id="bookConfigCalcMethod" class="w-full h-11 border border-slate-200 rounded-lg px-3 bg-slate-50/50 text-sm font-semibold text-slate-800 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 focus:bg-white transition-all cursor-pointer appearance-none">
+                                <option value="pace">קצב קבוע</option>
+                                <option value="targetDate">יעד סיום סופי</option>
+                            </select>
+                            <div class="absolute inset-y-0 left-3 flex items-center pointer-events-none text-slate-400">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                            </div>
+                        </div>
+                    </div>
+                
+                    <div id="bookConfigPaceSection" class="flex flex-col bg-blue-50/40 p-4 rounded-xl border border-blue-100 shadow-sm">
+                        <label for="bookConfigPaceInput" class="block text-xs font-bold text-blue-800 mb-2 tracking-wide">
+                            הספק ליום לימוד
+                        </label>
+                        <input type="number" id="bookConfigPaceInput" value="1" stroke="0.5" min="0.5" step="0.5"
+                            class="w-full h-11 border border-blue-200/80 rounded-lg px-3 text-sm font-bold text-blue-900 bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all mt-auto">
+                    </div>
+                
+                    <div id="bookConfigTargetDateSection" class="hidden flex-col bg-blue-50/40 p-4 rounded-xl border border-blue-100 shadow-sm">
+                        <label for="bookConfigTargetDateInput" class="block text-xs font-bold text-blue-800 mb-2 tracking-wide">
+                            תאריך יעד לסיום ספר זה
+                        </label>
+                        <input type="date" id="bookConfigTargetDateInput"
+                            class="w-full h-11 border border-blue-200/80 rounded-lg px-3 text-sm font-bold text-blue-900 bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all mt-auto">
+                    </div>
+                    
+                </div>
+            </div>
+
             <div class="flex-1 overflow-y-auto p-6 space-y-8">
                 <div class="bg-blue-50/50 p-4 rounded-xl border border-blue-100 flex items-center justify-between">
                     <div>
                         <h4 class="font-bold text-blue-900">ימי חזרה/הפסקה</h4>
                         <p class="text-xs text-blue-700/70">כמה ימי הפסקה להקצות לחזרה לאחר סיום המסכת?</p>
                     </div>
-                    <input type="number" id="configReviewDays" min="0"
+                    <input type="number" id="bookConfigReviewDays" min="0"
                         class="w-20 border border-blue-200 rounded-lg p-2 text-center font-bold text-blue-900">
                 </div>
     

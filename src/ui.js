@@ -1,6 +1,7 @@
 // utils
 import { numberToHebrew, formatGematria } from './utils/gematria.js';
 import { formatHebrewMonthTitle } from './utils/dates.js';
+import { indexToDaf } from './utils/talmud.js';
 
 // Hydrates the user configuration panel elements with saved data
 export function hydrateHtmlFromAppState(AppState) {
@@ -116,8 +117,8 @@ export function renderAmudGrid(containerId, amudStates, isBunched = false) {
                     ? "bg-amber-500 text-white border-amber-600 shadow-sm"
                     : "bg-slate-100 text-slate-400 border-slate-200";
         } else {
-            const amudSuffix = (i % 2 === 0) ? '.' : ':';
-            label = `${dafGematria}${amudSuffix}`;
+            // Uses your native engine formatting
+            label = indexToDaf(i); 
             colorClass = state === 1
                 ? "bg-emerald-500 text-white border-emerald-600 shadow-sm"
                 : state === 2
@@ -175,14 +176,21 @@ export function renderDailyView(containerId, daySlots, amudStates) {
         let bg, border, textColor;
         if (isFullyLearned)      { bg = 'bg-emerald-50'; border = 'border-emerald-300'; textColor = 'text-emerald-800'; }
         else if (isFullySkipped) { bg = 'bg-amber-50';   border = 'border-amber-300';   textColor = 'text-amber-800'; }
-        else if (isPartial)      { bg = 'bg-blue-50';    border = 'border-blue-300';     textColor = 'text-blue-800'; }
-        else if (isToday)        { bg = 'bg-blue-50';    border = 'border-blue-400';     textColor = 'text-blue-800'; }
-        else if (isPast)         { bg = 'bg-slate-50';   border = 'border-slate-200';    textColor = 'text-slate-400'; }
-        else                     { bg = 'bg-white';      border = 'border-slate-200';    textColor = 'text-slate-600'; }
+        else if (isPartial)      { bg = 'bg-blue-50';    border = 'border-blue-300';    textColor = 'text-blue-800'; }
+        else if (isToday)        { bg = 'bg-blue-50';    border = 'border-blue-400';    textColor = 'text-blue-800'; }
+        else if (isPast)         { bg = 'bg-slate-50';   border = 'border-slate-200';   textColor = 'text-slate-400'; }
+        else                     { bg = 'bg-white';      border = 'border-slate-200';   textColor = 'text-slate-600'; }
 
         const [, m, d] = slot.dateString.split('-');
         const dateLabel = `${d}/${m}`;
-        const dafRange = slot.label.split('—')[1]?.trim() || '';
+        
+        // Dynamically compute the local range content labels safely using your indexToDaf engine
+        let dafRange = '';
+        if (slot.amudCount > 0) {
+            const startLabel = indexToDaf(slot.amudStart);
+            const endLabel = indexToDaf(slot.amudStart + slot.amudCount - 1);
+            dafRange = (startLabel === endLabel) ? startLabel : `${startLabel} - ${endLabel}`;
+        }
 
         return `<button data-slot-idx="${idx}"
             class="day-slot-btn flex flex-col items-center justify-between p-2 rounded-xl border-2 ${bg} ${border} transition-all active:scale-95 hover:shadow-sm h-16 w-full">

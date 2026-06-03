@@ -93,6 +93,32 @@ function initializeApp() {
         getBookSequence: () => AppState.bookSequence,
         getSchedule: () => AppState.schedule,
 
+        getBookRangeLimits: (index) => {
+            // If it's the first book, its constraint relies on the global scheduler setup startDate
+            if (index === 0) {
+                return { minDate: AppState.userSettings.startDate };
+            }
+            
+            // Otherwise, look up the day the previous book finished in the computed schedule
+            const previousBook = AppState.bookSequence[index - 1];
+            const previousBookName = typeof previousBook === 'string' ? previousBook : previousBook.name;
+            
+            const previousBookDays = AppState.schedule.filter(day => day.book === previousBookName);
+            
+            if (previousBookDays.length > 0) {
+                // Get the absolute last recorded date slot assigned to that book
+                const lastDay = previousBookDays[previousBookDays.length - 1].dateString; 
+                const nextAvailableDate = new Date(lastDay);
+                nextAvailableDate.setDate(nextAvailableDate.getDate() + 1);
+                
+                return { 
+                    minDate: nextAvailableDate.toISOString().split('T')[0] 
+                };
+            }
+            
+            return { minDate: AppState.userSettings.startDate };
+        },
+
         // Helper logic functions (temporary)
         computeDaySlots: computeDaySlots,
         renderAmudGrid: renderAmudGrid,              // Pass it down
@@ -103,13 +129,18 @@ function initializeApp() {
         onSaveConfig: ({ index, reviewDays, amudStates }) => {
             let book = AppState.bookSequence[index];
             if (typeof book === 'string') {
-                book = { name: book, reviewDays: 0, amudStates: [] };
+                book = { name: book };
             }
             
-            book.reviewDays = reviewDays;
-            book.amudStates = amudStates;
+            // Capture values from the modal elements
+            book.reviewDays = parseInt(reviewDays, 10) || 0;
+            book.amudStates = amudStates || [];
+            book.calcMethod = document.getElementById('bookConfigCalcMethod').value;
+            book.paceValue = parseFloat(document.getElementById('bookConfigPaceInput').value) || 1;
+            book.targetDate = document.getElementById('bookConfigTargetDateInput').value;
+        
             AppState.bookSequence[index] = book;
-    
+        
             saveState();
             updateBookSequenceUI(AppState.bookSequence);
             handleScheduleGeneration(); 
