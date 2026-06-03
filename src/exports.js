@@ -12,6 +12,8 @@ export async function exportScheduleToExcel(schedule) {
         confirmText: 'המשך'
     });
 
+    const isMinimalActive = document.getElementById('calendarContainer')?.classList.contains('minimal-calendar');
+
     const workbook = new ExcelJS.Workbook();
     const worksheet = workbook.addWorksheet('תכנית לימוד', {
         views: [{ rightToLeft: true }]
@@ -40,8 +42,13 @@ export async function exportScheduleToExcel(schedule) {
         worksheet.mergeCells(currentRow, 1, currentRow, 7);
         const titleCell = worksheet.getCell(currentRow, 1);
         titleCell.value = RTL_MARK + monthName;
-        titleCell.font = { name: 'Arial', bold: true, size: 16, color: { argb: 'FFFFFFFF' } };
-        titleCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1E40AF' } };
+        
+        titleCell.font = { name: 'Arial', bold: true, size: 16, color: { argb: isMinimalActive ? 'FF1E293B' : 'FFFFFFFF' } };
+        titleCell.fill = { 
+            type: 'pattern', 
+            pattern: 'solid', 
+            fgColor: { argb: isMinimalActive ? 'FFF1F5F9' : 'FF1E40AF' } 
+        };
         titleCell.alignment = { vertical: 'middle', horizontal: 'center' };
         worksheet.getRow(currentRow).height = 30;
         currentRow++;
@@ -84,35 +91,72 @@ export async function exportScheduleToExcel(schedule) {
                 secDate = numberToHebrew(hebrewDayNum);
             }
 
-            let cellContent = `${RTL_MARK}${mainDate} (${secDate})\n`;
+            let cellLines = [`${mainDate} (${secDate})`];
 
-            if (!day.isEmpty) {
-                cellContent += `${RTL_MARK}${day.book}\n${RTL_MARK}${day.content}`;
-            } else if (day.override === 1) {
-                cellContent += `${RTL_MARK}הפסקה`;
-            } else if (day.holidayTitle) {
-                cellContent += `${RTL_MARK}${day.holidayTitle}`;
-            } else if (day.content) {
-                cellContent += `${RTL_MARK}${day.content}`;
+            // הוספת חגים
+            if (day.holidayTitle) {
+                cellLines.push(`${day.holidayTitle}`);
+            }
+            
+            // הוספת סיומים
+            if (day.isSiyum || day.siyumTitle) {
+                cellLines.push('★ סיום מסכת ★');
             }
 
-            cell.value = cellContent;
+            // ניהול תוכן מרכזי + הזרקת איקונים של ידני (Overrides)
+            if (day.override === 1) {
+                // ❌ יום הפסקה מוגדר ידנית
+                cellLines.push('❌ הפסקה');
+            } else {
+                let textPrefix = '';
+                // ✏️ אם הוגדר ידנית כיום לימוד חובה/מאולץ
+                if (day.override === 2) {
+                    textPrefix = '✏️ ';
+                }
+
+                if (!day.isEmpty && day.book) {
+                    let studyLine = `${textPrefix}${day.book} ${day.content || ''}`.trim();
+                    if (day.isReview) studyLine += ' (חזרה)';
+                    cellLines.push(studyLine);
+                } else if (day.content) {
+                    cellLines.push(`${textPrefix}${day.content}`);
+                }
+            }
+
+            cell.value = cellLines.map(line => RTL_MARK + line).join('\n');
             cell.alignment = { wrapText: true, vertical: 'top', horizontal: 'center', readingOrder: 2 };
             cell.border = { top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' } };
 
-            // Apply contextual color highlights based on scheduling type overrides
-            if (day.override === 1) {
-                cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFEBEE' } }; // Force Break
-            } else if (day.override === 2) {
-                cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFEBF5FF' } }; // Force Study
-            } else if (day.isShabbat) {
-                cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFDBE6F3' } }; // Shabbat
-            } else if (day.isHoliday) {
-                cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE9EFD5' } }; // Holidays
+            let cellColor = 'FFFFFFFF';
+
+            if (!isMinimalActive) {
+                // מצב רגיל - צבעים מלאים לפי ה-CSS
+                if (day.override === 1) {
+                    cellColor = 'FFFFF2F2'; // force-break
+                } else if (day.override === 2) {
+                    cellColor = 'FFF0F7FF'; // force-study
+                } else if (day.isSiyum) {
+                    cellColor = 'remoteFFFEFCE8'; // תוקן מ-FEFCE8 ל-FFFEFCE8 לתאימות ExcelJS
+                } else if (day.isReview) {
+                    cellColor = 'FFF0FDF4'; // review-bg
+                } else if (day.isHoliday) {
+                    cellColor = 'FFF3EFF4'; // holiday-bg
+                } else if (day.isShabbat) {
+                    cellColor = 'FFEFF6FF'; // shabbat-bg
+                }
+            } else {
+                // מצב מינימליסטי - שומר על ניקיון ומשתמש באיקונים שהזרקנו למעלה
+                if (day.override === 1) cellColor = 'FFF9FAFB'; 
+                if (day.isShabbat) cellColor = 'FFF8FAFC';     
             }
 
-            // Set default cell grid row bounds dimension structure mapping safely
-            worksheet.getRow(weekRow).height = 65;
+            cell.fill = { 
+                type: 'pattern', 
+                pattern: 'solid', 
+                fgColor: { argb: cellColor } 
+            };
+
+            worksheet.getRow(weekRow).height = Math.max(65, cellLines.length * 18);
 
             if (col === 7) {
                 weekRow++;
@@ -123,7 +167,7 @@ export async function exportScheduleToExcel(schedule) {
             weekRow++;
         }
 
-        currentRow = weekRow + 2; // Leave spacing before starting the next calendar block layout
+        currentRow = weekRow + 2;
     }
 
     const buffer = await workbook.xlsx.writeBuffer();
