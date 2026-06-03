@@ -10,11 +10,11 @@ import { formatDateToIL, formatDateToISO } from './utils/dates.js';
     Core generation functions 
 */
 
-// Main function to generate the full schedule based on user settings, book sequence, manual overrides, and calendar data. It orchestrates the entire process from building the master amud pool to mapping content onto the timeline and adding necessary padding for calendar grid display.
-export async function generateSchedule({ bookSequence, userSettings, manualOverrides, calendarData }) {
+// Main function to generate the full schedule based on track settings, book sequence, manual overrides, and calendar data. It orchestrates the entire process from building the master amud pool to mapping content onto the timeline and adding necessary padding for calendar grid display.
+export async function generateSchedule({ bookSequence, trackSettings, manualOverrides, calendarData }) {
     if (!bookSequence || bookSequence.length === 0) return [];
 
-    const { startDate, calendarType } = userSettings;
+    const { startDate, calendarType } = trackSettings;
     if (!startDate) throw new Error("נא לבחור תאריך התחלה");
 
     let currentTimelineStart = new Date(startDate);
@@ -33,14 +33,14 @@ export async function generateSchedule({ bookSequence, userSettings, manualOverr
         const singleBookPool = buildMasterAmudPool([bookObj]); 
 
         // Ensure localized cache frames for the current date boundaries are available 
-        await ensureCalendarData(currentTimelineStart, userSettings, [bookObj], singleBookPool, calendarData);
+        await ensureCalendarData(currentTimelineStart, trackSettings, [bookObj], singleBookPool, calendarData);
 
         // Calculate specific schedule step maps
         let bookTimeline = [];
         if (bookObj.calcMethod === 'targetDate') {
-            bookTimeline = generateTargetDateTimeline(currentTimelineStart, bookObj, singleBookPool, manualOverrides, calendarData, userSettings);
+            bookTimeline = generateTargetDateTimeline(currentTimelineStart, bookObj, singleBookPool, manualOverrides, calendarData, trackSettings);
         } else {
-            bookTimeline = generatePaceTimeline(currentTimelineStart, bookObj, singleBookPool, manualOverrides, calendarData, userSettings);
+            bookTimeline = generatePaceTimeline(currentTimelineStart, bookObj, singleBookPool, manualOverrides, calendarData, trackSettings);
         }
 
         if (bookTimeline.length > 0) {
@@ -122,8 +122,8 @@ export async function generateSchedule({ bookSequence, userSettings, manualOverr
 }
 
 // --- Strategy A: Target Date ---
-function generateTargetDateTimeline(startDate, bookObj, singleBookPool, manualOverrides, calendarData, userSettings) {
-    const { studyDays, includeHolidays } = userSettings;
+function generateTargetDateTimeline(startDate, bookObj, singleBookPool, manualOverrides, calendarData, trackSettings) {
+    const { studyDays, includeHolidays } = trackSettings;
     const targetDateVal = bookObj.targetDate || formatDateToISO(startDate);
     const endDate = new Date(targetDateVal);
     endDate.setHours(0, 0, 0, 0);
@@ -157,7 +157,7 @@ function generateTargetDateTimeline(startDate, bookObj, singleBookPool, manualOv
 
     let activeStudyDays = timelineDays.filter(d => d.isStudyDay);
     if (activeStudyDays.length <= reviewDaysCount) {
-        return generatePaceTimeline(startDate, { ...bookObj, calcMethod: 'pace', paceValue: 1 }, singleBookPool, manualOverrides, calendarData, userSettings);
+        return generatePaceTimeline(startDate, { ...bookObj, calcMethod: 'pace', paceValue: 1 }, singleBookPool, manualOverrides, calendarData, trackSettings);
     }
 
     const netStudyDaysCount = activeStudyDays.length - reviewDaysCount;
@@ -199,8 +199,8 @@ function generateTargetDateTimeline(startDate, bookObj, singleBookPool, manualOv
 }
 
 // --- Strategy B: Daily Pace ---
-function generatePaceTimeline(startDate, bookObj, singleBookPool, manualOverrides, calendarData, userSettings) {
-    const { studyDays, includeHolidays } = userSettings;
+function generatePaceTimeline(startDate, bookObj, singleBookPool, manualOverrides, calendarData, trackSettings) {
+    const { studyDays, includeHolidays } = trackSettings;
     let amudPoolCopy = [...singleBookPool];
     let currentDate = new Date(startDate);
     let timelineDays = [];
@@ -270,12 +270,12 @@ function generatePaceTimeline(startDate, bookObj, singleBookPool, manualOverride
 */
 
 
-// Main dispatcher to select the appropriate timeline generation strategy based on user settings
-function generateTimelineDays(startInputDate, userSettings, bookSequence, masterAmudPool, manualOverrides, calendarData) {
-    if (userSettings.method === 'targetDate') {
-        return generateTargetDateTimeline(startInputDate, userSettings, bookSequence, masterAmudPool, manualOverrides, calendarData);
+// Main dispatcher to select the appropriate timeline generation strategy based on track settings
+function generateTimelineDays(startInputDate, trackSettings, bookSequence, masterAmudPool, manualOverrides, calendarData) {
+    if (trackSettings.method === 'targetDate') {
+        return generateTargetDateTimeline(startInputDate, trackSettings, bookSequence, masterAmudPool, manualOverrides, calendarData);
     } else {
-        return generatePaceTimeline(startInputDate, userSettings, bookSequence, masterAmudPool, manualOverrides, calendarData);
+        return generatePaceTimeline(startInputDate, trackSettings, bookSequence, masterAmudPool, manualOverrides, calendarData);
     }
 }
 
@@ -304,9 +304,9 @@ function buildMasterAmudPool(bookSequence, startDaf, startAmud) {
     return masterAmudPool;
 }
 
-// Pre-fetches calendar events for all years that fall within the schedule's potential range based on user settings and strategy.
-async function ensureCalendarData(startInputDate, userSettings, bookSequence, masterAmudPool, calendarData) {
-    const { method, targetDate, pace } = userSettings;
+// Pre-fetches calendar events for all years that fall within the schedule's potential range based on track settings and strategy.
+async function ensureCalendarData(startInputDate, trackSettings, bookSequence, masterAmudPool, calendarData) {
+    const { method, targetDate, pace } = trackSettings;
     const startYear = startInputDate.getFullYear();
     let endYear = startYear;
 

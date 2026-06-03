@@ -3,14 +3,14 @@ import { numberToHebrew, formatGematria } from './utils/gematria.js';
 import { formatHebrewMonthTitle } from './utils/dates.js';
 import { indexToDaf } from './utils/talmud.js';
 
-// Hydrates the user configuration panel elements with saved data
+// Hydrates the track configuration panel elements with saved data
 export function hydrateHtmlFromAppState(AppState) {
-    document.getElementById('calendarType').value = AppState.userSettings.calendarType;
-    document.getElementById('includeHolidaysInput').checked = AppState.userSettings.includeHolidays;
-    document.getElementById('startDateInput').value = AppState.userSettings.startDate;
+    document.getElementById('calendarType').value = AppState.trackSettings.calendarType;
+    document.getElementById('includeHolidaysInput').checked = AppState.trackSettings.includeHolidays;
+    document.getElementById('startDateInput').value = AppState.trackSettings.startDate;
 
     // Synchronize Weekday Selection checkboxes
-    const activeDays = AppState.userSettings.studyDays || [];
+    const activeDays = AppState.trackSettings.studyDays || [];
     document.querySelectorAll('input[name="studyDays"]').forEach(checkbox => {
         checkbox.checked = activeDays.includes(parseInt(checkbox.value, 10));
     });

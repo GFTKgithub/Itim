@@ -25,6 +25,10 @@ import {
 import { loadFromFirebase } from './persistence.js';
 
 const DEFAULT_USER_SETTINGS = {
+    minimal_calendar: false
+}
+
+const DEFAULT_TRACK_SETTINGS = {
     method: 'pace',
     pace: 1,
     startDate: new Date().toISOString().split('T')[0],
@@ -34,15 +38,15 @@ const DEFAULT_USER_SETTINGS = {
     studyDays: [0, 1, 2, 3, 4, 5], // Default: Sun-Fri (0-5), Shabbat (6) excluded
     includeHolidays: false,
     calendarType: 'hebrew',
-    minimal_calendar: false
 }
 
 let AppState = {
+    userSettings: { ...DEFAULT_USER_SETTINGS },       // User Settings (with default values)
     bookSequence: [],       // Book sequence list
     schedule: [],           // Data of the entire schedule
     manualOverrides: {},    // Manual overrides of calendar days study status (0 = Default, 1 = Force Break, 2 = Force Study)
     calendarData: {},       // Data of special calendar events (DD.YY.MM)
-    userSettings: { ...DEFAULT_USER_SETTINGS }       // User Settings (with default values)
+    trackSettings: { ...DEFAULT_TRACK_SETTINGS }
 }
 
 /* 
@@ -73,8 +77,9 @@ function initializeApp() {
     });
 
     setupSettings({
-        userSettings: AppState.userSettings,
-        onUpdateSetting: handleUpdateSetting,
+        trackSettings: AppState.trackSettings,
+        onUpdateUserSetting: handleUpdateUserSetting,
+        onUpdateTrackSetting: handleUpdateTrackSetting,
         onGenerate: handleScheduleGeneration,
         onSyncToToday: handleSyncToToday
     });
@@ -96,7 +101,7 @@ function initializeApp() {
         getBookRangeLimits: (index) => {
             // If it's the first book, its constraint relies on the global scheduler setup startDate
             if (index === 0) {
-                return { minDate: AppState.userSettings.startDate };
+                return { minDate: AppState.trackSettings.startDate };
             }
             
             // Otherwise, look up the day the previous book finished in the computed schedule
@@ -116,7 +121,7 @@ function initializeApp() {
                 };
             }
             
-            return { minDate: AppState.userSettings.startDate };
+            return { minDate: AppState.trackSettings.startDate };
         },
 
         // Helper logic functions (temporary)
@@ -178,7 +183,7 @@ function initializeApp() {
         onFetchData: async () => {
             if (await loadFromFirebase()) {
                 alert("הנתונים נמשכו מהענן בהצלחה! העמוד יתעדכן.");
-                initUserConfigPanel();
+                initTrackConfigPanel();
                 handleScheduleGeneration();
             } else {
                 alert("לא נמצאו נתונים שמורים בענן עבור משתמש זה.");
@@ -194,7 +199,7 @@ function initializeApp() {
 }
 
 // Initiate calendar configuration control panel
-function initUserConfigPanel() {
+function initTrackConfigPanel() {
     // 1. Populate Book dropdown select element
     const select = document.getElementById('bookSelect');
     talmud_bavli_masechtot.forEach(m => {
@@ -206,7 +211,7 @@ function initUserConfigPanel() {
 
     hydrateHtmlFromAppState(AppState);
 
-    renderDateLabels(AppState.userSettings.startDate, AppState.userSettings.targetDate);
+    renderDateLabels(AppState.trackSettings.startDate, AppState.trackSettings.targetDate);
 
     updateBookSequenceUI(AppState.bookSequence);
 
@@ -225,7 +230,7 @@ function init() {
 
     initializeApp()
 
-    window.addEventListener('load', initUserConfigPanel);
+    window.addEventListener('load', initTrackConfigPanel);
 }
 
 // Executes main initiation function upon page load
@@ -258,7 +263,7 @@ async function handleScheduleGeneration() {
     try {
         const updatedSchedule = await generateSchedule({
             bookSequence: AppState.bookSequence,
-            userSettings: AppState.userSettings,
+            trackSettings: AppState.trackSettings,
             manualOverrides: AppState.manualOverrides,
             calendarData: AppState.calendarData
         });
@@ -276,7 +281,7 @@ async function handleScheduleGeneration() {
             }));
 
         renderCalendar('calendarContainer', AppState.schedule, {
-            calendarType: AppState.userSettings.calendarType,
+            calendarType: AppState.trackSettings.calendarType,
             overrides: AppState.manualOverrides
         });
 
@@ -287,9 +292,16 @@ async function handleScheduleGeneration() {
     }
 }
 
-// Takes a setting key and a value and updates the setting to the value
-function handleUpdateSetting(key, value) {
+// Takes a setting key and a value and updates the user setting to the value
+function handleUpdateUserSetting(key, value) {
     AppState.userSettings[key] = value;
+    
+    saveState();
+}
+
+// Takes a setting key and a value and updates the track setting to the value
+function handleUpdateTrackSetting(key, value) {
+    AppState.trackSettings[key] = value;
     
     saveState();
 }
@@ -302,7 +314,7 @@ function handleDateOverrideClick(dateString) {
     handleScheduleGeneration();
 }
 
-// Factory-resets user configuration variables and settings
+// Factory-resets track configuration variables and settings
 async function handleResetSettings() {
     const confirmed = await showDialog({
         title: 'איפוס הגדרות לברירת מחדל',
@@ -315,12 +327,12 @@ async function handleResetSettings() {
 
     if (!confirmed) return;
 
-    AppState.userSettings = { ...DEFAULT_USER_SETTINGS };
+    AppState.trackSettings = { ...DEFAULT_TRACK_SETTINGS };
     AppState.bookSequence = [];
 
     // Synchronize your local files, view layout, and engine calculations
     saveState();
-    initUserConfigPanel();    // Repopulates form inputs with the fresh AppState.userSettings values
+    initTrackConfigPanel();    // Repopulates form inputs with the fresh AppState.trackSettings values
     updateBookSequenceUI(AppState.bookSequence);    // Re-renders the list layout (now empty)
     handleScheduleGeneration(); // Generates empty/default state layout cleanly
 }

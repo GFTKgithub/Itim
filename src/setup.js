@@ -56,13 +56,13 @@ export function setupBackupManagement({onExport, onImport, onResetSettings, onRe
 }
 
 // --- 3. Settings Synchronization ---
-export function setupSettings({ userSettings, onUpdateSetting, onGenerate }) {
+export function setupSettings({ userSettings, onUpdateUserSetting, onUpdateTrackSetting, onGenerate, onSyncToToday }) {
     const calendarType = document.getElementById('calendarType');
     const includeHolidaysInput = document.getElementById('includeHolidaysInput');
     const startDateInput = document.getElementById('startDateInput');
 
     calendarType?.addEventListener('change', (e) => {
-        onUpdateSetting('calendarType', e.target.value);
+        onUpdateTrackSetting('calendarType', e.target.value);
         onGenerate();
     });
 
@@ -71,18 +71,18 @@ export function setupSettings({ userSettings, onUpdateSetting, onGenerate }) {
             const selectedDays = Array.from(document.querySelectorAll('input[name="studyDays"]:checked'))
                 .map(cb => parseInt(cb.value, 10));
 
-            onUpdateSetting('studyDays', selectedDays);
+            onUpdateTrackSetting('studyDays', selectedDays);
             onGenerate(); 
         });
     });
 
     includeHolidaysInput?.addEventListener('change', (e) => {
-        onUpdateSetting('includeHolidays', e.target.checked);
+        onUpdateTrackSetting('includeHolidays', e.target.checked);
         onGenerate();
     });
 
     const handleDateChange = () => {
-        onUpdateSetting('startDate', startDateInput.value);
+        onUpdateTrackSetting('startDate', startDateInput.value);
     };
 
     startDateInput?.addEventListener('change', handleDateChange);
@@ -120,8 +120,8 @@ export function setupSettings({ userSettings, onUpdateSetting, onGenerate }) {
     minimalistUiToggle?.addEventListener('change', (e) => {
         const checked = e.target.checked;
         
-        if (typeof onUpdateSetting === 'function') {
-            onUpdateSetting('minimal_calendar', checked);
+        if (typeof onUpdateUserSetting === 'function') {
+            onUpdateUserSetting('minimal_calendar', checked);
         }
         
         if (checked) {

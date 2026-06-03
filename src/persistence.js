@@ -1,4 +1,3 @@
-// persistence.js
 import { auth, db } from './firebase-config.js';
 import { doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
@@ -14,7 +13,8 @@ function extractSavableState() {
     return {
         bookSequence: stateRef.bookSequence,
         manualOverrides: stateRef.manualOverrides,
-        userSettings: stateRef.userSettings
+        userSettings: stateRef.userSettings,
+        trackSettings: stateRef.trackSettings
     };
 }
 
@@ -45,6 +45,10 @@ function applyParsedState(parsed) {
     stateRef.manualOverrides = parsed.manualOverrides || {};
     if (parsed.userSettings) {
         stateRef.userSettings = { ...stateRef.userSettings, ...parsed.userSettings };
+    }
+
+    if (parsed.trackSettings) {
+        stateRef.trackSettings = { ...stateRef.trackSettings, ...parsed.trackSettings };
     }
 }
 
@@ -138,7 +142,7 @@ export function importStateBackup(event) {
         try {
             const parsed = JSON.parse(e.target.result);
 
-            if (!parsed.bookSequence && !parsed.userSettings && !parsed.manualOverrides) {
+            if (!parsed.userSettings && !parsed.trackSettings && !parsed.bookSequence && !parsed.manualOverrides) {
                 throw new Error("קובץ הגיבוי אינו תואם או פגום.");
             }
 
