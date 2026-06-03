@@ -14,6 +14,8 @@ export function hydrateHtmlFromAppState(AppState) {
     document.querySelectorAll('input[name="studyDays"]').forEach(checkbox => {
         checkbox.checked = activeDays.includes(parseInt(checkbox.value, 10));
     });
+
+    document.getElementById('minimalistUiToggle').checked = AppState.userSettings.minimal_calendar
 }
 
 // Updates UI of Book sequence 
