@@ -5,14 +5,9 @@ import { indexToDaf } from './utils/talmud.js';
 
 // Hydrates the user configuration panel elements with saved data
 export function hydrateHtmlFromAppState(AppState) {
-    document.getElementById('calcMethod').value = AppState.userSettings.method;
     document.getElementById('calendarType').value = AppState.userSettings.calendarType;
     document.getElementById('includeHolidaysInput').checked = AppState.userSettings.includeHolidays;
     document.getElementById('startDateInput').value = AppState.userSettings.startDate;
-    document.getElementById('targetDateInput').value = AppState.userSettings.targetDate;
-    document.getElementById('paceInput').value = AppState.userSettings.pace;
-    document.getElementById('startDafInput').value = AppState.userSettings.startDaf;
-    document.getElementById('startAmudInput').value = AppState.userSettings.startAmud;
 
     // Synchronize Weekday Selection checkboxes
     const activeDays = AppState.userSettings.studyDays || [];
@@ -212,13 +207,6 @@ export function updateModalProgressStats(amudStates) {
     if (infoEl) {
         infoEl.innerText = `התקדמות: ${learned}/${total} עמודים (${percent}%)`;
     }
-}
-
-// Toggles from Deadline (targetDate) goal to Daily Pace (pace)
-export function toggleInputs() {
-    const method = document.getElementById('calcMethod').value;
-    document.getElementById('paceSection').classList.toggle('hidden', method === 'targetDate');
-    document.getElementById('targetDateSection').classList.toggle('hidden', method === 'pace');
 }
 
 // Updates a Hebrew date label based on a gregorian date element

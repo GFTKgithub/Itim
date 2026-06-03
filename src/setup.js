@@ -56,20 +56,10 @@ export function setupBackupManagement({onExport, onImport, onResetSettings, onRe
 }
 
 // --- 3. Settings Synchronization ---
-export function setupSettings({onUpdateSetting, onToggleInputs, onGenerate, onRenderDateLabels, onSyncToToday}) {
-    const calcMethod = document.getElementById('calcMethod');
+export function setupSettings({ onUpdateSetting, onGenerate }) {
     const calendarType = document.getElementById('calendarType');
     const includeHolidaysInput = document.getElementById('includeHolidaysInput');
-    const startDafInput = document.getElementById('startDafInput');
-    const startAmudInput = document.getElementById('startAmudInput');
-    const paceInput = document.getElementById('paceInput');
     const startDateInput = document.getElementById('startDateInput');
-    const targetDateInput = document.getElementById('targetDateInput');
-
-    calcMethod?.addEventListener('change', (e) => {
-        onUpdateSetting('method', e.target.value);
-        onToggleInputs();
-    });
 
     calendarType?.addEventListener('change', (e) => {
         onUpdateSetting('calendarType', e.target.value);
@@ -82,25 +72,20 @@ export function setupSettings({onUpdateSetting, onToggleInputs, onGenerate, onRe
                 .map(cb => parseInt(cb.value, 10));
 
             onUpdateSetting('studyDays', selectedDays);
+            onGenerate(); 
         });
     });
 
     includeHolidaysInput?.addEventListener('change', (e) => {
         onUpdateSetting('includeHolidays', e.target.checked);
+        onGenerate();
     });
-
-    startDafInput?.addEventListener('change', (e) => { onUpdateSetting('startDaf', e.target.value); });
-    startAmudInput?.addEventListener('change', (e) => { onUpdateSetting('startAmud', e.target.value); });
-    paceInput?.addEventListener('change', (e) => { onUpdateSetting('pace', e.target.value); });
 
     const handleDateChange = () => {
         onUpdateSetting('startDate', startDateInput.value);
-        onUpdateSetting('targetDate', targetDateInput.value);
-        onRenderDateLabels(startAmudInput.value, targetDateInput.value);
     };
 
     startDateInput?.addEventListener('change', handleDateChange);
-    targetDateInput?.addEventListener('change', handleDateChange);
 
     document.getElementById('syncToTodayBtn')?.addEventListener('click', () => {
         if (onSyncToToday) onSyncToToday();
@@ -386,7 +371,7 @@ export function setupBookConfigModal({ getSchedule, getBookSequence, getBookRang
         renderAmudGrid('amudGridContainer', tempAmudStates, isBunchedView);
         updateModalProgressStats(tempAmudStates);
     });
-    
+
     dailyViewContainer?.addEventListener('click', (e) => {
         const btn = e.target.closest('.day-slot-btn');
         if (!btn) return;

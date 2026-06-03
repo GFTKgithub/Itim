@@ -1,5 +1,5 @@
 import { talmud_bavli_masechtot } from './data.js';
-import { hydrateHtmlFromAppState, toggleInputs, updateBookSequenceUI as updateBookSequenceUI, renderAmudGrid, renderDailyView, updateModalProgressStats, renderDateLabels, renderCalendar, showDialog } from './ui.js';
+import { hydrateHtmlFromAppState, updateBookSequenceUI, renderAmudGrid, renderDailyView, updateModalProgressStats, renderDateLabels, renderCalendar, showDialog } from './ui.js';
 import { addToSequence, removeFromSequence, clearSequence } from './book-sequence.js';
 import { generateSchedule, cycleDateOverride, computeDaySlots } from './scheduler.js';
 import { initPersistence, saveState, loadFromLocalStorage, exportStateBackup, importStateBackup } from './persistence.js';
@@ -74,8 +74,6 @@ function initializeApp() {
     setupSettings({
         onUpdateSetting: handleUpdateSetting,
         onGenerate: handleScheduleGeneration,
-        onToggleInputs: toggleInputs,
-        onRenderDateLabels: renderDateLabels,
         onSyncToToday: handleSyncToToday
     });
 
@@ -206,7 +204,6 @@ function initUserConfigPanel() {
 
     hydrateHtmlFromAppState(AppState);
 
-    toggleInputs();
     renderDateLabels(AppState.userSettings.startDate, AppState.userSettings.targetDate);
 
     updateBookSequenceUI(AppState.bookSequence);
