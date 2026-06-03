@@ -58,6 +58,14 @@
     background-color: #f2f3f4;
 }
 
+.shabbat-bg {
+    background-color: #eff6ff;
+}
+
+.shabbat-bg:hover {
+    background-color: #e6eef9;
+}
+
 .holiday-bg {
     background-color: #f3eff4;
     border: 1px solid #a877be;
@@ -67,12 +75,13 @@
     background-color: #eadff1;
 }
 
-.shabbat-bg {
-    background-color: #eff6ff;
+.review-bg {
+    background-color: #f0fdf4;
+    border: 1px solid #86efac;
 }
 
-.shabbat-bg:hover {
-    background-color: #e6eef9;
+.review-bg:hover {
+    background-color: #dcfce7;
 }
 
 .siyum-bg {
@@ -82,15 +91,6 @@
 
 .siyum-bg:hover {
     background-color: #f1efd9;
-}
-
-.review-bg {
-    background-color: #f0fdf4;
-    border: 1px solid #86efac;
-}
-
-.review-bg:hover {
-    background-color: #dcfce7;
 }
 
 .holiday-label-small {
