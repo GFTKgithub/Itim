@@ -56,7 +56,7 @@ export function setupBackupManagement({onExport, onImport, onResetSettings, onRe
 }
 
 // --- 3. Settings Synchronization ---
-export function setupSettings({ onUpdateSetting, onGenerate }) {
+export function setupSettings({ userSettings, onUpdateSetting, onGenerate }) {
     const calendarType = document.getElementById('calendarType');
     const includeHolidaysInput = document.getElementById('includeHolidaysInput');
     const startDateInput = document.getElementById('startDateInput');
@@ -89,6 +89,50 @@ export function setupSettings({ onUpdateSetting, onGenerate }) {
 
     document.getElementById('syncToTodayBtn')?.addEventListener('click', () => {
         if (onSyncToToday) onSyncToToday();
+    });
+
+    const toggleSettingsPanelBtn = document.getElementById('toggleSettingsPanelBtn');
+    const appSettingsPanel = document.getElementById('appSettingsPanel');
+    const minimalistUiToggle = document.getElementById('minimalistUiToggle');
+    const calendarContainer = document.getElementById('calendarContainer');
+    
+    if (toggleSettingsPanelBtn && appSettingsPanel) {
+        toggleSettingsPanelBtn.addEventListener('click', (e) => {
+            e.preventDefault(); 
+            
+            appSettingsPanel.classList.toggle('hidden');
+        });
+    } else {
+        console.warn("עיתים: לא נמצא כפתור ההגדרות או פאנל ההגדרות ב-DOM");
+    }
+    
+    const isMinimal = userSettings?.is_minimal_calendar === true || userSettings?.is_minimal_calendar === 'true';
+    
+    if (minimalistUiToggle && calendarContainer) {
+        minimalistUiToggle.checked = isMinimal;
+        if (isMinimal) {
+            calendarContainer.classList.add('minimal-calendar');
+        } else {
+            calendarContainer.classList.remove('minimal-calendar');
+        }
+    }
+    
+    minimalistUiToggle?.addEventListener('change', (e) => {
+        const checked = e.target.checked;
+        
+        if (typeof onUpdateSetting === 'function') {
+            onUpdateSetting('minimal_calendar', checked);
+        }
+        
+        if (checked) {
+            calendarContainer.classList.add('minimal-calendar');
+        } else {
+            calendarContainer.classList.remove('minimal-calendar');
+        }
+    
+        if (typeof onGenerate === 'function') {
+            onGenerate();            
+        }
     });
 }
 
