@@ -417,7 +417,7 @@ function shouldDayBeRest(dateObj, studyDays, includeHolidays, calendarEvents) {
 }
 
 // Handles cycling through study status override states for a given date string, returning a new overrides object with the updated state. The cycle goes: 0 (no override) → 1 (force rest) → 2 (force study) → back to 0.
-export function cycleDateOverride(currentOverrides, dateString) {
+export function cycleStudyStatusOverride(currentOverrides, dateString) {
     // 1. Shallow copy the overrides to prevent direct state mutation bugs
     const updatedOverrides = { ...currentOverrides };
 

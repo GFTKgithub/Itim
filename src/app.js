@@ -1,7 +1,7 @@
 import { talmud_bavli_masechtot } from './data.js';
 import { hydrateHtmlFromAppState, updateBookSequenceUI, renderAmudGrid, renderDailyView, updateModalProgressStats, renderDateLabels, renderCalendar, showDialog } from './ui.js';
 import { addToSequence, removeFromSequence, clearSequence } from './book-sequence.js';
-import { generateStudyCalendar, cycleDateOverride as cycleStudyStatusOverride, computeDaySlots } from './scheduler.js';
+import { generateStudyCalendar, cycleStudyStatusOverride, computeDaySlots } from './scheduler.js';
 import { initPersistence, saveState, loadFromLocalStorage, exportStateBackup, importStateBackup } from './persistence.js';
 import { exportScheduleToExcel, exportScheduleToICal } from './exports.js';
 
@@ -9,7 +9,7 @@ import {
     setupMainControls,
     setupBackupManagement,
     setupSettings,
-    setupBookSequenceDragAndDrop as setupBookSequenceDragAndDrop,
+    setupBookSequenceDragAndDrop,
     setupBookConfigModal,
     setupCloudAuth
 } from './setup.js';
