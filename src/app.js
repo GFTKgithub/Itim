@@ -53,7 +53,25 @@ let AppState = {
     Page initiation logic
 */
 
-function initializeApp() {
+// Executes main initiation function upon page load
+document.addEventListener('DOMContentLoaded', init);
+
+
+// Main page initiation function
+function init() {
+    console.log("HTML page initialized successfully");
+
+    initPersistence(AppState);
+
+    loadFromLocalStorage();
+
+    setupMainPage()
+
+    window.addEventListener('load', initTrackConfigPanel);
+}
+
+// Executes setup helpers for index.html
+function setupMainPage() {
     setupMainControls({
         onGenerate: handleScheduleGeneration,
         onAddToSequence: () => { 
@@ -198,7 +216,7 @@ function initializeApp() {
     });
 }
 
-// Initiate calendar configuration control panel
+// Initiates calendar configuration control panel
 function initTrackConfigPanel() {
     // 1. Populate Book dropdown select element
     const select = document.getElementById('bookSelect');
@@ -219,23 +237,6 @@ function initTrackConfigPanel() {
         handleScheduleGeneration();
     }
 }
-
-// Main page initiation function
-function init() {
-    console.log("HTML page initialized successfully");
-
-    initPersistence(AppState);
-
-    loadFromLocalStorage();
-
-    initializeApp()
-
-    window.addEventListener('load', initTrackConfigPanel);
-}
-
-// Executes main initiation function upon page load
-document.addEventListener('DOMContentLoaded', init);
-
 
 /* 
     Handlers
@@ -262,8 +263,8 @@ async function handleScheduleGeneration() {
 
     try {
         const updatedSchedule = await generateSchedule({
-            bookSequence: AppState.bookSequence,
             trackSettings: AppState.trackSettings,
+            bookSequence: AppState.bookSequence,
             manualOverrides: AppState.manualOverrides,
             calendarData: AppState.calendarData
         });

@@ -11,7 +11,7 @@ import { formatDateToIL, formatDateToISO } from './utils/dates.js';
 */
 
 // Main function to generate the full schedule based on track settings, book sequence, manual overrides, and calendar data. It orchestrates the entire process from building the master amud pool to mapping content onto the timeline and adding necessary padding for calendar grid display.
-export async function generateSchedule({ bookSequence, trackSettings, manualOverrides, calendarData }) {
+export async function generateSchedule({ trackSettings, bookSequence, manualOverrides, calendarData }) {
     if (!bookSequence || bookSequence.length === 0) return [];
 
     const { startDate, calendarType } = trackSettings;
@@ -55,7 +55,6 @@ export async function generateSchedule({ bookSequence, trackSettings, manualOver
 
     // Step 3: Map textual progress onto active days
     const outputSchedule = [];
-    let currentActiveBook = "-";
     
     // We maintain a map of absolute amud processing cursors per book index layout
     let bookPointers = {}; 
@@ -268,16 +267,6 @@ function generatePaceTimeline(startDate, bookObj, singleBookPool, manualOverride
 /* 
     Helper functions for schedule generation and mapping
 */
-
-
-// Main dispatcher to select the appropriate timeline generation strategy based on track settings
-function generateTimelineDays(startInputDate, trackSettings, bookSequence, masterAmudPool, manualOverrides, calendarData) {
-    if (trackSettings.method === 'targetDate') {
-        return generateTargetDateTimeline(startInputDate, trackSettings, bookSequence, masterAmudPool, manualOverrides, calendarData);
-    } else {
-        return generatePaceTimeline(startInputDate, trackSettings, bookSequence, masterAmudPool, manualOverrides, calendarData);
-    }
-}
 
 // Builds a flat master pool of all amudim across the selected books, starting from the specified daf/amud if given.
 function buildMasterAmudPool(bookSequence, startDaf, startAmud) {
