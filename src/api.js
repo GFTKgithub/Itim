@@ -6,10 +6,10 @@ import { formatDateToIL } from "./utils/dates.js";
 */
 
 // Fetches calendar event data of a given year from Hebcal API
-export async function fetchCalendarEvents(year, calendarData) {
+export async function fetchCalendarEvents(year, calendarEvents) {
 
     // Prevent duplicate yearly fetches
-    if (Object.keys(calendarData).some(key => key.startsWith(year))) {
+    if (Object.keys(calendarEvents).some(key => key.startsWith(year))) {
         return;
     }
 
@@ -33,9 +33,9 @@ export async function fetchCalendarEvents(year, calendarData) {
             const hebrewName = item.hebrew || "";
 
             // Initialize date object
-            if (!calendarData[dateStr]) {
+            if (!calendarEvents[dateStr]) {
 
-                calendarData[dateStr] = {
+                calendarEvents[dateStr] = {
 
                     events: [],
 
@@ -53,7 +53,7 @@ export async function fetchCalendarEvents(year, calendarData) {
 
             }
 
-            const day = calendarData[dateStr];
+            const day = calendarEvents[dateStr];
 
             // Store raw event
             day.events.push({

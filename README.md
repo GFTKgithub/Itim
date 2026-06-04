@@ -21,7 +21,7 @@ This approach keeps the app fast, keeps cloud hosting costs near zero, and makes
 
 * Built-in Breaks & Reviews: Automatically injects structured rest days (like holidays or weekends) and dedicated review (Chazarah) days right after you finish a book.
 
-* Manual Overrides: Click any day to manually force a break or force a study session, and watch the rest of the calendar instantly shift to compensate.
+* Study Status Overrides: Click any day to manually force a break or force a study session, and watch the rest of the calendar instantly shift to compensate.
 
 * Syncing Foundations: Basic local storage, account logins, and Firebase syncing are already under the hood and talking to each other.
 

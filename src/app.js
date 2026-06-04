@@ -1,7 +1,7 @@
 import { talmud_bavli_masechtot } from './data.js';
 import { hydrateHtmlFromAppState, updateBookSequenceUI, renderAmudGrid, renderDailyView, updateModalProgressStats, renderDateLabels, renderCalendar, showDialog } from './ui.js';
 import { addToSequence, removeFromSequence, clearSequence } from './book-sequence.js';
-import { generateSchedule, cycleDateOverride, computeDaySlots } from './scheduler.js';
+import { generateStudyCalendar, cycleDateOverride as cycleStudyStatusOverride, computeDaySlots } from './scheduler.js';
 import { initPersistence, saveState, loadFromLocalStorage, exportStateBackup, importStateBackup } from './persistence.js';
 import { exportScheduleToExcel, exportScheduleToICal } from './exports.js';
 
@@ -24,7 +24,7 @@ import {
 } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 import { loadFromFirebase } from './persistence.js';
 
-const DEFAULT_USER_SETTINGS = {
+const DEFAULT_USER_PREFERENCES = {
     minimal_calendar: false
 }
 
@@ -37,16 +37,16 @@ const DEFAULT_TRACK_SETTINGS = {
     startAmud: 'א',
     studyDays: [0, 1, 2, 3, 4, 5], // Default: Sun-Fri (0-5), Shabbat (6) excluded
     includeHolidays: false,
-    calendarType: 'hebrew',
+    calendarSystem: 'hebrew',
 }
 
 let AppState = {
-    userSettings: { ...DEFAULT_USER_SETTINGS },       // User Settings (with default values)
-    bookSequence: [],       // Book sequence list
-    schedule: [],           // Data of the entire schedule
-    manualOverrides: {},    // Manual overrides of calendar days study status (0 = Default, 1 = Force Break, 2 = Force Study)
-    calendarData: {},       // Data of special calendar events (DD.YY.MM)
-    trackSettings: { ...DEFAULT_TRACK_SETTINGS }
+    userPreferences: { ...DEFAULT_USER_PREFERENCES },       // User Preferences (with default values)
+    bookSequence: [],               // Book sequence list
+    studySchedule: [],                   // Data of the entire study schedule
+    studyStatusOverrides: {},       // Manual overrides of calendar days study status (0 = Default, 1 = Force Break, 2 = Force Study)
+    calendarEvents: {},          // Data of special calendar events (DD.YY.MM)
+    trackSettings: { ...DEFAULT_TRACK_SETTINGS }    // Track Settings (with default values)
 }
 
 /* 
@@ -83,20 +83,20 @@ function setupMainPage() {
             saveState();
             handleScheduleGeneration();
         },
-        onExportExcel: () => exportScheduleToExcel(AppState.schedule),
-        onExportICal: () => exportScheduleToICal(AppState.schedule)
+        onExportExcel: () => exportScheduleToExcel(AppState.studySchedule),
+        onExportICal: () => exportScheduleToICal(AppState.studySchedule)
     });
 
     setupBackupManagement({
         onExport: exportStateBackup,
         onImport: importStateBackup,
         onResetSettings: handleResetSettings,
-        onResetManualOverrides: handleResetManualOverrides
+        onResetStudyStatusOverrides: handleResetStudyStatusOverrides
     });
 
     setupSettings({
         trackSettings: AppState.trackSettings,
-        onUpdateUserSetting: handleUpdateUserSetting,
+        onUpdateUserPreference: handleUpdateUserPreference,
         onUpdateTrackSetting: handleUpdateTrackSetting,
         onGenerate: handleScheduleGeneration,
         onSyncToToday: handleSyncToToday
@@ -114,7 +114,7 @@ function setupMainPage() {
     setupBookConfigModal({
         // Pass global data down so the function can read it safely
         getBookSequence: () => AppState.bookSequence,
-        getSchedule: () => AppState.schedule,
+        getSchedule: () => AppState.studySchedule,
 
         getBookRangeLimits: (index) => {
             // If it's the first book, its constraint relies on the global scheduler setup startDate
@@ -126,7 +126,7 @@ function setupMainPage() {
             const previousBook = AppState.bookSequence[index - 1];
             const previousBookName = typeof previousBook === 'string' ? previousBook : previousBook.name;
             
-            const previousBookDays = AppState.schedule.filter(day => day.book === previousBookName);
+            const previousBookDays = AppState.studySchedule.filter(day => day.book === previousBookName);
             
             if (previousBookDays.length > 0) {
                 // Get the absolute last recorded date slot assigned to that book
@@ -169,8 +169,8 @@ function setupMainPage() {
             handleScheduleGeneration(); 
         },
     
-        onDateOverride: (date) => {
-            handleDateOverrideClick(date);
+        onStudyStatusOverride: (date) => {
+            handleStudyStatusOverride(date);
         }
     });
     
@@ -245,7 +245,7 @@ function initTrackConfigPanel() {
 // Orchestrates schedule calculation by piping AppState inputs into the engine and rendering the resulting timeline grid
 async function handleScheduleGeneration() {
     if (!AppState.bookSequence || AppState.bookSequence.length === 0) {
-        AppState.schedule = [];
+        AppState.studySchedule = [];
 
         // Wipe the UI container completely or replace it with a placeholder
         const container = document.getElementById('calendarContainer');
@@ -262,14 +262,14 @@ async function handleScheduleGeneration() {
     }
 
     try {
-        const updatedSchedule = await generateSchedule({
+        const updatedSchedule = await generateStudyCalendar({
             trackSettings: AppState.trackSettings,
             bookSequence: AppState.bookSequence,
-            manualOverrides: AppState.manualOverrides,
-            calendarData: AppState.calendarData
+            studyStatusOverrides: AppState.studyStatusOverrides,
+            calendarEvents: AppState.calendarEvents
         });
 
-        AppState.schedule = updatedSchedule;
+        AppState.studySchedule = updatedSchedule;
 
         // EXTRACT AND SAVE SIYUM EVENTS GLOBALLY
         AppState.siyumEvents = updatedSchedule
@@ -281,12 +281,12 @@ async function handleScheduleGeneration() {
                 title: `סיום מסכת ${day.book}`
             }));
         
-        const isMinimal = AppState.userSettings?.minimal_calendar === true || 
-        AppState.userSettings?.minimal_calendar === 'true';
+        const isMinimal = AppState.userPreferences?.minimal_calendar === true || 
+        AppState.userPreferences?.minimal_calendar === 'true';
 
-        renderCalendar('calendarContainer', AppState.schedule, {
-            calendarType: AppState.trackSettings.calendarType,
-            overrides: AppState.manualOverrides,
+        renderCalendar('calendarContainer', AppState.studySchedule, {
+            calendarSystem: AppState.trackSettings.calendarSystem,
+            overrides: AppState.studyStatusOverrides,
             isMinimal: isMinimal
         });
 
@@ -297,9 +297,9 @@ async function handleScheduleGeneration() {
     }
 }
 
-// Takes a setting key and a value and updates the user setting to the value
-function handleUpdateUserSetting(key, value) {
-    AppState.userSettings[key] = value;
+// Takes a preference key and a value and updates the user preference to the value
+function handleUpdateUserPreference(key, value) {
+    AppState.userPreferences[key] = value;
     
     saveState();
 }
@@ -311,9 +311,9 @@ function handleUpdateTrackSetting(key, value) {
     saveState();
 }
 
-// Orchestrates date override by passing current manualOverride state and a date into a cycle function
-function handleDateOverrideClick(dateString) {
-    AppState.manualOverrides = cycleDateOverride(AppState.manualOverrides, dateString);
+// Orchestrates date override by passing current studyStatusOverride state and a date into a cycle function
+function handleStudyStatusOverride(dateString) {
+    AppState.studyStatusOverrides = cycleStudyStatusOverride(AppState.studyStatusOverrides, dateString);
 
     saveState();
     handleScheduleGeneration();
@@ -343,8 +343,8 @@ async function handleResetSettings() {
 }
 
 // Erases targeted timeline override blocks completely while leaving configuration controls alone
-async function handleResetManualOverrides() {
-    if (Object.keys(AppState.manualOverrides).length === 0) {
+async function handleResetStudyStatusOverrides() {
+    if (Object.keys(AppState.studyStatusOverrides).length === 0) {
         await showDialog({
             title: 'פעולה התבטלה',
             message: 'לא נמצאו שינויים ידניים בלוח הקיים.',
@@ -365,7 +365,7 @@ async function handleResetManualOverrides() {
     if (!confirmed) return;
 
     // Wipe out the map object completely
-    AppState.manualOverrides = {};
+    AppState.studyStatusOverrides = {};
 
     // Save state changes and re-run calculations
     saveState();
@@ -390,7 +390,7 @@ function handleBookSequenceReorder(newOrderOfIndices) {
 // Handle global book "sync to today"
 async function handleSyncToToday() {
     // 1. Safety check using the global schedule
-    if (!AppState.schedule || AppState.schedule.length === 0) {
+    if (!AppState.studySchedule || AppState.studySchedule.length === 0) {
         await showDialog({ title: 'אין נתונים', message: 'יש ליצור לוח לימוד קודם כדי לסנכרן.', icon: '📅', confirmText: 'הבנתי' });
         return;
     }
@@ -427,7 +427,7 @@ async function handleSyncToToday() {
         }
 
         // 4. Dynamically compute the slots 
-        const slots = computeDaySlots(AppState.schedule, bookName, bookIdx, AppState.bookSequence);
+        const slots = computeDaySlots(AppState.studySchedule, bookName, bookIdx, AppState.bookSequence);
 
         // 5. Apply the sync logic over this Book's slots
         slots.forEach(slot => {

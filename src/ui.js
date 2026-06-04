@@ -5,7 +5,7 @@ import { indexToDaf } from './utils/talmud.js';
 
 // Hydrates the track configuration panel elements with saved data
 export function hydrateHtmlFromAppState(AppState) {
-    document.getElementById('calendarType').value = AppState.trackSettings.calendarType;
+    document.getElementById('calendarSystem').value = AppState.trackSettings.calendarSystem;
     document.getElementById('includeHolidaysInput').checked = AppState.trackSettings.includeHolidays;
     document.getElementById('startDateInput').value = AppState.trackSettings.startDate;
 
@@ -15,7 +15,7 @@ export function hydrateHtmlFromAppState(AppState) {
         checkbox.checked = activeDays.includes(parseInt(checkbox.value, 10));
     });
 
-    document.getElementById('minimalistUiToggle').checked = AppState.userSettings.minimal_calendar
+    document.getElementById('minimalistUiToggle').checked = AppState.userPreferences.minimal_calendar
 }
 
 // Updates UI of Book sequence 
@@ -299,8 +299,8 @@ export function renderDateLabels(startDate, targetDate) {
 }
 
 // Renders the calendar UI
-export function renderCalendar(containerId, schedule, config = {}) {
-    const { calendarType = 'hebrew', overrides = {} } = config;
+export function renderCalendar(containerId, studySchedule, config = {}) {
+    const { calendarSystem = 'hebrew', overrides = {} } = config;
     const container = document.getElementById(containerId);
     if (!container) return;
 
@@ -314,8 +314,8 @@ export function renderCalendar(containerId, schedule, config = {}) {
     const existingDays = container.querySelectorAll('.calendar-day[data-date]');
 
     // --- Path A: Optimized Partial Update ---
-    if (existingDays.length > 0 && existingDays.length === schedule.length) {
-        schedule.forEach((day, index) => {
+    if (existingDays.length > 0 && existingDays.length === studySchedule.length) {
+        studySchedule.forEach((day, index) => {
             const dayEl = existingDays[index];
             if (!dayEl) return;
 
@@ -416,8 +416,8 @@ export function renderCalendar(containerId, schedule, config = {}) {
     container.innerHTML = "";
 
     const months = {};
-    schedule.forEach(day => {
-        let monthKey = (calendarType === 'hebrew')
+    studySchedule.forEach(day => {
+        let monthKey = (calendarSystem === 'hebrew')
             ? formatHebrewMonthTitle(day.date)
             : day.date.toLocaleString('he-IL', { month: 'long', year: 'numeric' });
 
@@ -460,7 +460,7 @@ export function renderCalendar(containerId, schedule, config = {}) {
             let secondaryDateDisplay;
             const hebrewDayNum = parseInt(new Intl.DateTimeFormat('he-IL-u-ca-hebrew', { day: 'numeric' }).format(day.date));
 
-            if (calendarType === 'hebrew') {
+            if (calendarSystem === 'hebrew') {
                 mainDateDisplay = formatGematria(hebrewDayNum, numberToHebrew(hebrewDayNum));
                 secondaryDateDisplay = day.date.getDate() + "." + (day.date.getMonth() + 1);
             } else {

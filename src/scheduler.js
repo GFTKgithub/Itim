@@ -10,11 +10,11 @@ import { formatDateToIL, formatDateToISO } from './utils/dates.js';
     Core generation functions 
 */
 
-// Main function to generate the full schedule based on track settings, book sequence, manual overrides, and calendar data. It orchestrates the entire process from building the master amud pool to mapping content onto the timeline and adding necessary padding for calendar grid display.
-export async function generateSchedule({ trackSettings, bookSequence, manualOverrides, calendarData }) {
+// Main function to generate the full study schedule based on track settings, book sequence, study status overrides, and calendar event data. It orchestrates the entire process from building the master amud pool to mapping content onto the timeline and adding necessary padding for calendar grid display.
+export async function generateStudyCalendar({ trackSettings, bookSequence, studyStatusOverrides, calendarEvents }) {
     if (!bookSequence || bookSequence.length === 0) return [];
 
-    const { startDate, calendarType } = trackSettings;
+    const { startDate, calendarSystem } = trackSettings;
     if (!startDate) throw new Error("נא לבחור תאריך התחלה");
 
     let currentTimelineStart = new Date(startDate);
@@ -33,14 +33,14 @@ export async function generateSchedule({ trackSettings, bookSequence, manualOver
         const singleBookPool = buildMasterAmudPool([bookObj]); 
 
         // Ensure localized cache frames for the current date boundaries are available 
-        await ensureCalendarData(currentTimelineStart, trackSettings, [bookObj], singleBookPool, calendarData);
+        await ensureCalendarEvents(currentTimelineStart, trackSettings, [bookObj], singleBookPool, calendarEvents);
 
         // Calculate specific schedule step maps
         let bookTimeline = [];
         if (bookObj.calcMethod === 'targetDate') {
-            bookTimeline = generateTargetDateTimeline(currentTimelineStart, bookObj, singleBookPool, manualOverrides, calendarData, trackSettings);
+            bookTimeline = generateTargetDateTimeline(currentTimelineStart, bookObj, singleBookPool, studyStatusOverrides, calendarEvents, trackSettings);
         } else {
-            bookTimeline = generatePaceTimeline(currentTimelineStart, bookObj, singleBookPool, manualOverrides, calendarData, trackSettings);
+            bookTimeline = generatePaceTimeline(currentTimelineStart, bookObj, singleBookPool, studyStatusOverrides, calendarEvents, trackSettings);
         }
 
         if (bookTimeline.length > 0) {
@@ -61,15 +61,15 @@ export async function generateSchedule({ trackSettings, bookSequence, manualOver
 
     comprehensiveTimeline.forEach(day => {
         const isShabbat = day.date.getDay() === 6;
-        const traits = calendarData[day.dateString]?.traits || {};
+        const traits = calendarEvents[day.dateString]?.traits || {};
 
         let dayData = {
             date: day.date,
             dateString: day.dateString,
             book: day.targetBook || "-",
             isShabbat: isShabbat || traits.isParasha,
-            isHoliday: !!calendarData[day.dateString]?.displayText,
-            holidayTitle: calendarData[day.dateString]?.displayText || "",
+            isHoliday: !!calendarEvents[day.dateString]?.displayText,
+            holidayTitle: calendarEvents[day.dateString]?.displayText || "",
             isEmpty: day.isRestDay || day.isReviewDay,
             override: day.overrideState,
             content: "",
@@ -115,13 +115,13 @@ export async function generateSchedule({ trackSettings, bookSequence, manualOver
     });
 
     // Step 4: Inject Grid UI Padding (Front & Back padding)
-    addCalendarGridPadding(outputSchedule, comprehensiveTimeline, new Date(startDate), calendarType, calendarData);
+    addCalendarGridPadding(outputSchedule, comprehensiveTimeline, new Date(startDate), calendarSystem, calendarEvents);
 
     return outputSchedule;
 }
 
 // --- Strategy A: Target Date ---
-function generateTargetDateTimeline(startDate, bookObj, singleBookPool, manualOverrides, calendarData, trackSettings) {
+function generateTargetDateTimeline(startDate, bookObj, singleBookPool, studyStatusOverrides, calendarEvents, trackSettings) {
     const { studyDays, includeHolidays } = trackSettings;
     const targetDateVal = bookObj.targetDate || formatDateToISO(startDate);
     const endDate = new Date(targetDateVal);
@@ -138,8 +138,8 @@ function generateTargetDateTimeline(startDate, bookObj, singleBookPool, manualOv
 
     while (currentDate <= endDate) {
         const dateString = formatDateToIL(currentDate);
-        const overrideState = manualOverrides[dateString] || 0;
-        let isRestDay = (overrideState === 1) || (overrideState !== 2 && shouldDayBeRest(currentDate, studyDays, includeHolidays, calendarData));
+        const overrideState = studyStatusOverrides[dateString] || 0;
+        let isRestDay = (overrideState === 1) || (overrideState !== 2 && shouldDayBeRest(currentDate, studyDays, includeHolidays, calendarEvents));
 
         timelineDays.push({
             date: new Date(currentDate),
@@ -156,7 +156,7 @@ function generateTargetDateTimeline(startDate, bookObj, singleBookPool, manualOv
 
     let activeStudyDays = timelineDays.filter(d => d.isStudyDay);
     if (activeStudyDays.length <= reviewDaysCount) {
-        return generatePaceTimeline(startDate, { ...bookObj, calcMethod: 'pace', paceValue: 1 }, singleBookPool, manualOverrides, calendarData, trackSettings);
+        return generatePaceTimeline(startDate, { ...bookObj, calcMethod: 'pace', paceValue: 1 }, singleBookPool, studyStatusOverrides, calendarEvents, trackSettings);
     }
 
     const netStudyDaysCount = activeStudyDays.length - reviewDaysCount;
@@ -198,7 +198,7 @@ function generateTargetDateTimeline(startDate, bookObj, singleBookPool, manualOv
 }
 
 // --- Strategy B: Daily Pace ---
-function generatePaceTimeline(startDate, bookObj, singleBookPool, manualOverrides, calendarData, trackSettings) {
+function generatePaceTimeline(startDate, bookObj, singleBookPool, studyStatusOverrides, calendarEvents, trackSettings) {
     const { studyDays, includeHolidays } = trackSettings;
     let amudPoolCopy = [...singleBookPool];
     let currentDate = new Date(startDate);
@@ -209,8 +209,8 @@ function generatePaceTimeline(startDate, bookObj, singleBookPool, manualOverride
 
     while (amudPoolCopy.length > 0) {
         const dateString = formatDateToIL(currentDate);
-        const overrideState = manualOverrides[dateString] || 0;
-        let isRestDay = (overrideState === 1) || (overrideState !== 2 && shouldDayBeRest(currentDate, studyDays, includeHolidays, calendarData));
+        const overrideState = studyStatusOverrides[dateString] || 0;
+        let isRestDay = (overrideState === 1) || (overrideState !== 2 && shouldDayBeRest(currentDate, studyDays, includeHolidays, calendarEvents));
 
         let amudimToCountForDay = 0;
         let triggerReviewPhase = false;
@@ -242,8 +242,8 @@ function generatePaceTimeline(startDate, bookObj, singleBookPool, manualOverride
             while (r < reviewDaysCount) {
                 currentDate.setDate(currentDate.getDate() + 1);
                 const rStr = formatDateToIL(currentDate);
-                const rOverride = manualOverrides[rStr] || 0;
-                let rIsRest = (rOverride === 1) || (rOverride !== 2 && shouldDayBeRest(currentDate, studyDays, includeHolidays, calendarData));
+                const rOverride = studyStatusOverrides[rStr] || 0;
+                let rIsRest = (rOverride === 1) || (rOverride !== 2 && shouldDayBeRest(currentDate, studyDays, includeHolidays, calendarEvents));
 
                 if (rIsRest) {
                     timelineDays.push({
@@ -294,7 +294,7 @@ function buildMasterAmudPool(bookSequence, startDaf, startAmud) {
 }
 
 // Pre-fetches calendar events for all years that fall within the schedule's potential range based on track settings and strategy.
-async function ensureCalendarData(startInputDate, trackSettings, bookSequence, masterAmudPool, calendarData) {
+async function ensureCalendarEvents(startInputDate, trackSettings, bookSequence, masterAmudPool, calendarEvents) {
     const { method, targetDate, pace } = trackSettings;
     const startYear = startInputDate.getFullYear();
     let endYear = startYear;
@@ -318,15 +318,15 @@ async function ensureCalendarData(startInputDate, trackSettings, bookSequence, m
     }
 
     for (let y = startYear - 1; y <= endYear + 1; y++) {
-        await fetchCalendarEvents(y, calendarData);
+        await fetchCalendarEvents(y, calendarEvents);
     }
 }
 
-// Adds empty padding days to the start and end of the schedule to ensure full monthly calendar grid rows, based on the calendar type and the actual scheduled timeline.
-function addCalendarGridPadding(outputSchedule, timelineDays, startInputDate, calendarType, calendarData) {
+// Adds empty padding days to the start and end of a study schedule to ensure full monthly calendar grid rows, based on the calendar system and the actual scheduled timeline.
+function addCalendarGridPadding(outputSchedule, timelineDays, startInputDate, calendarSystem, calendarEvents) {
     // Front Padding
     let tempDate = new Date(startInputDate);
-    if (calendarType === 'hebrew') {
+    if (calendarSystem === 'hebrew') {
         while (parseInt(new Intl.DateTimeFormat('he-IL-u-ca-hebrew', { day: 'numeric' }).format(tempDate)) > 1) {
             tempDate.setDate(tempDate.getDate() - 1);
         }
@@ -339,8 +339,8 @@ function addCalendarGridPadding(outputSchedule, timelineDays, startInputDate, ca
         const dStr = formatDateToIL(tempDate);
         frontPadding.push({
             date: new Date(tempDate), dateString: dStr, book: "-",
-            isShabbat: tempDate.getDay() === 6, isHoliday: !!calendarData[dStr]?.displayText,
-            holidayTitle: calendarData[dStr]?.displayText, isEmpty: true, content: "", pages: 0
+            isShabbat: tempDate.getDay() === 6, isHoliday: !!calendarEvents[dStr]?.displayText,
+            holidayTitle: calendarEvents[dStr]?.displayText, isEmpty: true, content: "", pages: 0
         });
         tempDate.setDate(tempDate.getDate() + 1);
     }
@@ -350,7 +350,7 @@ function addCalendarGridPadding(outputSchedule, timelineDays, startInputDate, ca
     const isEndOfMonth = (d) => {
         const nextDay = new Date(d);
         nextDay.setDate(nextDay.getDate() + 1);
-        if (calendarType === 'hebrew') {
+        if (calendarSystem === 'hebrew') {
             const m1 = new Intl.DateTimeFormat('he-IL-u-ca-hebrew', { month: 'numeric' }).format(d);
             const m2 = new Intl.DateTimeFormat('he-IL-u-ca-hebrew', { month: 'numeric' }).format(nextDay);
             return m1 !== m2;
@@ -366,17 +366,17 @@ function addCalendarGridPadding(outputSchedule, timelineDays, startInputDate, ca
             const ds = formatDateToIL(runnerDate);
             outputSchedule.push({
                 date: new Date(runnerDate), dateString: ds, book: "-",
-                isShabbat: runnerDate.getDay() === 6, isHoliday: !!calendarData[ds]?.displayText,
-                holidayTitle: calendarData[ds]?.displayText, isEmpty: true, content: "", pages: 0
+                isShabbat: runnerDate.getDay() === 6, isHoliday: !!calendarEvents[ds]?.displayText,
+                holidayTitle: calendarEvents[ds]?.displayText, isEmpty: true, content: "", pages: 0
             });
         }
     }
 }
 
 // Determines whether a given date should be treated as a rest day based on the user's selected study days, holiday inclusion preference, and the calendar traits of that specific day.
-function shouldDayBeRest(dateObj, studyDays, includeHolidays, calendarData) {
+function shouldDayBeRest(dateObj, studyDays, includeHolidays, calendarEvents) {
     const dateString = formatDateToIL(dateObj);
-    const day = calendarData[dateString];
+    const day = calendarEvents[dateString];
     const traits = day?.traits || {};
     const dayOfWeek = dateObj.getDay(); // 0 = Sunday, 6 = Shabbat
 
@@ -394,7 +394,7 @@ function shouldDayBeRest(dateObj, studyDays, includeHolidays, calendarData) {
     return false;   // Not rest day by default
 }
 
-// Handles cycling through manual override states for a given date string, returning a new overrides object with the updated state. The cycle goes: 0 (no override) → 1 (force rest) → 2 (force study) → back to 0.
+// Handles cycling through study status override states for a given date string, returning a new overrides object with the updated state. The cycle goes: 0 (no override) → 1 (force rest) → 2 (force study) → back to 0.
 export function cycleDateOverride(currentOverrides, dateString) {
     // 1. Shallow copy the overrides to prevent direct state mutation bugs
     const updatedOverrides = { ...currentOverrides };

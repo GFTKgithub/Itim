@@ -19,7 +19,7 @@ export async function exportScheduleToExcel(schedule) {
         views: [{ rightToLeft: true }]
     });
 
-    const calendarType = document.getElementById('calendarType').value;
+    const calendarSystem = document.getElementById('calendarSystem').value;
     const RTL_MARK = '\u200F';
     worksheet.columns = Array(7).fill({ width: 25 });
 
@@ -28,7 +28,7 @@ export async function exportScheduleToExcel(schedule) {
     // Group schedule array records by their formatted Hebrew or Gregorian month string tokens
     const months = {};
     schedule.forEach(day => {
-        let monthName = (calendarType === 'hebrew')
+        let monthName = (calendarSystem === 'hebrew')
             ? formatHebrewMonthTitle(day.date)
             : day.date.toLocaleString('he-IL', { month: 'long', year: 'numeric' });
 
@@ -83,7 +83,7 @@ export async function exportScheduleToExcel(schedule) {
             let mainDate, secDate;
             const hebrewDayNum = parseInt(new Intl.DateTimeFormat('he-IL-u-ca-hebrew', { day: 'numeric' }).format(day.date));
 
-            if (calendarType === 'hebrew') {
+            if (calendarSystem === 'hebrew') {
                 mainDate = numberToHebrew(hebrewDayNum);
                 secDate = day.date.getDate() + "." + (day.date.getMonth() + 1);
             } else {

@@ -41,28 +41,28 @@ export function setupMainControls({ onGenerate, onAddToSequence, onClearSequence
 }
 
 // --- 2. Backup Management ---
-export function setupBackupManagement({onExport, onImport, onResetSettings, onResetManualOverrides}) {
+export function setupBackupManagement({onExport, onImport, onResetSettings, onResetStudyStatusOverrides}) {
     const backupExportBtn = document.getElementById('backupExportBtn');
     const backupImportBtn = document.getElementById('backupImportBtn');
     const backupFileInput = document.getElementById('backupFileInput');
     const resetSettingsBtn = document.getElementById('resetSettingsBtn');
-    const resetManualOverridesBtn = document.getElementById('resetManualOverridesBtn');
+    const resetStudyStatusOverridesBtn = document.getElementById('resetStudyStatusOverridesBtn');
 
     backupExportBtn?.addEventListener('click', onExport);
     backupImportBtn?.addEventListener('click', () => backupFileInput.click());
     backupFileInput?.addEventListener('change', onImport);
     resetSettingsBtn?.addEventListener('click', onResetSettings);
-    resetManualOverridesBtn?.addEventListener('click', onResetManualOverrides);
+    resetStudyStatusOverridesBtn?.addEventListener('click', onResetStudyStatusOverrides);
 }
 
 // --- 3. Settings Synchronization ---
-export function setupSettings({ userSettings, onUpdateUserSetting, onUpdateTrackSetting, onGenerate, onSyncToToday }) {
-    const calendarType = document.getElementById('calendarType');
+export function setupSettings({ userPreferences, onUpdateUserPreference, onUpdateTrackSetting, onGenerate, onSyncToToday }) {
+    const calendarSystem = document.getElementById('calendarSystem');
     const includeHolidaysInput = document.getElementById('includeHolidaysInput');
     const startDateInput = document.getElementById('startDateInput');
 
-    calendarType?.addEventListener('change', (e) => {
-        onUpdateTrackSetting('calendarType', e.target.value);
+    calendarSystem?.addEventListener('change', (e) => {
+        onUpdateTrackSetting('calendarSystem', e.target.value);
         onGenerate();
     });
 
@@ -106,7 +106,7 @@ export function setupSettings({ userSettings, onUpdateUserSetting, onUpdateTrack
         console.warn("עיתים: לא נמצא כפתור ההגדרות או פאנל ההגדרות ב-DOM");
     }
     
-    const isMinimal = userSettings?.is_minimal_calendar === true || userSettings?.is_minimal_calendar === 'true';
+    const isMinimal = userPreferences?.is_minimal_calendar === true || userPreferences?.is_minimal_calendar === 'true';
     
     if (minimalistUiToggle && calendarContainer) {
         minimalistUiToggle.checked = isMinimal;
@@ -120,8 +120,8 @@ export function setupSettings({ userSettings, onUpdateUserSetting, onUpdateTrack
     minimalistUiToggle?.addEventListener('change', (e) => {
         const checked = e.target.checked;
         
-        if (typeof onUpdateUserSetting === 'function') {
-            onUpdateUserSetting('minimal_calendar', checked);
+        if (typeof onUpdateUserPreference === 'function') {
+            onUpdateUserPreference('minimal_calendar', checked);
         }
         
         if (checked) {
@@ -278,7 +278,7 @@ export function setupBookSequenceDragAndDrop({ onReorder, onRemove }) {
 }
 
 // --- 5. Book Config Modal ---
-export function setupBookConfigModal({ getSchedule, getBookSequence, getBookRangeLimits, computeDaySlots, renderAmudGrid, renderDailyView, updateModalProgressStats, onSaveConfig, onDateOverride }) {
+export function setupBookConfigModal({ getSchedule, getBookSequence, getBookRangeLimits, computeDaySlots, renderAmudGrid, renderDailyView, updateModalProgressStats, onSaveConfig, onStudyStatusOverride }) {
     let currentEditingIndex = null;
     let tempAmudStates = [];
     let currentDaySlots = [];
@@ -460,7 +460,7 @@ export function setupBookConfigModal({ getSchedule, getBookSequence, getBookRang
     document.getElementById('calendarContainer')?.addEventListener('click', (event) => {
         const calendarDay = event.target.closest('.calendar-day');
         if (calendarDay?.dataset.date) {
-            onDateOverride(calendarDay.dataset.date);
+            onStudyStatusOverride(calendarDay.dataset.date);
         }
     });
 
