@@ -1,11 +1,21 @@
+import { talmud_bavli_masechtot } from "./data.js";
+
 // --- 1. Main Controls ---
 export function setupMainControls({ onGenerate, onAddToSequence, onClearSequence, onExportExcel, onExportICal }) {
+    const select = document.getElementById('bookSelect');
     const generateBtn = document.getElementById('generateBtn');
     const addToSequenceBtn = document.getElementById('addToSequenceBtn');
     const clearSequenceBtn = document.getElementById('clearSequenceBtn');
     const icalBtn = document.getElementById('exportToICalBtn');
     const exportBtn = document.getElementById('exportToExcelBtn');
     const printBtn = document.getElementById('printBtn');
+    
+    talmud_bavli_masechtot.forEach(m => {
+        const opt = document.createElement('option');
+        opt.value = m.name;
+        opt.innerText = m.name;
+        select.appendChild(opt);
+    });
 
     generateBtn?.addEventListener('click', async () => {
         // 1. Tell the controller to generate the schedule and wait for it to finish

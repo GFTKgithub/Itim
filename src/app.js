@@ -218,14 +218,6 @@ function setupMainPage() {
 
 // Initiates calendar configuration control panel
 function initTrackConfigPanel() {
-    // 1. Populate Book dropdown select element
-    const select = document.getElementById('bookSelect');
-    talmud_bavli_masechtot.forEach(m => {
-        const opt = document.createElement('option');
-        opt.value = m.name;
-        opt.innerText = m.name;
-        select.appendChild(opt);
-    });
 
     hydrateHtmlFromAppState(AppState);
 
