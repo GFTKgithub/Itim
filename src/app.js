@@ -280,10 +280,14 @@ async function handleScheduleGeneration() {
                 book: day.book,
                 title: `סיום מסכת ${day.book}`
             }));
+        
+        const isMinimal = AppState.userSettings?.minimal_calendar === true || 
+        AppState.userSettings?.minimal_calendar === 'true';
 
         renderCalendar('calendarContainer', AppState.schedule, {
             calendarType: AppState.trackSettings.calendarType,
-            overrides: AppState.manualOverrides
+            overrides: AppState.manualOverrides,
+            isMinimal: isMinimal
         });
 
         document.getElementById('action-dock').classList.remove('hidden');

@@ -304,6 +304,13 @@ export function renderCalendar(containerId, schedule, config = {}) {
     const container = document.getElementById(containerId);
     if (!container) return;
 
+    //  Force-synchronize the container layout style every time we render
+    if (config.isMinimal) {
+        container.classList.add('minimal-calendar');
+    } else {
+        container.classList.remove('minimal-calendar');
+    }
+
     const existingDays = container.querySelectorAll('.calendar-day[data-date]');
 
     // --- Path A: Optimized Partial Update ---
