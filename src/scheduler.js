@@ -10,11 +10,38 @@ import { formatDateToIL, formatDateToISO } from './utils/dates.js';
     Core generation functions 
 */
 
-// Main function to generate the full study schedule based on track settings, book sequence, study status overrides, and calendar event data. It orchestrates the entire process from building the master amud pool to mapping content onto the timeline and adding necessary padding for calendar grid display.
+// Orchestrates generating the timeline and formatting it into a padded grid array for calendar UI rendering.
 export async function generateStudyCalendar({ trackSettings, bookSequence, studyStatusOverrides, calendarEvents }) {
+    // 1. Calculate the core chronological study progression
+    const { studyTimeline, comprehensiveTimeline } = await generateStudyTimeline({
+        trackSettings,
+        bookSequence,
+        studyStatusOverrides,
+        calendarEvents
+    });
+
+    if (studyTimeline.length === 0) return [];
+
+    // 2. Clone the timeline to ensure we do not cause unsafe side-effects during mutation
+    const monthlyCalendarGrid = [...studyTimeline];
+
+    // 3. Inject structural padding grid spaces (Front & Back padding)
+    addCalendarGridPadding(
+        monthlyCalendarGrid, 
+        comprehensiveTimeline, 
+        new Date(trackSettings.startDate), 
+        trackSettings.calendarSystem, 
+        calendarEvents
+    );
+
+    return monthlyCalendarGrid;
+}
+
+// Generates a continuous, gap-free chronological timeline of study progress data.
+export async function generateStudyTimeline({ trackSettings, bookSequence, studyStatusOverrides, calendarEvents }) {
     if (!bookSequence || bookSequence.length === 0) return [];
 
-    const { startDate, calendarSystem } = trackSettings;
+    const { startDate } = trackSettings;
     if (!startDate) throw new Error("נא לבחור תאריך התחלה");
 
     let currentTimelineStart = new Date(startDate);
@@ -54,9 +81,7 @@ export async function generateStudyCalendar({ trackSettings, bookSequence, study
     }
 
     // Step 3: Map textual progress onto active days
-    const outputSchedule = [];
-    
-    // We maintain a map of absolute amud processing cursors per book index layout
+    const studyTimeline = [];
     let bookPointers = {}; 
 
     comprehensiveTimeline.forEach(day => {
@@ -86,7 +111,6 @@ export async function generateStudyCalendar({ trackSettings, bookSequence, study
             const bKey = day.targetBook;
             if (bookPointers[bKey] === undefined) bookPointers[bKey] = 0;
 
-            // Reconstruct standalone text limits dynamically
             const targetPool = buildMasterAmudPool([{ name: bKey }]);
             let pointer = bookPointers[bKey];
 
@@ -111,13 +135,11 @@ export async function generateStudyCalendar({ trackSettings, bookSequence, study
                 dayData.content = "חזרה";
             }
         }
-        outputSchedule.push(dayData);
+        studyTimeline.push(dayData);
     });
 
-    // Step 4: Inject Grid UI Padding (Front & Back padding)
-    addCalendarGridPadding(outputSchedule, comprehensiveTimeline, new Date(startDate), calendarSystem, calendarEvents);
-
-    return outputSchedule;
+    // Return both the mapped timeline AND the underlying timeline metadata needed by the padding utility
+    return { studyTimeline, comprehensiveTimeline };
 }
 
 // --- Strategy A: Target Date ---
