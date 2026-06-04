@@ -1,20 +1,25 @@
 import { auth, db } from './firebase-config.js';
 import { doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
+import { getActiveTrack } from './track.js';
+
+
 let stateRef = null;
+let tracksRef = [];
+
 const STORAGE_KEY = 'itim_app_state';
 
-export function initPersistence(AppState) {
+export function initPersistence(AppState, tracks) {
     stateRef = AppState;
+    tracksRef = tracks;
 }
 
 // Helper to grab only the user-customized state data
 function extractSavableState() {
     return {
-        bookSequence: stateRef.bookSequence,
-        studyStatusOverrides: stateRef.studyStatusOverrides,
         userPreferences: stateRef.userPreferences,
-        trackSettings: stateRef.trackSettings
+        activeTrackId: stateRef.activeTrackId,    // Assuming single track for now, future-proofing for multiple tracks
+        tracks: tracksRef   // If we want to support multiple tracks in the future, we can save the entire tracks array
     };
 }
 
@@ -41,14 +46,32 @@ export function loadFromLocalStorage() {
 
 // Helper to map parsed JSON data onto the active AppState references
 function applyParsedState(parsed) {
-    stateRef.bookSequence = parsed.bookSequence || [];
-    stateRef.studyStatusOverrides = parsed.studyStatusOverrides || {};
-    if (parsed.userPreferences) {
-        stateRef.userPreferences = { ...stateRef.userPreferences, ...parsed.userPreferences };
-    }
+    const parsedTracks = parsed?.tracks || [];
+    
+    console.log("Parsed tracks from storage:", parsedTracks);
+    console.log("Parsed activeTrackId from storage:", parsed?.activeTrackId);
 
-    if (parsed.trackSettings) {
-        stateRef.trackSettings = { ...stateRef.trackSettings, ...parsed.trackSettings };
+    const parsedActiveTrack = getActiveTrack(parsed, parsedTracks);
+
+    if (parsedActiveTrack) {
+        // 1. Force the global AppState references to update cleanly
+        stateRef.activeTrackId = parsed.activeTrackId;
+        
+        // 2. Clear out the old track data without breaking the array reference
+        tracksRef.length = 0; 
+        parsedTracks.forEach(track => {
+            tracksRef.push(track);
+        });
+
+        // 3. Handle global user preferences safely
+        if (parsed.userPreferences) {
+            stateRef.userPreferences = { 
+                ...stateRef.userPreferences, 
+                ...parsed.userPreferences 
+            };
+        }
+    } else {
+        console.warn("No active track found in the parsed data.");
     }
 }
 

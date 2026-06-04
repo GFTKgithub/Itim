@@ -1,16 +1,21 @@
+import { getActiveTrack } from './track.js';
+
 // utils
 import { numberToHebrew, formatGematria } from './utils/gematria.js';
 import { formatHebrewMonthTitle } from './utils/dates.js';
 import { indexToDaf } from './utils/talmud.js';
 
 // Hydrates the track configuration panel elements with saved data
-export function hydrateHtmlFromAppState(AppState) {
-    document.getElementById('calendarSystem').value = AppState.trackSettings.calendarSystem;
-    document.getElementById('includeHolidaysInput').checked = AppState.trackSettings.includeHolidays;
-    document.getElementById('startDateInput').value = AppState.trackSettings.startDate;
+export function hydrateHtmlFromAppState(AppState, tracks) {
+    let currentTrack = getActiveTrack(AppState, tracks);
+    let settings = currentTrack.settings;
+
+    document.getElementById('calendarSystem').value = settings.calendarSystem;
+    document.getElementById('includeHolidaysInput').checked = settings.includeHolidays;
+    document.getElementById('startDateInput').value = settings.startDate;
 
     // Synchronize Weekday Selection checkboxes
-    const activeDays = AppState.trackSettings.studyDays || [];
+    const activeDays = settings.studyDays || [];
     document.querySelectorAll('input[name="studyDays"]').forEach(checkbox => {
         checkbox.checked = activeDays.includes(parseInt(checkbox.value, 10));
     });
