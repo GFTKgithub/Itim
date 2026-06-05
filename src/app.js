@@ -34,7 +34,7 @@ let AppState = {
     activeTrackId: null // To keep track of which track is currently active in the UI, for when multiple tracks are implemented in the future
 }
 
-let currentTrack = null; // This will be dynamically set to the active track object based on activeTrackId, for easier access in the code.
+let activeTrack = null; // This will be dynamically set to the active track object based on activeTrackId, for easier access in the code.
 
 let tracks = []; // Future-proofing for multiple tracks, currently only one track is supported and stored in AppState.trackSettings
 
@@ -61,7 +61,7 @@ function init() {
         AppState.activeTrackId = defaultTrack.id;
     }
 
-    currentTrack = getActiveTrack(AppState, tracks);
+    activeTrack = getActiveTrack(AppState, tracks);
     
     setupMainPage()
 
@@ -72,17 +72,18 @@ function init() {
 function setupMainPage() {
     setupMainControls({
         onGenerate: handleScheduleGeneration,
+        onAddNewTrack: async (name) => await handleAddNewTrack(name),
         onAddToSequence: () => { 
-            currentTrack.bookSequence = addToSequence(currentTrack.bookSequence);
+            activeTrack.bookSequence = addToSequence(activeTrack.bookSequence);
             saveState();
         },
         onClearSequence: async () => {
-            currentTrack.bookSequence = await clearSequence(currentTrack.bookSequence);
+            activeTrack.bookSequence = await clearSequence(activeTrack.bookSequence);
             saveState();
             handleScheduleGeneration();
         },
-        onExportExcel: () => exportScheduleToExcel(currentTrack.studySchedule),
-        onExportICal: () => exportScheduleToICal(currentTrack.studySchedule)
+        onExportExcel: () => exportScheduleToExcel(activeTrack.studySchedule),
+        onExportICal: () => exportScheduleToICal(activeTrack.studySchedule)
     });
 
     setupBackupManagement({
@@ -93,7 +94,7 @@ function setupMainPage() {
     });
 
     setupSettings({
-        trackSettings: currentTrack ? currentTrack.settings : null,
+        trackSettings: activeTrack ? activeTrack.settings : null,
         onUpdateUserPreference: handleUpdateUserPreference,
         onUpdateTrackSetting: handleUpdateTrackSetting,
         onGenerate: handleScheduleGeneration,
@@ -102,29 +103,29 @@ function setupMainPage() {
 
     setupBookSequenceDragAndDrop({
         onRemove: (indexToRemove) => {
-            currentTrack.bookSequence = removeFromSequence(currentTrack.bookSequence, indexToRemove);
+            activeTrack.bookSequence = removeFromSequence(activeTrack.bookSequence, indexToRemove);
             saveState();
-            updateBookSequenceUI(currentTrack.bookSequence); // Make sure the layout stays synced
+            updateBookSequenceUI(activeTrack.bookSequence); // Make sure the layout stays synced
         },
         onReorder: handleBookSequenceReorder
     });
 
     setupBookConfigModal({
         // Pass global data down so the function can read it safely
-        getBookSequence: () => currentTrack.bookSequence,
-        getSchedule: () => currentTrack.studySchedule,
+        getBookSequence: () => activeTrack.bookSequence,
+        getSchedule: () => activeTrack.studySchedule,
 
         getBookRangeLimits: (index) => {
             // If it's the first book, its constraint relies on the global scheduler setup startDate
             if (index === 0) {
-                return { minDate: currentTrack.settings.startDate };
+                return { minDate: activeTrack.settings.startDate };
             }
             
             // Otherwise, look up the day the previous book finished in the computed schedule
-            const previousBook = currentTrack.bookSequence[index - 1];
+            const previousBook = activeTrack.bookSequence[index - 1];
             const previousBookName = typeof previousBook === 'string' ? previousBook : previousBook.name;
             
-            const previousBookDays = currentTrack.studySchedule.filter(day => day.book === previousBookName);
+            const previousBookDays = activeTrack.studySchedule.filter(day => day.book === previousBookName);
             
             if (previousBookDays.length > 0) {
                 // Get the absolute last recorded date slot assigned to that book
@@ -137,7 +138,7 @@ function setupMainPage() {
                 };
             }
             
-            return { minDate: currentTrack.settings.startDate };
+            return { minDate: activeTrack.settings.startDate };
         },
 
         // Helper logic functions (temporary)
@@ -148,7 +149,7 @@ function setupMainPage() {
 
         // Handle the data adjustments and app side-effects here
         onSaveConfig: ({ index, reviewDays, amudStates }) => {
-            let book = currentTrack.bookSequence[index];
+            let book = activeTrack.bookSequence[index];
             if (typeof book === 'string') {
                 book = { name: book };
             }
@@ -160,10 +161,10 @@ function setupMainPage() {
             book.paceValue = parseFloat(document.getElementById('bookConfigPaceInput').value) || 1;
             book.targetDate = document.getElementById('bookConfigTargetDateInput').value;
         
-            currentTrack.bookSequence[index] = book;
+            activeTrack.bookSequence[index] = book;
         
             saveState();
-            updateBookSequenceUI(currentTrack.bookSequence);
+            updateBookSequenceUI(activeTrack.bookSequence);
             handleScheduleGeneration(); 
         },
     
@@ -201,7 +202,7 @@ function setupMainPage() {
                 alert("הנתונים נמשכו מהענן בהצלחה! העמוד יתעדכן.");
                 
                 // RE-ALIGN THE POINTER TO GET THE FRESH TRACK
-                currentTrack = getActiveTrack(AppState, tracks);
+                activeTrack = getActiveTrack(AppState, tracks);
                 
                 initTrackConfigPanel();
                 handleScheduleGeneration();
@@ -223,11 +224,11 @@ function initTrackConfigPanel() {
 
     hydrateHtmlFromAppState(AppState, tracks);
 
-    renderDateLabels(currentTrack.settings.startDate, currentTrack.settings.targetDate);
+    renderDateLabels(activeTrack.settings.startDate, activeTrack.settings.targetDate);
 
-    updateBookSequenceUI(currentTrack.bookSequence);
+    updateBookSequenceUI(activeTrack.bookSequence);
 
-    if (currentTrack.bookSequence.length > 0) {
+    if (activeTrack.bookSequence.length > 0) {
         handleScheduleGeneration();
     }
 }
@@ -238,8 +239,8 @@ function initTrackConfigPanel() {
 
 // Orchestrates schedule calculation by piping AppState inputs into the engine and rendering the resulting timeline grid
 async function handleScheduleGeneration() {
-    if (!currentTrack.bookSequence || currentTrack.bookSequence.length === 0) {
-        currentTrack.studySchedule = [];
+    if (!activeTrack.bookSequence || activeTrack.bookSequence.length === 0) {
+        activeTrack.studySchedule = [];
 
         // Wipe the UI container completely or replace it with a placeholder
         const container = document.getElementById('calendarContainer');
@@ -257,16 +258,16 @@ async function handleScheduleGeneration() {
 
     try {
         const updatedSchedule = await generateStudyCalendar({
-            trackSettings: currentTrack.settings,
-            bookSequence: currentTrack.bookSequence,
-            studyStatusOverrides: currentTrack.studyStatusOverrides,
-            calendarEvents: currentTrack.calendarEvents
+            trackSettings: activeTrack.settings,
+            bookSequence: activeTrack.bookSequence,
+            studyStatusOverrides: activeTrack.studyStatusOverrides,
+            calendarEvents: activeTrack.calendarEvents
         });
 
-        currentTrack.studySchedule = updatedSchedule;
+        activeTrack.studySchedule = updatedSchedule;
 
         // EXTRACT AND SAVE SIYUM EVENTS GLOBALLY
-        currentTrack.siyumEvents = updatedSchedule
+        activeTrack.siyumEvents = updatedSchedule
             .filter(day => day.isSiyum)
             .map(day => ({
                 dateString: day.dateString,
@@ -278,9 +279,9 @@ async function handleScheduleGeneration() {
         const isMinimal = AppState.userPreferences?.minimal_calendar === true || 
         AppState.userPreferences?.minimal_calendar === 'true';
 
-        renderCalendar('calendarContainer', currentTrack.studySchedule, {
-            calendarSystem: currentTrack.settings.calendarSystem,
-            overrides: currentTrack.studyStatusOverrides,
+        renderCalendar('calendarContainer', activeTrack.studySchedule, {
+            calendarSystem: activeTrack.settings.calendarSystem,
+            overrides: activeTrack.studyStatusOverrides,
             isMinimal: isMinimal
         });
 
@@ -291,6 +292,25 @@ async function handleScheduleGeneration() {
     }
 }
 
+// Handles the creation of a new track, including state updates, persistence, and UI refresh
+async function handleAddNewTrack(trackName) {
+    if (!trackName || trackName.trim() === "") {
+        trackName = `מסלול חדש #${AppState.tracks.length + 1}`;
+    }
+
+    const newTrack = createNewTrack(trackName);
+    tracks.push(newTrack);
+
+    AppState.activeTrackId = newTrack.id;
+
+    activeTrack = newTrack;
+
+    await saveState();
+
+    initTrackConfigPanel();
+}
+
+// Takes a user preference key and a value and updates the preference to the value
 function handleUpdateUserPreference(key, value) {
     AppState.userPreferences[key] = value;
     
@@ -299,14 +319,14 @@ function handleUpdateUserPreference(key, value) {
 
 // Takes a setting key and a value and updates the track setting to the value
 function handleUpdateTrackSetting(key, value) {
-    currentTrack.settings[key] = value;
+    activeTrack.settings[key] = value;
     
     saveState();
 }
 
 // Orchestrates date override by passing current studyStatusOverride state and a date into a cycle function
 function handleStudyStatusOverride(dateString) {
-    currentTrack.studyStatusOverrides = cycleStudyStatusOverride(currentTrack.studyStatusOverrides, dateString);
+    activeTrack.studyStatusOverrides = cycleStudyStatusOverride(activeTrack.studyStatusOverrides, dateString);
 
     saveState();
     handleScheduleGeneration();
@@ -325,19 +345,19 @@ async function handleResetSettings() {
 
     if (!confirmed) return;
 
-    currentTrack.settings = { ...DEFAULT_TRACK_SETTINGS };
-    currentTrack.bookSequence = [];
+    activeTrack.settings = { ...DEFAULT_TRACK_SETTINGS };
+    activeTrack.bookSequence = [];
 
     // Synchronize your local files, view layout, and engine calculations
     saveState();
     initTrackConfigPanel();    // Repopulates form inputs with the fresh AppState.trackSettings values
-    updateBookSequenceUI(currentTrack.bookSequence);    // Re-renders the list layout (now empty)
+    updateBookSequenceUI(activeTrack.bookSequence);    // Re-renders the list layout (now empty)
     handleScheduleGeneration(); // Generates empty/default state layout cleanly
 }
 
 // Erases targeted timeline override blocks completely while leaving configuration controls alone
 async function handleResetStudyStatusOverrides() {
-    if (Object.keys(currentTrack.studyStatusOverrides).length === 0) {
+    if (Object.keys(activeTrack.studyStatusOverrides).length === 0) {
         await showDialog({
             title: 'פעולה התבטלה',
             message: 'לא נמצאו שינויים ידניים בלוח הקיים.',
@@ -358,7 +378,7 @@ async function handleResetStudyStatusOverrides() {
     if (!confirmed) return;
 
     // Wipe out the map object completely
-    currentTrack.studyStatusOverrides = {};
+    activeTrack.studyStatusOverrides = {};
 
     // Save state changes and re-run calculations
     saveState();
@@ -368,8 +388,8 @@ async function handleResetStudyStatusOverrides() {
 // Handles re-ordering of items in book sequence list
 function handleBookSequenceReorder(newOrderOfIndices) {
     // Map old state array items to their new positions using the indices sent from the UI
-    currentTrack.bookSequence = newOrderOfIndices.map(oldIndex => {
-        const entry = currentTrack.bookSequence[oldIndex];
+    activeTrack.bookSequence = newOrderOfIndices.map(oldIndex => {
+        const entry = activeTrack.bookSequence[oldIndex];
         // Standardize string entries to objects if needed
         return typeof entry === 'string' 
             ? { name: entry, reviewDays: 0, amudStates: [] } 
@@ -377,13 +397,13 @@ function handleBookSequenceReorder(newOrderOfIndices) {
     });
 
     saveState();
-    updateBookSequenceUI(currentTrack.bookSequence); 
+    updateBookSequenceUI(activeTrack.bookSequence); 
 }
 
 // Handle global book "sync to today"
 async function handleSyncToToday() {
     // 1. Safety check using the global schedule
-    if (!currentTrack.studySchedule || currentTrack.studySchedule.length === 0) {
+    if (!activeTrack.studySchedule || activeTrack.studySchedule.length === 0) {
         await showDialog({ title: 'אין נתונים', message: 'יש ליצור לוח לימוד קודם כדי לסנכרן.', icon: '📅', confirmText: 'הבנתי' });
         return;
     }
@@ -403,11 +423,11 @@ async function handleSyncToToday() {
     let hasChanges = false;
 
     // 3. Loop through every single Book inside your book sequence
-    currentTrack.bookSequence.forEach((book, bookIdx) => {
+    activeTrack.bookSequence.forEach((book, bookIdx) => {
         if (typeof book === 'string') {
             book = { name: book, reviewDays: 0, amudStates: [] };
             // AppState.bookSequence[bookIdx] = book;
-            currentTrack.bookSequence[bookIdx] = book;
+            activeTrack.bookSequence[bookIdx] = book;
         }
 
         const bookName = book.name || "לא ידוע";
@@ -421,7 +441,7 @@ async function handleSyncToToday() {
         }
 
         // 4. Dynamically compute the slots 
-        const slots = computeDaySlots(currentTrack.studySchedule, bookName, bookIdx, currentTrack.bookSequence);
+        const slots = computeDaySlots(activeTrack.studySchedule, bookName, bookIdx, activeTrack.bookSequence);
 
         // 5. Apply the sync logic over this Book's slots
         slots.forEach(slot => {
@@ -439,7 +459,7 @@ async function handleSyncToToday() {
     // 6. Save data and refresh the master UI views
     if (hasChanges) {
         saveState();
-        updateBookSequenceUI(currentTrack.bookSequence);
+        updateBookSequenceUI(activeTrack.bookSequence);
         handleScheduleGeneration(); // Refreshes calendar view
     }
 }

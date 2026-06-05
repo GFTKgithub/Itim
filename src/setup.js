@@ -1,7 +1,7 @@
 import { talmud_bavli_masechtot } from "./data.js";
 
 // --- 1. Main Controls ---
-export function setupMainControls({ onGenerate, onAddToSequence, onClearSequence, onExportExcel, onExportICal }) {
+export function setupMainControls({ onGenerate, onAddNewTrack, onAddToSequence, onClearSequence, onExportExcel, onExportICal }) {
     const select = document.getElementById('bookSelect');
     const generateBtn = document.getElementById('generateBtn');
     const addToSequenceBtn = document.getElementById('addToSequenceBtn');
@@ -9,6 +9,16 @@ export function setupMainControls({ onGenerate, onAddToSequence, onClearSequence
     const icalBtn = document.getElementById('exportToICalBtn');
     const exportBtn = document.getElementById('exportToExcelBtn');
     const printBtn = document.getElementById('printBtn');
+    
+    // Handle the "Add New Track" button click to create a new track based on the selected masechet
+    document.getElementById('addNewTrackBtn').addEventListener('click', async () => {
+        const inputInput = document.getElementById('newTrackNameInput');
+        const name = inputInput.value;
+        
+        await onAddNewTrack(name);
+        
+        inputInput.value = ""; 
+    });
     
     talmud_bavli_masechtot.forEach(m => {
         const opt = document.createElement('option');
