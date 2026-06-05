@@ -23,6 +23,28 @@ export function hydrateHtmlFromAppState(AppState, tracks) {
     document.getElementById('minimalistUiToggle').checked = AppState.userPreferences.minimal_calendar
 }
 
+// Renders the track switcher dropdown options based on the current tracks array and active track in AppState
+export function renderTrackSwitcher(tracks, activeTrackId) {
+    const dropdown = document.getElementById('trackSelectDropdown');
+    if (!dropdown) return;
+
+    // Clear existing options
+    dropdown.innerHTML = '';
+
+    // Populate options from tracks array
+    tracks.forEach(track => {
+        const option = document.createElement('option');
+        option.value = track.id;
+        option.textContent = track.name || "מסלול ללא שם";
+        
+        // Mark the active track as selected
+        if (track.id === activeTrackId) {
+            option.selected = true;
+        }
+        dropdown.appendChild(option);
+    });
+}
+
 // Updates UI of Book sequence 
 export function updateBookSequenceUI(sequence) {
     const list = document.getElementById('bookSequenceList');

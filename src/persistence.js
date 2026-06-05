@@ -28,12 +28,12 @@ function extractSavableState() {
 */
 
 // ONLY saves to LocalStorage
-export function saveToLocalStorage() {
+export async function saveToLocalStorage() {
     const stateToSave = extractSavableState();
     localStorage.setItem(STORAGE_KEY, JSON.stringify(stateToSave));
 }
 
-export function loadFromLocalStorage() {
+export async function loadFromLocalStorage() {
     try {
         const saved = localStorage.getItem(STORAGE_KEY);
         if (!saved) return;
@@ -127,7 +127,7 @@ export async function loadFromFirebase() {
 */
 export async function saveState() {
     // 1. Save locally instantly for rapid UI responsiveness
-    saveToLocalStorage();
+    await saveToLocalStorage();
 
     // 2. Automatically try to back up to the cloud if a user is logged in
     if (auth.currentUser) {
@@ -138,7 +138,7 @@ export async function saveState() {
 /* 
     Backup Logic
 */
-export function exportStateBackup() {
+export async function exportStateBackup() {
     if (!stateRef) return;
     const dataToBackup = extractSavableState();
 
@@ -156,7 +156,7 @@ export function exportStateBackup() {
     URL.revokeObjectURL(url);
 }
 
-export function importStateBackup(event) {
+export async function importStateBackup(event) {
     const file = event.target.files[0];
     if (!file) return;
 

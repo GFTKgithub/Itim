@@ -1,6 +1,6 @@
 import { DEFAULT_TRACK_SETTINGS, createNewTrack, getActiveTrack } from './track.js';
 import { talmud_bavli_masechtot } from './data.js';
-import { hydrateHtmlFromAppState, updateBookSequenceUI, renderAmudGrid, renderDailyView, updateModalProgressStats, renderDateLabels, renderCalendar, showDialog } from './ui.js';
+import { hydrateHtmlFromAppState, updateBookSequenceUI, renderAmudGrid, renderDailyView, updateModalProgressStats, renderDateLabels, renderCalendar, showDialog, renderTrackSwitcher } from './ui.js';
 import { addToSequence, removeFromSequence, clearSequence } from './book-sequence.js';
 import { generateStudyCalendar, cycleStudyStatusOverride, computeDaySlots } from './scheduler.js';
 import { initPersistence, saveState, loadFromLocalStorage, exportStateBackup, importStateBackup } from './persistence.js';
@@ -36,7 +36,7 @@ let AppState = {
 
 let activeTrack = null; // This will be dynamically set to the active track object based on activeTrackId, for easier access in the code.
 
-let tracks = []; // Future-proofing for multiple tracks, currently only one track is supported and stored in AppState.trackSettings
+let tracks = []; // Future-proofing for multiple tracks, currently only one track is supported and stored in AppState
 
 /* 
     Page initiation logic
@@ -65,7 +65,7 @@ function init() {
     
     setupMainPage()
 
-    window.addEventListener('load', initTrackConfigPanel);
+    window.addEventListener('load', refreshTrackConfigPanel);
 }
 
 // Executes setup helpers for index.html
@@ -73,6 +73,7 @@ function setupMainPage() {
     setupMainControls({
         onGenerate: handleScheduleGeneration,
         onAddNewTrack: async (name) => await handleAddNewTrack(name),
+        onSwitchTrack: async (trackId) => handleSwitchTrack(trackId),
         onAddToSequence: () => { 
             activeTrack.bookSequence = addToSequence(activeTrack.bookSequence);
             saveState();
@@ -204,8 +205,8 @@ function setupMainPage() {
                 // RE-ALIGN THE POINTER TO GET THE FRESH TRACK
                 activeTrack = getActiveTrack(AppState, tracks);
                 
-                initTrackConfigPanel();
-                handleScheduleGeneration();
+                await refreshTrackConfigPanel();
+                await handleScheduleGeneration();
             } else {
                 alert("לא נמצאו נתונים שמורים בענן עבור משתמש זה.");
             }
@@ -219,18 +220,16 @@ function setupMainPage() {
     });
 }
 
-// Initiates calendar configuration control panel
-function initTrackConfigPanel() {
-
+// Refreshes the calendar configuration control panel
+async function refreshTrackConfigPanel() {
     hydrateHtmlFromAppState(AppState, tracks);
 
+    renderTrackSwitcher(tracks, AppState.activeTrackId);
     renderDateLabels(activeTrack.settings.startDate, activeTrack.settings.targetDate);
 
     updateBookSequenceUI(activeTrack.bookSequence);
 
-    if (activeTrack.bookSequence.length > 0) {
-        handleScheduleGeneration();
-    }
+    await handleScheduleGeneration();
 }
 
 /* 
@@ -295,7 +294,7 @@ async function handleScheduleGeneration() {
 // Handles the creation of a new track, including state updates, persistence, and UI refresh
 async function handleAddNewTrack(trackName) {
     if (!trackName || trackName.trim() === "") {
-        trackName = `מסלול חדש #${AppState.tracks.length + 1}`;
+        trackName = `מסלול חדש #${tracks.length + 1}`;
     }
 
     const newTrack = createNewTrack(trackName);
@@ -307,7 +306,27 @@ async function handleAddNewTrack(trackName) {
 
     await saveState();
 
-    initTrackConfigPanel();
+    refreshTrackConfigPanel();
+
+    renderTrackSwitcher(tracks, AppState.activeTrackId);
+}
+
+// Handles switching between tracks
+async function handleSwitchTrack(trackId) {
+    const selectedTrack = tracks.find(t => t.id === trackId);
+    if (!selectedTrack) {
+        alert("המסלול שנבחר לא נמצא.");
+        return;
+    }
+
+    AppState.activeTrackId = trackId;
+    activeTrack = selectedTrack;
+
+    await saveState();
+
+    refreshTrackConfigPanel();
+
+    renderTrackSwitcher(tracks, AppState.activeTrackId);
 }
 
 // Takes a user preference key and a value and updates the preference to the value
@@ -350,7 +369,7 @@ async function handleResetSettings() {
 
     // Synchronize your local files, view layout, and engine calculations
     saveState();
-    initTrackConfigPanel();    // Repopulates form inputs with the fresh AppState.trackSettings values
+    refreshTrackConfigPanel();    // Repopulates form inputs with the fresh track setting values
     updateBookSequenceUI(activeTrack.bookSequence);    // Re-renders the list layout (now empty)
     handleScheduleGeneration(); // Generates empty/default state layout cleanly
 }

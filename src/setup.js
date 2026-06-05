@@ -1,7 +1,7 @@
 import { talmud_bavli_masechtot } from "./data.js";
 
 // --- 1. Main Controls ---
-export function setupMainControls({ onGenerate, onAddNewTrack, onAddToSequence, onClearSequence, onExportExcel, onExportICal }) {
+export function setupMainControls({ onGenerate, onAddNewTrack, onSwitchTrack, onAddToSequence, onClearSequence, onExportExcel, onExportICal}) {
     const select = document.getElementById('bookSelect');
     const generateBtn = document.getElementById('generateBtn');
     const addToSequenceBtn = document.getElementById('addToSequenceBtn');
@@ -20,6 +20,13 @@ export function setupMainControls({ onGenerate, onAddNewTrack, onAddToSequence, 
         inputInput.value = ""; 
     });
     
+    // Handle track switching from the dropdown
+    document.getElementById('trackSelectDropdown').addEventListener('change', async (e) => {
+        const selectedTrackId = e.target.value;
+
+        onSwitchTrack(selectedTrackId);
+    });
+
     talmud_bavli_masechtot.forEach(m => {
         const opt = document.createElement('option');
         opt.value = m.name;
