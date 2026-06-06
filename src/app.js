@@ -26,7 +26,8 @@ import {
 import { loadFromFirebase } from './persistence.js';
 
 const DEFAULT_USER_PREFERENCES = {
-    minimal_calendar: false
+    minimal_calendar: false,
+    syncUserPrefernces: true
 }
 
 let AppState = {

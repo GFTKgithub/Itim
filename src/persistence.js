@@ -14,13 +14,30 @@ export function initPersistence(AppState, tracks) {
     tracksRef = tracks;
 }
 
-// Helper to grab only the user-customized state data
-function extractSavableState() {
+// Helper to grab only the user-affected state data for LocalStorage
+function extractSavableStateForLocalStorage() {
     return {
         userPreferences: stateRef.userPreferences,
-        activeTrackId: stateRef.activeTrackId,    // Assuming single track for now, future-proofing for multiple tracks
-        tracks: tracksRef   // If we want to support multiple tracks in the future, we can save the entire tracks array
+        activeTrackId: stateRef.activeTrackId,
+        tracks: tracksRef
     };
+}
+
+// Helper to grab only the user-affected state data for Cloud storage
+function extractSavableStateForFirebase() {
+    const { syncUserPreferences: syncEnabled, ...cloudPreferences } = stateRef.userPreferences;
+
+    const payload = {
+        activeTrackId: stateRef.activeTrackId,
+        tracks: tracksRef
+    };
+
+    // If syncing is enabled locally, attach the stripped preferences to the payload
+    if (syncEnabled) {
+        payload.userPreferences = cloudPreferences;
+    }
+
+    return payload;
 }
 
 /* 
@@ -29,7 +46,7 @@ function extractSavableState() {
 
 // ONLY saves to LocalStorage
 export async function saveToLocalStorage() {
-    const stateToSave = extractSavableState();
+    const stateToSave = extractSavableStateForLocalStorage();
     localStorage.setItem(STORAGE_KEY, JSON.stringify(stateToSave));
 }
 
@@ -85,7 +102,7 @@ export async function saveToFirebase() {
     if (!user) return; // Silent return if guest user
 
     try {
-        const stateToSave = extractSavableState();
+        const stateToSave = extractSavableStateForFirebase();
         await setDoc(doc(db, "users", user.uid), {
             userData: stateToSave,
             lastSynced: new Date().toISOString()

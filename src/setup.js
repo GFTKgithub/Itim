@@ -120,9 +120,12 @@ export function setupSettings({ userPreferences, onUpdateUserPreference, onUpdat
 
     const toggleSettingsPanelBtn = document.getElementById('toggleSettingsPanelBtn');
     const appSettingsPanel = document.getElementById('appSettingsPanel');
+    
     const minimalistUiToggle = document.getElementById('minimalistUiToggle');
     const calendarContainer = document.getElementById('calendarContainer');
     
+    const syncUserPreferencesToggle = document.getElementById('syncUserPreferences');
+
     if (toggleSettingsPanelBtn && appSettingsPanel) {
         toggleSettingsPanelBtn.addEventListener('click', (e) => {
             e.preventDefault(); 
@@ -159,6 +162,16 @@ export function setupSettings({ userPreferences, onUpdateUserPreference, onUpdat
     
         if (typeof onGenerate === 'function') {
             onGenerate();            
+        }
+    });
+
+    syncUserPreferencesToggle?.addEventListener('change', (e) => {
+        const checked = e.target.checked;
+        
+        onUpdateUserPreference('syncUserPreferences', checked)
+
+        if (typeof saveSettings === 'function') {
+            onSaveState(); 
         }
     });
 }

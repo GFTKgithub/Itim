@@ -41,7 +41,7 @@
                 ⚙️ העדפות מערכת ותצוגה
             </h3>
             
-            <div>
+            <div class="space-y-3">
                 <label class="flex items-center justify-between p-3.5 bg-slate-50 hover:bg-slate-100/70 rounded-xl border border-slate-200/60 cursor-pointer group transition-all">
                     <div class="space-y-0.5 pl-4">
                         <span class="text-xs font-bold text-slate-700 block">מראה מינימליסטי נקי</span>
@@ -49,6 +49,17 @@
                     </div>
                     <div class="relative inline-flex items-center">
                         <input type="checkbox" id="minimalistUiToggle" class="peer hidden">
+                        <div class="w-9 h-5 bg-slate-200 peer-checked:bg-slate-800 rounded-full transition-all duration-200 after:content-[''] after:absolute after:top-[2px] after:right-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:after:-translate-x-4"></div>
+                    </div>
+                </label>
+
+                <label class="flex items-center justify-between p-3.5 bg-slate-50 hover:bg-slate-100/70 rounded-xl border border-slate-200/60 cursor-pointer group transition-all">
+                    <div class="space-y-0.5 pl-4">
+                        <span class="text-xs font-bold text-slate-700 block">סנכרון הגדרות אוטומטי</span>
+                        <span class="text-[11px] text-slate-500 font-medium block">גיבוי וסנכרון העדפות המשתמש והגדרות המערכת בענן בזמן אמת</span>
+                    </div>
+                    <div class="relative inline-flex items-center">
+                        <input type="checkbox" id="syncUserPreferences" class="peer hidden" checked>
                         <div class="w-9 h-5 bg-slate-200 peer-checked:bg-slate-800 rounded-full transition-all duration-200 after:content-[''] after:absolute after:top-[2px] after:right-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:after:-translate-x-4"></div>
                     </div>
                 </label>
@@ -105,7 +116,7 @@
             </button>
         </div>
 
-<div class="bg-white rounded-2xl shadow-xl mb-8 no-print border border-slate-200 overflow-hidden">
+        <div class="bg-white rounded-2xl shadow-xl mb-8 no-print border border-slate-200 overflow-hidden">
             <div class="h-2 bg-gradient-to-r from-blue-900 via-blue-700 to-blue-900"></div>
 
             <div class="p-6 md:p-8 space-y-8">
