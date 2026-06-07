@@ -157,7 +157,7 @@ export async function saveState() {
 */
 export async function exportStateBackup() {
     if (!stateRef) return;
-    const dataToBackup = extractSavableState();
+    const dataToBackup = extractSavableStateForLocalStorage();
 
     const jsonString = JSON.stringify(dataToBackup, null, 4);
     const blob = new Blob([jsonString], { type: "application/json" });
