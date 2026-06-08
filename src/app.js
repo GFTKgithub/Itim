@@ -1,6 +1,11 @@
 import { DEFAULT_TRACK_SETTINGS, createNewTrack, getActiveTrack } from './track.js';
 import { talmud_bavli_masechtot } from './data.js';
-import { hydrateHtmlFromAppState, updateBookSequenceUI, renderAmudGrid, renderDailyView, updateModalProgressStats, renderDateLabels, renderCalendar, showDialog, renderTrackSwitcher } from './ui.js';
+
+import { hydrateHtmlFromAppState, updateBookSequenceUI, renderDateLabels, renderTrackSwitcher } from './ui/track-config.js';
+import { renderAmudGrid, renderDailyView, updateModalProgressStats } from './ui/book-config-modal.js';
+import { showDialog } from './ui/components.js';
+import { renderCalendar } from './ui/calendar.js';
+
 import { addToSequence, removeFromSequence, clearSequence } from './book-sequence.js';
 import { generateStudyCalendar, cycleStudyStatusOverride, computeDaySlots } from './scheduler.js';
 import { initPersistence, saveState, loadFromLocalStorage, exportStateBackup, importStateBackup } from './persistence.js';

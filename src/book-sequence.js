@@ -1,5 +1,7 @@
-import { updateBookSequenceUI, showDialog } from "./ui.js";
-import { talmud_bavli_masechtot } from "./data.js"; // Import the data to get page counts
+import { talmud_bavli_masechtot } from "./data.js";
+
+import { updateBookSequenceUI } from "./ui/track-config.js";
+import { showDialog } from "./ui/components.js";
 
 /*
     Book sequence list logic
