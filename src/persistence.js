@@ -25,11 +25,11 @@ function extractSavableStateForLocalStorage() {
 
 // Helper to grab only the user-affected state data for Cloud storage
 function extractSavableStateForFirebase() {
-    const { syncUserPreferences: syncEnabled, ...cloudPreferences } = stateRef.userPreferences;
+    const { syncUserPreferences: syncEnabled, ...cloudPreferences } = stateRef?.userPreferences || {};
 
     const payload = {
-        activeTrackId: stateRef.activeTrackId,
-        tracks: tracksRef
+        activeTrackId: stateRef.activeTrackId ?? null,
+        tracks: tracksRef || []
     };
 
     // If syncing is enabled locally, attach the stripped preferences to the payload
@@ -63,16 +63,22 @@ export async function loadFromLocalStorage() {
 
 // Helper to map parsed JSON data onto the active AppState references
 function applyParsedState(parsed) {
-    const parsedTracks = parsed?.tracks || [];
-    
-    console.log("Parsed tracks from storage:", parsedTracks);
-    console.log("Parsed activeTrackId from storage:", parsed?.activeTrackId);
+    if (!parsed) return;
 
-    const parsedActiveTrack = getActiveTrack(parsed, parsedTracks);
+    // Fallback missing userPreferences to an empty object to prevent downstream crashes
+    const safeParsed = {
+        ...parsed,
+        userPreferences: parsed.userPreferences || {}
+    };
+
+    const parsedTracks = safeParsed.tracks || [];
+    
+    // Pass the safe parsed object with guaranteed userPreferences block
+    const parsedActiveTrack = getActiveTrack(safeParsed, parsedTracks);
 
     if (parsedActiveTrack) {
         // 1. Force the global AppState references to update cleanly
-        stateRef.activeTrackId = parsed.activeTrackId;
+        stateRef.activeTrackId = safeParsed.activeTrackId;
         
         // 2. Clear out the old track data without breaking the array reference
         tracksRef.length = 0; 
@@ -81,12 +87,10 @@ function applyParsedState(parsed) {
         });
 
         // 3. Handle global user preferences safely
-        if (parsed.userPreferences) {
-            stateRef.userPreferences = { 
-                ...stateRef.userPreferences, 
-                ...parsed.userPreferences 
-            };
-        }
+        stateRef.userPreferences = { 
+            ...stateRef.userPreferences, 
+            ...safeParsed.userPreferences 
+        };
     } else {
         console.warn("No active track found in the parsed data.");
     }
@@ -106,7 +110,7 @@ export async function saveToFirebase() {
         await setDoc(doc(db, "users", user.uid), {
             userData: stateToSave,
             lastSynced: new Date().toISOString()
-        });
+        }, { merge: true });         
         console.log("State successfully synchronized with Firestore cloud.");
     } catch (error) {
         console.error("Failed to sync state to Firestore:", error);
