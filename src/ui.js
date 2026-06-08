@@ -20,7 +20,7 @@ export function hydrateHtmlFromAppState(AppState, tracks) {
         checkbox.checked = activeDays.includes(parseInt(checkbox.value, 10));
     });
 
-    document.getElementById('minimalistUiToggle').checked = AppState.userPreferences.minimal_calendar
+    document.getElementById('minimalistUiToggle').checked = AppState.userPreferences.minimalCalendar
 }
 
 // Renders the track switcher dropdown options based on the current tracks array and active track in AppState

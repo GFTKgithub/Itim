@@ -26,8 +26,8 @@ import {
 import { loadFromFirebase } from './persistence.js';
 
 const DEFAULT_USER_PREFERENCES = {
-    minimal_calendar: false,
-    syncUserPrefernces: true
+    minimalCalendar: false,
+    syncUserPreferences: true
 }
 
 let AppState = {
@@ -276,8 +276,8 @@ async function handleScheduleGeneration() {
                 title: `סיום מסכת ${day.book}`
             }));
         
-        const isMinimal = AppState.userPreferences?.minimal_calendar === true || 
-        AppState.userPreferences?.minimal_calendar === 'true';
+        const isMinimal = AppState.userPreferences?.minimalCalendar === true || 
+        AppState.userPreferences?.minimalCalendar === 'true';
 
         renderCalendar('calendarContainer', activeTrack.studySchedule, {
             calendarSystem: activeTrack.settings.calendarSystem,

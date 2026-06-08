@@ -136,7 +136,7 @@ export function setupSettings({ userPreferences, onUpdateUserPreference, onUpdat
         console.warn("עיתים: לא נמצא כפתור ההגדרות או פאנל ההגדרות ב-DOM");
     }
     
-    const isMinimal = userPreferences?.is_minimal_calendar === true || userPreferences?.is_minimal_calendar === 'true';
+    const isMinimal = userPreferences?.is_minimalCalendar === true || userPreferences?.is_minimalCalendar === 'true';
     
     if (minimalistUiToggle && calendarContainer) {
         minimalistUiToggle.checked = isMinimal;
@@ -151,7 +151,7 @@ export function setupSettings({ userPreferences, onUpdateUserPreference, onUpdat
         const checked = e.target.checked;
         
         if (typeof onUpdateUserPreference === 'function') {
-            onUpdateUserPreference('minimal_calendar', checked);
+            onUpdateUserPreference('minimalCalendar', checked);
         }
         
         if (checked) {
