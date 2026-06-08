@@ -17,7 +17,8 @@ import {
     setupSettings,
     setupBookSequenceDragAndDrop,
     setupBookConfigModal,
-    setupCloudAuth
+    setupCloudAuth,
+    setupCalendarContextMenus
 } from './setup.js';
 
 // Firebase
@@ -180,6 +181,8 @@ function setupMainPage() {
         }
     });
     
+    setupCalendarContextMenus();
+
     // 1. Initialize the UI and capture the UI updater function
     const { updateAuthUI } = setupCloudAuth({
         onRegister: async (email, password) => {

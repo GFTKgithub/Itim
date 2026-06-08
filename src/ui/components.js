@@ -1,6 +1,6 @@
 import { formatGematria, numberToHebrew } from '../utils/gematria.js';
 
-// Create custom dialog message
+// Create and render a custom dialog message
 export function showDialog({
     title,
     message,

@@ -1,5 +1,7 @@
 import { talmud_bavli_masechtot } from "./data.js";
 
+import { showContextMenu } from "./ui/context-menu.js";
+
 // --- 1. Main Controls ---
 export function setupMainControls({ onGenerate, onAddNewTrack, onSwitchTrack, onAddToSequence, onClearSequence, onExportExcel, onExportICal}) {
     const select = document.getElementById('bookSelect');
@@ -579,4 +581,80 @@ export function setupCloudAuth({ onRegister, onLogin, onLogout, onFetchData }) {
 
     // Expose the view-updater function to the controller layer
     return { updateAuthUI };
+}
+
+// --- 7. Calendar Grid Context Menu ---
+export function setupCalendarContextMenus() {
+    const container = document.getElementById('calendarContainer');
+    if (!container) return;
+    
+    container.addEventListener('contextmenu', async (event) => {
+        // Find the closest day cell, even if the user right-clicked a text label inside it
+        const dayCell = event.target.closest('.calendar-day');
+        if (!dayCell) return;
+
+        // Prevent the browser's default right-click menu from popping up
+        event.preventDefault();
+
+        // Extract the metadata injected by ui/calendar.js
+        const dateString = dayCell.dataset.date;
+        const bookLabel = dayCell.querySelector('[data-book-label]')?.textContent.trim() || 'המסלול';
+
+        // Define your menu items dynamically
+        const menuItems = [
+            {
+                label: `הגדרת יעד לסיום ${bookLabel}`,
+                icon: '🎯',
+                action: () => {
+                    console.log(`[Action] Set Target Date for book: "${bookLabel}" starting from date: ${dateString}`);
+                    // Future Workflow: Open book dropdown / date picker modal
+                }
+            },
+            {
+                label: 'שינוי קצב הלימוד מהיום',
+                icon: '⚡',
+                action: () => {
+                    console.log(`[Action] Adjust pacing/Pace Mode starting from date: ${dateString}`);
+                    // Future Workflow: Prompt for new pages-per-day/lines-per-day value
+                }
+            },
+            { divider: true },
+            {
+                label: 'קבע כיום חזרה (חזקה)',
+                icon: '🔄',
+                action: () => {
+                    console.log(`[Action] Mark as review/chazara day for date: ${dateString}`);
+                    // Future Workflow: Set status override to review layout
+                }
+            },
+            {
+                label: 'הוספת אירוע או כותרת מותאמת',
+                icon: '📌',
+                action: () => {
+                    console.log(`[Action] Add custom event/label on date: ${dateString}`);
+                    // Future Workflow: Open small textual/holiday override modal
+                }
+            },
+            { divider: true },
+            {
+                label: 'הוספת רצף ימי הפסקה / חופש',
+                icon: '🛑',
+                action: () => {
+                    console.log(`[Action] Insert multiple consecutive break days starting: ${dateString}`);
+                    // Future Workflow: Prompt for "Number of days to shift schedule"
+                }
+            },
+            {
+                label: 'הגדרת חזרות מחזוריות מכאן והלאה',
+                icon: '📅',
+                action: () => {
+                    console.log(`[Action] Insert periodic review days starting from: ${dateString} (Every X days / Y dafs)`);
+                    // Future Workflow: Open interval rules configurator modal
+                }
+            }
+        ];
+
+        // Trigger the menu right at the cursor position
+        showContextMenu(event, menuItems);
+    });
 }

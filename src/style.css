@@ -177,6 +177,23 @@ select:focus {
     }
 }
 
+/* Custom CSS extensions for the context menu micro-interactions */
+@keyframes fadeInZoom {
+    from {
+        opacity: 0;
+        transform: scale(0.96);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+#custom-context-menu {
+    animation: fadeInZoom 0.08s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    transform-origin: top right;
+}
+
 /* --- MOBILE STYLES (Strictly Screen Only) --- */
 @media screen and (max-width: 768px) {
     .calendar-scroll-container {

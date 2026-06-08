@@ -75,7 +75,7 @@ function createDayHTML(day, state, mainDateDisplay, secondaryDateDisplay) {
     // 4. Return the assembled HTML template literal
     return `
         <div data-date="${day.dateString}" 
-             class="calendar-day cursor-pointer relative ${dayBgClass} border-b border-l border-gray-100">
+             class="calendar-day cursor-pointer relative ${dayBgClass} border-b border-l border-gray-100 select-none">
             
             <div class="flex justify-between items-start mb-1">
                 <div class="flex flex-col">
