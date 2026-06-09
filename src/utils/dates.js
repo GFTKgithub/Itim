@@ -1,13 +1,14 @@
 import { numberToHebrew, formatGematria } from "./gematria.js";
 
 export const HEBREW_MILESTONE_DATES = {
-    zman_choref_start:  { month: 'חשוון', day: 1 },
-    zman_kayitz_start:  { month: 'אייר',   day: 1 },
-    zman_elul_start:    { month: 'אלול',  day: 1 },
-    rosh_hashana:       { month: 'תשרי',  day: 1 },
-    yom_kippur:         { month: 'תשרי',  day: 10 },
-    erev_shavuot:       { month: 'סיון',  day: 5 },
-    erev_pesach:        { month: 'ניסן',  day: 14, isTaanitBechorot: true } // Handles Shabbat shift
+    zman_choref_end: { month: 'ניסן',  day: 1 },
+    zman_kayitz_end: { month: 'אב',    day: 9 },
+    zman_elul_end:   { month: 'אלול',  day: 29 },
+    rosh_hashana:    { month: 'תשרי',  day: 1 },
+    chanukah:        { month: 'כסלו',  day: 25 },
+    purim:           { month: 'אדר',   day: 14 },
+    leil_haseder:    { month: 'ניסן',  day: 15 },
+    shavuot:         { month: 'סיון',  day: 6 }
 };
 
 // Converts a Hebrew year number into its corresponding Hebrew numeral year string
