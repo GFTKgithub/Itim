@@ -22,7 +22,7 @@ import {
 } from './setup.js';
 
 // Firebase
-import { auth } from './firebase-config.js';
+import { auth, getFriendlyErrorMessage } from './firebase-config.js';
 import {
     createUserWithEmailAndPassword,
     signInWithEmailAndPassword,
@@ -191,7 +191,7 @@ function setupMainPage() {
                 await createUserWithEmailAndPassword(auth, email, password);
                 alert("החשבון נוצר וחובר בהצלחה!");
             } catch (err) {
-                alert(`שגיאת רישום: ${err.message}`);
+                alert(`שגיאת רישום: ${getFriendlyErrorMessage(err.code)}`);
             }
         },
         
@@ -199,7 +199,7 @@ function setupMainPage() {
             try { 
                 await signInWithEmailAndPassword(auth, email, password); 
             } catch (err) { 
-                alert(`שגיאת התחברות: ${err.message}`); 
+                alert(`שגיאת התחברות: ${getFriendlyErrorMessage(err.code)}`); 
             }
         },
         
