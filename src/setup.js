@@ -1,6 +1,7 @@
 import { talmud_bavli_masechtot } from "./data.js";
 import { HEBREW_MILESTONE_DATES, getNearestHebrewMilestone } from "./utils/dates.js";
 
+import { showDialog } from "./ui/components.js";
 import { ContextMenuTemplates, showContextMenu } from "./ui/context-menu.js";
 
 // --- 1. Main Controls ---
@@ -600,48 +601,169 @@ export function setupBookConfigModal({ getSchedule, getBookSequence, getBookRang
 
 // --- 6. Cloud Authentication ---
 export function setupCloudAuth({ onRegister, onLogin, onLogout, onFetchData }) {
-    const cloudLoggedOut = document.getElementById('cloudLoggedOut');
-    const cloudLoggedIn = document.getElementById('cloudLoggedIn');
-    const cloudUserEmail = document.getElementById('cloudUserEmail');
-    const cloudEmail = document.getElementById('cloudEmail');
-    const cloudPassword = document.getElementById('cloudPassword');
+    let currentLoggedUserEmail = null;
 
-    // This is returned or exposed so the orchestrator can update the UI reactively
-    function updateAuthUI(userEmail) {
-        if (userEmail) {
-            cloudLoggedOut?.classList.add('hidden');
-            cloudLoggedIn?.classList.remove('hidden');
-            if (cloudUserEmail) cloudUserEmail.innerText = userEmail;
-        } else {
-            cloudLoggedOut?.classList.remove('hidden');
-            cloudLoggedIn?.classList.add('hidden');
-            if (cloudUserEmail) cloudUserEmail.innerText = '';
+    // Explicit confirmation wrapper used across the entire authentication instance
+    async function triggerExplicitLogoutSequence() {
+        const verifyLogout = await showDialog({
+            title: "התנתקות מהחשבון",
+            message: "האם אתה בטוח שברצונך להתנתק ממערכת הסנכרון העננית?",
+            icon: "🚪",
+            showCancel: true,
+            confirmText: "כן, התנתק",
+            cancelText: "ביטול"
+        });
+
+        if (verifyLogout === true && onLogout) {
+            onLogout();
         }
     }
 
-    document.getElementById('cloudRegisterBtn')?.addEventListener('click', () => {
-        const email = cloudEmail.value.trim();
-        const password = cloudPassword.value;
+    async function handleAuthInteraction() {
+        if (currentLoggedUserEmail) {
+            // Intercept buttons right before your global component promises can swallow the click intent
+            const confirmBtn = document.getElementById('dialogConfirmBtn');
+            const cancelBtn = document.getElementById('dialogCancelBtn');
+            
+            let explicitButtonClick = null;
+
+            const handleConfirmClick = () => { explicitButtonClick = 'FETCH'; };
+            const handleCancelClick = () => { explicitButtonClick = 'LOGOUT'; };
+
+            // Temporarily watch for direct user interaction
+            confirmBtn?.addEventListener('click', handleConfirmClick);
+            cancelBtn?.addEventListener('click', handleCancelClick);
+
+            await showDialog({
+                title: "ניהול חשבון סנכרון",
+                message: `מחובר כעת כחלק מ: ${currentLoggedUserEmail}`,
+                icon: "☁️",
+                showCancel: true,
+                confirmText: "משוך נתונים מהענן",
+                cancelText: "התנתק מהחשבון"
+            });
+
+            // Clean up event listeners immediately to prevent memory leaks
+            confirmBtn?.removeEventListener('click', handleConfirmClick);
+            cancelBtn?.removeEventListener('click', handleCancelClick);
+
+            // Execute strictly based on what button was physically pressed
+            if (explicitButtonClick === 'FETCH') {
+                if (onFetchData) onFetchData();
+            } else if (explicitButtonClick === 'LOGOUT') {
+                // Triggers the logical confirmation you actually wanted!
+                triggerExplicitLogoutSequence();
+            }
+            // If explicitButtonClick is null, they clicked the overlay backdrop. Do absolutely nothing!
+
+        } else {
+            // Logged Out Sequence paths
+            const confirmBtn = document.getElementById('dialogConfirmBtn');
+            const cancelBtn = document.getElementById('dialogCancelBtn');
+            
+            let explicitButtonClick = null;
+
+            const handleLoginPath = () => { explicitButtonClick = 'LOGIN'; };
+            const handleRegisterPath = () => { explicitButtonClick = 'REGISTER'; };
+
+            confirmBtn?.addEventListener('click', handleLoginPath);
+            cancelBtn?.addEventListener('click', handleRegisterPath);
+
+            await showDialog({
+                title: "גיבוי וסנכרון בענן",
+                message: "התחבר כדי לשמור את הלוח שלך בענן ולסנכרן בין מכשירים בזמן אמת.",
+                icon: "🔐",
+                showCancel: true,
+                confirmText: "התחברות לחשבון",
+                cancelText: "הרשמה לחשבון"
+            });
+
+            confirmBtn?.removeEventListener('click', handleLoginPath);
+            cancelBtn?.removeEventListener('click', handleRegisterPath);
+
+            if (explicitButtonClick === 'LOGIN') {
+                openCredentialsForm('LOGIN');
+            } else if (explicitButtonClick === 'REGISTER') {
+                openCredentialsForm('REGISTER');
+            }
+        }
+    }
+
+    async function openCredentialsForm(mode) {
+        const isLogin = mode === 'LOGIN';
         
-        // DECOUPLED: Actions Up with the raw form input values
-        onRegister(email, password);
-    });
+        const credentials = await showDialog({
+            title: isLogin ? "התחברות למערכת" : "הרשמה לחשבון חדש",
+            message: isLogin ? "הזן אימייל וסיסמה כדי להתחבר:" : "הזן כתובת אימייל וסיסמה בת 6 תווים לפחות:",
+            icon: "🔑",
+            showCancel: true,
+            confirmText: isLogin ? "התחבר" : "בצע הרשמה",
+            cancelText: "חזור",
+            inputs: [
+                { label: "כתובת אימייל", type: "email", name: "email", placeholder: "you@example.com" },
+                { label: "סיסמה", type: "password", name: "password", placeholder: "••••••••" }
+            ]
+        });
 
-    document.getElementById('cloudLoginBtn')?.addEventListener('click', () => {
-        const email = cloudEmail.value.trim();
-        const password = cloudPassword.value;
-        onLogin(email, password);
-    });
+        if (credentials && credentials.email && credentials.password) {
+            const email = credentials.email.trim();
+            const password = credentials.password;
 
-    document.getElementById('cloudLogoutBtn')?.addEventListener('click', () => {
-        onLogout();
-    });
+            if (isLogin) {
+                if (onLogin) onLogin(email, password);
+            } else {
+                if (onRegister) onRegister(email, password);
+            }
+        }
+    }
 
-    document.getElementById('cloudFetchBtn')?.addEventListener('click', () => {
-        onFetchData();
-    });
+    // --- Wire Up Entry Hooks ---
+    document.getElementById('openCloudAuthBtn')?.addEventListener('click', handleAuthInteraction);
+    document.getElementById('settingsPanelAuthTriggerBtn')?.addEventListener('click', handleAuthInteraction);
 
-    // Expose the view-updater function to the controller layer
+    // Orchestrator State Syncer
+    function updateAuthUI(userEmail) {
+        currentLoggedUserEmail = userEmail;
+
+        const globalBtnText = document.getElementById('globalCloudAuthBtnText');
+        const panelRow = document.getElementById('settingsPanelCloudRow');
+
+        if (userEmail) {
+            if (globalBtnText) globalBtnText.innerText = "👤 החשבון שלי";
+            
+            if (panelRow) {
+                panelRow.innerHTML = `
+                    <div class="p-3 bg-slate-50 border border-slate-200/60 rounded-xl space-y-2">
+                        <div class="flex flex-col">
+                            <span class="text-[10px] font-bold text-slate-400">מחובר כעת:</span>
+                            <span class="text-xs font-bold text-blue-900 truncate">${userEmail}</span>
+                        </div>
+                        <div class="grid grid-cols-2 gap-2 pt-1">
+                            <button id="drawerCloudFetchBtn" class="bg-emerald-700 hover:bg-emerald-800 text-white py-1.5 px-2 rounded-lg text-[11px] font-bold transition-all text-center">משוך נתונים</button>
+                            <button id="drawerCloudLogoutBtn" class="bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-100 py-1.5 px-2 rounded-lg text-[11px] font-bold transition-all text-center">התנתק</button>
+                        </div>
+                    </div>
+                `;
+                // Wire inline side panel triggers
+                document.getElementById('drawerCloudFetchBtn')?.addEventListener('click', () => onFetchData?.());
+                
+                // Unified: Clicking logout directly inside the side panel drawer routes to the exact same prompt block!
+                document.getElementById('drawerCloudLogoutBtn')?.addEventListener('click', triggerExplicitLogoutSequence);
+            }
+        } else {
+            if (globalBtnText) globalBtnText.innerText = "👤 התחברות לחשבון";
+            
+            if (panelRow) {
+                panelRow.innerHTML = `
+                    <button id="settingsPanelAuthTriggerBtn" class="w-full text-slate-600 hover:text-slate-900 hover:bg-slate-50 border border-slate-200 py-2 rounded-xl text-xs font-semibold transition-all flex items-center justify-center gap-1.5">
+                        <span>👤 התחברות / הרשמה למערכת</span>
+                    </button>
+                `;
+                document.getElementById('settingsPanelAuthTriggerBtn')?.addEventListener('click', handleAuthInteraction);
+            }
+        }
+    }
+
     return { updateAuthUI };
 }
 
