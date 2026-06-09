@@ -128,24 +128,59 @@ export function setupSettings({ userPreferences, onUpdateUserPreference, onUpdat
         if (onSyncToToday) onSyncToToday();
     });
 
+    // Replace the old block toggle references...
     const toggleSettingsPanelBtn = document.getElementById('toggleSettingsPanelBtn');
-    const appSettingsPanel = document.getElementById('appSettingsPanel');
-    
+    const settingsDrawer = document.getElementById('settingsDrawer');
+    const drawerOverlay = document.getElementById('drawerOverlay');
+    const drawerPanel = document.getElementById('drawerPanel');
+    const closeDrawerBtn = document.getElementById('closeDrawerBtn');
+
     const minimalistUiToggle = document.getElementById('minimalistUiToggle');
     const calendarContainer = document.getElementById('calendarContainer');
-    
     const syncUserPreferencesToggle = document.getElementById('syncUserPreferences');
-
-    if (toggleSettingsPanelBtn && appSettingsPanel) {
-        toggleSettingsPanelBtn.addEventListener('click', (e) => {
-            e.preventDefault(); 
-            
-            appSettingsPanel.classList.toggle('hidden');
-        });
-    } else {
-        console.warn("עיתים: לא נמצא כפתור ההגדרות או פאנל ההגדרות ב-DOM");
+        
+    // --- Settings Drawer Open/Close Interactivity Engines ---
+    function openDrawer() {
+        if (!settingsDrawer || !drawerOverlay || !drawerPanel) return;
+        
+        settingsDrawer.classList.remove('pointer-events-none', 'invisible');
+        
+        // Quick timeout ensures Tailwind runs opacity and translation animations concurrently
+        setTimeout(() => {
+            drawerOverlay.classList.remove('opacity-0');
+            drawerOverlay.classList.add('opacity-100');
+            drawerPanel.classList.remove('translate-x-full');
+            drawerPanel.classList.add('translate-x-0');
+        }, 10);
     }
-    
+
+    function closeDrawer() {
+        if (!settingsDrawer || !drawerOverlay || !drawerPanel) return;
+        
+        drawerOverlay.classList.remove('opacity-100');
+        drawerOverlay.classList.add('opacity-0');
+        drawerPanel.classList.remove('translate-x-0');
+        drawerPanel.classList.add('translate-x-full');
+        
+        // Completely disable interactions once animations conclude
+        setTimeout(() => {
+            settingsDrawer.classList.add('pointer-events-none', 'invisible');
+        }, 300);
+    }
+
+    // Open command
+    if (toggleSettingsPanelBtn) {
+        toggleSettingsPanelBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            openDrawer();
+        });
+    }
+
+    closeDrawerBtn?.addEventListener('click', closeDrawer);
+    drawerOverlay?.addEventListener('click', closeDrawer);
+        
+
+    // Minimal Calendar
     const isMinimal = userPreferences?.is_minimalCalendar === true || userPreferences?.is_minimalCalendar === 'true';
     
     if (minimalistUiToggle && calendarContainer) {

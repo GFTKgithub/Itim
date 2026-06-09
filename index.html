@@ -36,36 +36,6 @@
             </div>
         </header>
 
-        <div id="appSettingsPanel" class="hidden bg-white rounded-2xl border border-slate-200 p-5 shadow-sm mb-6 no-print max-w-xl mx-auto transition-all duration-200">
-            <h3 class="text-xs font-bold text-slate-400 tracking-wider uppercase mb-3 flex items-center gap-1.5 border-b border-slate-100 pb-2">
-                ⚙️ העדפות מערכת ותצוגה
-            </h3>
-            
-            <div class="space-y-3">
-                <label class="flex items-center justify-between p-3.5 bg-slate-50 hover:bg-slate-100/70 rounded-xl border border-slate-200/60 cursor-pointer group transition-all">
-                    <div class="space-y-0.5 pl-4">
-                        <span class="text-xs font-bold text-slate-700 block">מראה מינימליסטי נקי</span>
-                        <span class="text-[11px] text-slate-500 font-medium block">הסרת צבעי רקע וגרדיאנטים בולטים מלוח השנה למניעת הסחת דעת</span>
-                    </div>
-                    <div class="relative inline-flex items-center">
-                        <input type="checkbox" id="minimalistUiToggle" class="peer hidden">
-                        <div class="w-9 h-5 bg-slate-200 peer-checked:bg-slate-800 rounded-full transition-all duration-200 after:content-[''] after:absolute after:top-[2px] after:right-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:after:-translate-x-4"></div>
-                    </div>
-                </label>
-
-                <label class="flex items-center justify-between p-3.5 bg-slate-50 hover:bg-slate-100/70 rounded-xl border border-slate-200/60 cursor-pointer group transition-all">
-                    <div class="space-y-0.5 pl-4">
-                        <span class="text-xs font-bold text-slate-700 block">סנכרון הגדרות אוטומטי</span>
-                        <span class="text-[11px] text-slate-500 font-medium block">גיבוי וסנכרון העדפות המשתמש והגדרות המערכת בענן בזמן אמת</span>
-                    </div>
-                    <div class="relative inline-flex items-center">
-                        <input type="checkbox" id="syncUserPreferences" class="peer hidden" checked>
-                        <div class="w-9 h-5 bg-slate-200 peer-checked:bg-slate-800 rounded-full transition-all duration-200 after:content-[''] after:absolute after:top-[2px] after:right-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:after:-translate-x-4"></div>
-                    </div>
-                </label>
-            </div>
-        </div>
-
         <div id="firebaseAuthWidget" class="max-w-md mx-auto mb-6 bg-white border border-slate-200 rounded-xl p-4 shadow-sm no-print text-sm">
             <h4 class="font-bold text-slate-800 mb-2 flex items-center gap-1.5">☁️ גיבוי וסנכרון בענן</h4>
             
@@ -91,29 +61,6 @@
                     <button id="cloudLogoutBtn" class="bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200/60 px-3 py-1.5 rounded-lg text-xs font-bold transition-all">התנתק</button>
                 </div>
             </div>
-        </div>
-
-        <div class="flex flex-wrap justify-center gap-3 text-sm font-semibold mb-3 select-none no-print">
-            <button id="backupExportBtn"
-                class="text-slate-600 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 px-4 py-2 rounded-lg transition-all flex items-center gap-1.5 shadow-sm">
-                <span>💾 גיבוי הגדרות (ייצוא)</span>
-            </button>
-            <button id="backupImportBtn"
-                class="text-blue-700 hover:text-blue-900 bg-blue-50 hover:bg-blue-100 px-4 py-2 rounded-lg transition-all flex items-center gap-1.5 shadow-sm">
-                <span>📂 טעינת גיבוי (ייבוא)</span>
-            </button>
-            <input type="file" id="backupFileInput" class="hidden" accept=".json">
-        </div>
-
-        <div class="flex flex-wrap justify-center gap-3 text-xs font-bold mb-6 select-none no-print">
-            <button id="resetSettingsBtn"
-                class="text-amber-700 hover:text-amber-900 bg-amber-50 hover:bg-amber-100 px-3 py-1.5 rounded-md transition-all border border-amber-200/60 flex items-center gap-1 shadow-xs">
-                <span>⚙️ איפוס הגדרות לברירת מחדל</span>
-            </button>
-            <button id="resetStudyStatusOverridesBtn"
-                class="text-rose-700 hover:text-rose-900 bg-rose-50 hover:bg-rose-100 px-3 py-1.5 rounded-md transition-all border border-rose-200/60 flex items-center gap-1 shadow-xs">
-                <span>🔄 איפוס שינויים ידניים</span>
-            </button>
         </div>
 
         <div class="bg-white rounded-2xl shadow-xl mb-8 no-print border border-slate-200 overflow-hidden">
@@ -445,6 +392,96 @@
                 <button id="dialogCancelBtn" class="bg-white hover:bg-slate-100 text-slate-600 border border-slate-300 px-5 py-2.5 rounded-xl font-bold text-sm transition-all active:scale-95 hidden">
                     ביטול
                 </button>
+            </div>
+        </div>
+    </div>
+
+    <div id="settingsDrawer" class="fixed inset-0 z-50 pointer-events-none invisible" dir="rtl">
+
+        <div id="drawerOverlay" class="absolute inset-0 bg-slate-900/40 opacity-0 transition-opacity duration-300 pointer-events-auto cursor-pointer"></div>
+        
+        <div id="drawerPanel" class="absolute top-0 right-0 h-full w-full max-w-sm bg-white shadow-2xl border-l border-slate-200 flex flex-col translate-x-full transition-transform duration-300 ease-out pointer-events-auto">
+            
+            <div class="h-1.5 bg-gradient-to-r from-blue-900 via-blue-700 to-blue-900 shrink-0"></div>
+            
+            <div class="p-4 border-b border-slate-200 flex justify-between items-center bg-slate-50 shrink-0">
+                <h2 class="text-sm font-bold text-slate-800 flex items-center gap-2 text-right w-full">
+                    ⚙️ העדפות מערכת והגדרות
+                </h2>
+                <button id="closeDrawerBtn" class="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-200/60 transition-all active:scale-95 mr-auto">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </button>
+            </div>
+    
+            <div class="p-4 overflow-y-auto flex-1 space-y-6">
+                
+                <div class="space-y-1.5">
+                    <h3 class="text-[11px] font-bold text-slate-400 tracking-wider uppercase pb-1 text-right">
+                        🎨 תצוגה והעדפות
+                    </h3>
+                    
+                    <div class="border border-slate-200 rounded-lg overflow-hidden bg-white divide-y divide-slate-100">
+                        <label class="flex items-center justify-between p-3 hover:bg-slate-50 cursor-pointer transition-all">
+                            <div class="space-y-0.5 text-right">
+                                <span class="text-xs font-bold text-slate-700 block">מראה מינימליסטי נקי</span>
+                            </div>
+                            <div class="relative inline-flex items-center">
+                                <input type="checkbox" id="minimalistUiToggle" class="peer hidden">
+                                <div class="w-9 h-5 bg-slate-200 peer-checked:bg-slate-800 rounded-full transition-all duration-200 after:content-[''] after:absolute after:top-[2px] after:right-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:after:-translate-x-4"></div>
+                            </div>
+                        </label>
+                    </div>
+                </div>
+    
+                <div class="space-y-1.5">
+                    <h3 class="text-[11px] font-bold text-slate-400 tracking-wider uppercase pb-1 text-right">
+                        💾 גיבוי ושחזור נתונים
+                    </h3>
+                    
+                    <div class="border border-slate-200 rounded-lg overflow-hidden bg-white divide-y divide-slate-100">
+                        <label class="flex items-center justify-between p-3 hover:bg-slate-50 cursor-pointer transition-all">
+                            <div class="space-y-0.5 text-right">
+                                <span class="text-xs font-bold text-slate-700 block">סנכרון הגדרות אוטומטי לענן</span>
+                            </div>
+                            <div class="relative inline-flex items-center">
+                                <input type="checkbox" id="syncUserPreferences" class="peer hidden" checked>
+                                <div class="w-9 h-5 bg-slate-200 peer-checked:bg-slate-800 rounded-full transition-all duration-200 after:content-[''] after:absolute after:top-[2px] after:right-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:after:-translate-x-4"></div>
+                            </div>
+                        </label>
+    
+                        <button id="backupExportBtn" class="w-full p-3 text-right hover:bg-slate-50 text-slate-700 text-xs font-bold transition-all flex items-center gap-2.5">
+                            <span>💾</span>
+                            <span>גיבוי הגדרות (ייצוא)</span>
+                        </button>
+                        
+                        <button id="backupImportBtn" class="w-full p-3 text-right hover:bg-slate-50 text-slate-700 text-xs font-bold transition-all flex items-center gap-2.5">
+                            <span>📂</span>
+                            <span>טעינת גיבוי (ייבוא)</span>
+                        </button>
+                        <input type="file" id="backupFileInput" class="hidden" accept=".json">
+                    </div>
+                </div>
+    
+                <div class="space-y-1.5">
+                    <h3 class="text-[11px] font-bold text-rose-500 tracking-wider uppercase pb-1 text-right">
+                        ⚠️ איפוס ותחזוקה
+                    </h3>
+                    
+                    <div class="border border-slate-200 rounded-lg overflow-hidden bg-white divide-y divide-slate-100 select-none">
+                        <button id="resetSettingsBtn" class="w-full p-3 text-right bg-amber-50 hover:bg-amber-100 text-amber-900 text-xs font-bold transition-all flex items-center gap-2.5">
+                            <span>⚙️</span>
+                            <span>איפוס הגדרות מסלול לברירת מחדל</span>
+                        </button>
+                        
+                        <button id="resetStudyStatusOverridesBtn" class="w-full p-3 text-right bg-rose-50 hover:bg-rose-100 text-rose-900 text-xs font-bold transition-all flex items-center gap-2.5">
+                            <span>🔄</span>
+                            <span>איפוס שינויים ידניים לסטטוס למידה</span>
+                        </button>
+                    </div>
+                </div>
+    
             </div>
         </div>
     </div>
