@@ -4,7 +4,7 @@ import { talmud_bavli_masechtot } from './data.js';
 // utils
 import { hebrewToNumber } from './utils/gematria.js';
 import { indexToDaf, getTotalAmudim } from './utils/talmud.js';
-import { formatDateToIL, formatDateToISO } from './utils/dates.js';
+import { formatDateToIL, formatDateToISO, checkIsBeinHazmanim } from './utils/dates.js';
 
 /* 
     Core generation functions 
@@ -104,7 +104,13 @@ export async function generateStudyTimeline({ trackSettings, bookSequence, study
         };
 
         if (day.isRestDay) {
-            dayData.content = (day.overrideState === 1) ? "הפסקה" : "";
+            if (day.overrideState === 1) {
+                dayData.content = "הפסקה";
+            } else if (checkIsBeinHazmanim(day.date)) {
+                dayData.content = "בין הזמנים";
+            } else {
+                dayData.content = "";
+            }
         } else if (day.isReviewDay) {
             dayData.content = "חזרה";
         } else if (day.amudimToCount > 0) {
@@ -143,7 +149,7 @@ export async function generateStudyTimeline({ trackSettings, bookSequence, study
 
 // --- Strategy A: Target Date ---
 function generateTargetDateTimeline(startDate, bookObj, singleBookPool, studyStatusOverrides, calendarEvents, trackSettings, bookIndex) {
-    const { studyDays, includeHolidays } = trackSettings;
+    const { studyDays, includeHolidays, includeBeinHazmanim } = trackSettings;
     const targetDateVal = bookObj.targetDate || formatDateToISO(startDate);
     const endDate = new Date(targetDateVal);
     endDate.setHours(0, 0, 0, 0);
@@ -159,7 +165,10 @@ function generateTargetDateTimeline(startDate, bookObj, singleBookPool, studySta
     while (currentDate <= endDate) {
         const dateString = formatDateToIL(currentDate);
         const overrideState = studyStatusOverrides[dateString] || 0;
-        let isRestDay = (overrideState === 1) || (overrideState !== 2 && shouldDayBeRest(currentDate, studyDays, includeHolidays, calendarEvents));
+        
+        let isRestDay = (overrideState === 1) || (overrideState !== 2 && 
+            shouldDayBeRest(currentDate, studyDays, includeHolidays, includeBeinHazmanim, calendarEvents)
+        );
 
         timelineDays.push({
             date: new Date(currentDate),
@@ -177,7 +186,6 @@ function generateTargetDateTimeline(startDate, bookObj, singleBookPool, studySta
 
     let activeStudyDays = timelineDays.filter(d => d.isStudyDay);
     if (activeStudyDays.length <= reviewDaysCount) {
-        // FIX: Added bookIndex fallback protection pass-through here
         return generatePaceTimeline(startDate, { ...bookObj, calcMethod: 'pace', paceValue: 1 }, singleBookPool, studyStatusOverrides, calendarEvents, trackSettings, bookIndex);
     }
 
@@ -218,7 +226,7 @@ function generateTargetDateTimeline(startDate, bookObj, singleBookPool, studySta
 
 // --- Strategy B: Daily Pace ---
 function generatePaceTimeline(startDate, bookObj, singleBookPool, studyStatusOverrides, calendarEvents, trackSettings, bookIndex) {
-    const { studyDays, includeHolidays } = trackSettings;
+    const { studyDays, includeHolidays, includeBeinHazmanim } = trackSettings;
     let amudPoolCopy = [...singleBookPool];
     let currentDate = new Date(startDate);
     let timelineDays = [];
@@ -229,7 +237,10 @@ function generatePaceTimeline(startDate, bookObj, singleBookPool, studyStatusOve
     while (amudPoolCopy.length > 0) {
         const dateString = formatDateToIL(currentDate);
         const overrideState = studyStatusOverrides[dateString] || 0;
-        let isRestDay = (overrideState === 1) || (overrideState !== 2 && shouldDayBeRest(currentDate, studyDays, includeHolidays, calendarEvents));
+        
+        let isRestDay = (overrideState === 1) || (overrideState !== 2 && 
+            shouldDayBeRest(currentDate, studyDays, includeHolidays, includeBeinHazmanim, calendarEvents)
+        );
 
         let amudimToCountForDay = 0;
         let triggerReviewPhase = false;
@@ -263,7 +274,10 @@ function generatePaceTimeline(startDate, bookObj, singleBookPool, studyStatusOve
                 currentDate.setDate(currentDate.getDate() + 1);
                 const rStr = formatDateToIL(currentDate);
                 const rOverride = studyStatusOverrides[rStr] || 0;
-                let rIsRest = (rOverride === 1) || (rOverride !== 2 && shouldDayBeRest(currentDate, studyDays, includeHolidays, calendarEvents));
+                
+                let rIsRest = (rOverride === 1) || (rOverride !== 2 && 
+                    shouldDayBeRest(currentDate, studyDays, includeHolidays, includeBeinHazmanim, calendarEvents)
+                );
 
                 if (rIsRest) {
                     timelineDays.push({
@@ -394,17 +408,22 @@ function addCalendarGridPadding(outputSchedule, timelineDays, startInputDate, ca
 }
 
 // Determines whether a given date should be treated as a rest day based on the user's selected study days, holiday inclusion preference, and the calendar traits of that specific day.
-function shouldDayBeRest(dateObj, studyDays, includeHolidays, calendarEvents) {
+function shouldDayBeRest(dateObj, studyDays, includeHolidays, includeBeinHazmanim, calendarEvents) {
     const dateString = formatDateToIL(dateObj);
     const day = calendarEvents[dateString];
     const traits = day?.traits || {};
-    const dayOfWeek = dateObj.getDay(); // 0 = Sunday, 6 = Shabbat
+    const dayOfWeek = dateObj.getDay(); 
 
     // 1. Force break on Standard Chagim if includeHolidays is false
     if (traits.isChag && !includeHolidays) return true;
 
-    // 2. Check if this weekday is NOT in the user's selected study days array
-    // (Also treats calendar-marked Parasha days as Shabbat if Saturday is unchecked)
+    // 2. Force break on Bein Hazmanim if includeBeinHazmanim is false
+    if (!includeBeinHazmanim) {
+        const isBeinHazmanimDay = checkIsBeinHazmanim(dateObj);
+        if (isBeinHazmanimDay) return true;
+    }
+    
+    // 3. Check if this weekday is NOT in the user's selected study days array
     const isScheduledStudyDay = studyDays.includes(dayOfWeek);
     if (!isScheduledStudyDay) return true;
 

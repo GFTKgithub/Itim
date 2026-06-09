@@ -9,6 +9,7 @@ export function hydrateHtmlFromAppState(AppState, tracks) {
 
     document.getElementById('calendarSystem').value = settings.calendarSystem;
     document.getElementById('includeHolidaysInput').checked = settings.includeHolidays;
+    document.getElementById('includeBeinHazmanimInput').checked = settings.includeBeinHazmanim;
     document.getElementById('startDateInput').value = settings.startDate;
 
     // Synchronize Weekday Selection checkboxes

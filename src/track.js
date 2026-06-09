@@ -7,6 +7,7 @@ export const DEFAULT_TRACK_SETTINGS = {
     startAmud: 'א',
     studyDays: [0, 1, 2, 3, 4, 5], // Default: Sun-Fri (0-5), Shabbat (6) excluded
     includeHolidays: false,
+    includeBeinHazmanim: false,
     calendarSystem: 'hebrew',
 }
 

@@ -88,6 +88,7 @@ export function setupBackupManagement({onExport, onImport, onResetSettings, onRe
 export function setupSettings({ userPreferences, onUpdateUserPreference, onUpdateTrackSetting, onGenerate, onSyncToToday }) {
     const calendarSystem = document.getElementById('calendarSystem');
     const includeHolidaysInput = document.getElementById('includeHolidaysInput');
+    const includeBeinHazmanimInput = document.getElementById('includeBeinHazmanimInput');
     const startDateInput = document.getElementById('startDateInput');
 
     calendarSystem?.addEventListener('change', (e) => {
@@ -107,6 +108,12 @@ export function setupSettings({ userPreferences, onUpdateUserPreference, onUpdat
 
     includeHolidaysInput?.addEventListener('change', (e) => {
         onUpdateTrackSetting('includeHolidays', e.target.checked);
+        onGenerate();
+    });
+
+    // Add this block below the holiday tracking logic:
+    includeBeinHazmanimInput?.addEventListener('change', (e) => {
+        onUpdateTrackSetting('includeBeinHazmanim', e.target.checked);
         onGenerate();
     });
 

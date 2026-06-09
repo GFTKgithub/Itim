@@ -1,6 +1,5 @@
 import { numberToHebrew, formatGematria } from "./gematria.js";
 
-
 // Converts a Hebrew year number into its corresponding Hebrew numeral year string
 export function formatHebrewMonthTitle(date) {
     const monthName = new Intl.DateTimeFormat('he-IL-u-ca-hebrew', { month: 'long' }).format(date);
@@ -50,4 +49,44 @@ export function getGregorianDate(date) {
         day: 'numeric',
         month: 'long'
     }).format(date);
+}
+
+// Determines whether a given date falls within the traditional yeshiva Bein Hazmanim ranges
+export function checkIsBeinHazmanim(dateObj) {
+    try {
+        // Format the date into raw Hebrew calendar parts
+        const formatter = new Intl.DateTimeFormat('he-IL-u-ca-hebrew', {
+            day: 'numeric',
+            month: 'numeric', // Returns numeric mapping (e.g., 1, 2, 5, etc.)
+        });
+        
+        const parts = formatter.formatToParts(dateObj);
+        const day = parseInt(parts.find(p => p.type === 'day').value, 10);
+        const month = parseInt(parts.find(p => p.type === 'month').value, 10);
+
+        // Note: Intl Hebrew numeric month values can vary slightly depending on leap years,
+        // but the long string name is globally stable. Let's pull the text month to be safe:
+        const textFormatter = new Intl.DateTimeFormat('he-IL-u-ca-hebrew', { month: 'long' });
+        const monthName = textFormatter.format(dateObj);
+
+        // 1. Nissan Break: 1 Nissan to 30 Nissan (entire month)
+        if (monthName.includes('ניסן')) {
+            return true;
+        }
+
+        // 2. Av Break: 10 Av to 30 Av (starts day after Tisha B'Av)
+        if (monthName.includes('אב') && day >= 10) {
+            return true;
+        }
+
+        // 3. Tishrei Break: 11 Tishrei to 30 Tishrei (starts day after Yom Kippur)
+        if (monthName.includes('תשרי') && day >= 11) {
+            return true;
+        }
+
+        return false;
+    } catch (error) {
+        console.error("Error calculating Hebrew date boundaries for Bein Hazmanim:", error);
+        return false;
+    }
 }
