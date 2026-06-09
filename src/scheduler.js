@@ -162,6 +162,7 @@ function generateTargetDateTimeline(startDate, bookObj, singleBookPool, studySta
     let currentDate = new Date(startDate);
     const reviewDaysCount = parseInt(bookObj.reviewDays, 10) || 0;
 
+    // 1. Gather all calendar days in the range
     while (currentDate <= endDate) {
         const dateString = formatDateToIL(currentDate);
         const overrideState = studyStatusOverrides[dateString] || 0;
@@ -193,18 +194,41 @@ function generateTargetDateTimeline(startDate, bookObj, singleBookPool, studySta
     const totalAmudim = singleBookPool.length;
 
     const baseAmudim = Math.floor(totalAmudim / netStudyDaysCount);
-    const remainder = totalAmudim % netStudyDaysCount;
-
-    let planSlots = [];
-    for (let i = 0; i < netStudyDaysCount; i++) {
-        let extra = (i >= netStudyDaysCount - remainder) ? 1 : 0;
-        planSlots.push({ type: 'study', count: baseAmudim + extra });
-    }
     
-    for (let r = 0; r < reviewDaysCount; r++) {
-        planSlots.push({ type: 'review', count: 0 });
+    let planSlots = [];
+
+    // 2. EDGE CASE: The target date is too far away (Pace drops below 1 Amud per day)
+    if (baseAmudim < 1) {
+        // We force a minimum pace of 1 amud per day
+        const requiredStudyDays = totalAmudim; 
+        
+        // Push the study slots to the very beginning
+        for (let i = 0; i < requiredStudyDays; i++) {
+            planSlots.push({ type: 'study', count: 1 });
+        }
+        
+        // Fill ALL remaining active days in the timeline with review days
+        const totalRemainingActiveDays = activeStudyDays.length - requiredStudyDays;
+        for (let r = 0; r < totalRemainingActiveDays; r++) {
+            planSlots.push({ type: 'review', count: 0 });
+        }
+    } 
+    // 3. NORMAL CASE: Distribute material evenly across the timeline
+    else {
+        const remainder = totalAmudim % netStudyDaysCount;
+
+        for (let i = 0; i < netStudyDaysCount; i++) {
+            let extra = (i >= netStudyDaysCount - remainder) ? 1 : 0;
+            planSlots.push({ type: 'study', count: baseAmudim + extra });
+        }
+        
+        // Append explicit user-requested review days at the end
+        for (let r = 0; r < reviewDaysCount; r++) {
+            planSlots.push({ type: 'review', count: 0 });
+        }
     }
 
+    // 4. Map the planned slots onto the actual timeline days
     let planPointer = 0;
     timelineDays.forEach(day => {
         if (day.isStudyDay) {
