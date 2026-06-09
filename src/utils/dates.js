@@ -119,19 +119,22 @@ export function getNearestHebrewMilestone(template) {
         const currentMonth = parts.find(p => p.type === 'month').value;
         const currentDay = parseInt(parts.find(p => p.type === 'day').value, 10);
 
+        let isMonthMatch = currentMonth === template.month;
+
+        // טיפול שורש לחודש אדר - דילוג מובטח על אדר א'
+        if (template.month === 'אדר') {
+            const hasAdar = currentMonth.includes('אדר');
+            const hasBet = currentMonth.includes('ב');
+            const hasAlef = currentMonth.includes('א') && !currentMonth.includes('חשוון'); // הגנה קלה למקרה של שיבוש מחרוזות
+
+            // אנחנו רוצים להתאים רק אם:
+            // 1. זה אדר ב' (שנה מעוברת)
+            // 2. או שזה אדר רגיל לחלוטין (אין בו לא א' ולא ב' - שנה פשוטה)
+            isMonthMatch = hasAdar && (hasBet || (!hasAlef && !hasBet));
+        }
+
         // Match found!
-        if (currentMonth === template.month && currentDay === template.day) {
-            
-            // Special rule check: Erev Pesach / Fast of Firstborns falling on Friday night/Shabbat
-            if (template.isTaanitBechorot) {
-                const dayOfWeek = currentCheckDate.getDay(); // 0 = Sunday, 6 = Saturday
-                if (dayOfWeek === 6) { // Lands on Shabbat
-                    currentCheckDate.setDate(currentCheckDate.getDate() - 2); // Shift back to Thursday
-                } else if (dayOfWeek === 5) { // Lands on Friday
-                    currentCheckDate.setDate(currentCheckDate.getDate() - 1); // Shift back to Thursday
-                }
-            }
-            
+        if (isMonthMatch && currentDay === template.day) {
             return formatDateToIL(currentCheckDate);
         }
 
