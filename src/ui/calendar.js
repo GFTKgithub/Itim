@@ -222,7 +222,7 @@ function renderFullCalendarLayout(container, studySchedule, config) {
 
         // Render Hebrew weekday column headers
         ['א', 'ב', 'ג', 'ד', 'ה', 'ו', 'ש'].forEach(d => {
-            htmlBuffer.push(`<div class="bg-slate-50 p-2 text-center text-xs font-bold text-slate-500 border-b border-gray-200">${d}</div>`);
+            htmlBuffer.push(`<div class="bg-slate-50 p-2 text-center text-xs font-bold text-slate-500 border-b border-gray-200 select-none">${d}</div>`);
         });
 
         // Pad front grid slots before month begins
