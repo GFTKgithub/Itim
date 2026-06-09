@@ -1,5 +1,15 @@
 import { numberToHebrew, formatGematria } from "./gematria.js";
 
+export const HEBREW_MILESTONE_DATES = {
+    zman_choref_start:  { month: 'חשוון', day: 1 },
+    zman_kayitz_start:  { month: 'אייר',   day: 1 },
+    zman_elul_start:    { month: 'אלול',  day: 1 },
+    rosh_hashana:       { month: 'תשרי',  day: 1 },
+    yom_kippur:         { month: 'תשרי',  day: 10 },
+    erev_shavuot:       { month: 'סיון',  day: 5 },
+    erev_pesach:        { month: 'ניסן',  day: 14, isTaanitBechorot: true } // Handles Shabbat shift
+};
+
 // Converts a Hebrew year number into its corresponding Hebrew numeral year string
 export function formatHebrewMonthTitle(date) {
     const monthName = new Intl.DateTimeFormat('he-IL-u-ca-hebrew', { month: 'long' }).format(date);
@@ -88,5 +98,49 @@ export function checkIsBeinHazmanim(dateObj) {
     } catch (error) {
         console.error("Error calculating Hebrew date boundaries for Bein Hazmanim:", error);
         return false;
+    }
+}
+
+// Resolves the closest upcoming Gregorian date based on a Hebrew template rule.
+export function getNearestHebrewMilestone(template) {
+    const today = new Date();
+    // Use your existing parse utility to establish clean local mid-day baselines
+    let currentCheckDate = parseDateToIL(formatDateToIL(today));
+    
+    // Intentionally construct matching formatting tokens using native Intl properties
+    const hebrewFormatter = new Intl.DateTimeFormat('he-IL-u-ca-hebrew', {
+        day: 'numeric',
+        month: 'long'
+    });
+
+    while (true) {
+        const parts = hebrewFormatter.formatToParts(currentCheckDate);
+        const currentMonth = parts.find(p => p.type === 'month').value;
+        const currentDay = parseInt(parts.find(p => p.type === 'day').value, 10);
+
+        // Match found!
+        if (currentMonth === template.month && currentDay === template.day) {
+            
+            // Special rule check: Erev Pesach / Fast of Firstborns falling on Friday night/Shabbat
+            if (template.isTaanitBechorot) {
+                const dayOfWeek = currentCheckDate.getDay(); // 0 = Sunday, 6 = Saturday
+                if (dayOfWeek === 6) { // Lands on Shabbat
+                    currentCheckDate.setDate(currentCheckDate.getDate() - 2); // Shift back to Thursday
+                } else if (dayOfWeek === 5) { // Lands on Friday
+                    currentCheckDate.setDate(currentCheckDate.getDate() - 1); // Shift back to Thursday
+                }
+            }
+            
+            return formatDateToIL(currentCheckDate);
+        }
+
+        // Increment day-by-day
+        currentCheckDate.setDate(currentCheckDate.getDate() + 1);
+        
+        // Safety circuit-breaker (never let an unmatched string cause an infinite loop)
+        if (currentCheckDate.getFullYear() > today.getFullYear() + 2) {
+            console.error("Hebrew calendar token parsing failed boundary thresholds.");
+            return formatDateToIL(today);
+        }
     }
 }

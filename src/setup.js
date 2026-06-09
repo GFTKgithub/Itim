@@ -1,4 +1,5 @@
 import { talmud_bavli_masechtot } from "./data.js";
+import { HEBREW_MILESTONE_DATES, getNearestHebrewMilestone } from "./utils/dates.js";
 
 import { ContextMenuTemplates, showContextMenu } from "./ui/context-menu.js";
 
@@ -540,6 +541,25 @@ export function setupBookConfigModal({ getSchedule, getBookSequence, getBookRang
         renderAmudGrid('amudGridContainer', tempAmudStates, isBunchedView);
         renderDailyView('dailyViewContainer', currentDaySlots, tempAmudStates);
         updateModalProgressStats(tempAmudStates);
+    });
+
+    const dropdown = document.getElementById('bookConfigDateTemplate');
+    const dateInput = document.getElementById('bookConfigTargetDateInput');
+
+    if (!dropdown || !dateInput) return;
+
+    dropdown.addEventListener('change', (e) => {
+        const key = e.target.value;
+        const template = HEBREW_MILESTONE_DATES[key];
+
+        if (!template) return;
+
+        // Calculate and apply cleanly
+        const calculatedISODate = getNearestHebrewMilestone(template);
+        dateInput.value = calculatedISODate;
+
+        // Fire event down the pipeline to let track validations react naturally
+        dateInput.dispatchEvent(new Event('change', { bubbles: true }));
     });
 }
 
