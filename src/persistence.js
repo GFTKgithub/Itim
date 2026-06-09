@@ -103,14 +103,19 @@ function applyParsedState(parsed) {
 // Push local state data up to Firestore
 export async function saveToFirebase() {
     const user = auth.currentUser;
-    if (!user) return; // Silent return if guest user
+    if (!user) return;
 
     try {
-        const stateToSave = extractSavableStateForFirebase();
+        const rawState = extractSavableStateForFirebase();
+        
+        // This strips away any 'undefined' properties that the bad commit created
+        const stateToSave = removeUndefinedFields(rawState);
+
         await setDoc(doc(db, "users", user.uid), {
             userData: stateToSave,
             lastSynced: new Date().toISOString()
         }, { merge: true });         
+        
         console.log("State successfully synchronized with Firestore cloud.");
     } catch (error) {
         console.error("Failed to sync state to Firestore:", error);
@@ -156,9 +161,29 @@ export async function saveState() {
     }
 }
 
+// A recursive cleaning machine that deletes any 'undefined' keys before Firebase sees them
+function removeUndefinedFields(obj) {
+    if (obj === null || typeof obj !== 'object') return obj;
+    
+    // If it's an array, clean every item inside it
+    if (Array.isArray(obj)) {
+        return obj.map(item => removeUndefinedFields(item));
+    }
+    
+    const cleaned = {};
+    for (const [key, value] of Object.entries(obj)) {
+        if (value !== undefined) {
+            // Recursively clean nested objects/arrays, fallback to null if blank
+            cleaned[key] = typeof value === 'object' ? removeUndefinedFields(value) : value;
+        }
+    }
+    return cleaned;
+}
+
 /* 
     Backup Logic
 */
+
 export async function exportStateBackup() {
     if (!stateRef) return;
     const dataToBackup = extractSavableStateForLocalStorage();
