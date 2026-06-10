@@ -52,7 +52,24 @@ document.addEventListener('DOMContentLoaded', init);
 async function init() {
     console.log("HTML page initialized successfully");
 
-    initPersistence(AppState, tracks);
+    const trackHydratorRule = async (leanTrack) => {
+        const trackCalendarEvents = {};
+        
+        const calculatedSchedule = await generateStudyCalendar({
+            trackSettings: leanTrack.trackSettings || leanTrack.settings,
+            bookSequence: leanTrack.bookSequence,
+            studyStatusOverrides: leanTrack.studyStatusOverrides,
+            calendarEvents: trackCalendarEvents
+        });
+
+        return {
+            ...leanTrack,
+            calendarEvents: trackCalendarEvents,
+            studySchedule: calculatedSchedule
+        };
+    };
+
+    initPersistence(AppState, tracks, trackHydratorRule);
 
     await loadFromLocalStorage();
 

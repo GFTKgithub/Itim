@@ -3,17 +3,16 @@ import { doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/10.12.0/
 
 import { getActiveTrack } from './track.js';
 
-// Temporary
-import { generateStudyCalendar } from './scheduler.js';
-
 let stateRef = null;
 let tracksRef = [];
+let hydrateTrackFn = null;
 
 const STORAGE_KEY = 'itim_app_state';
 
-export function initPersistence(AppState, tracks) {
+export function initPersistence(AppState, tracks, trackHydrator) {
     stateRef = AppState;
     tracksRef = tracks;
+    hydrateTrackFn = trackHydrator;
 }
 
 // Helper to strip ONLY studySchedule, keeping the other configuration arguments intact
@@ -83,24 +82,18 @@ async function applyParsedState(parsed) {
 
     const leanTracks = safeParsed.tracks || [];
     
-    // Use Promise.all to map async operations correctly
+    // Process every track using the rule given to us by our main application environment
     const hydratedTracks = await Promise.all(leanTracks.map(async (track) => {
-        // Reconstruct calendarEvents as an empty object. 
-        // ensureCalendarEvents() will auto-populate it with only the years this track needs!
-        const trackCalendarEvents = {}; 
-
-        const calculatedSchedule = await generateStudyCalendar({
-            trackSettings: track.settings,
-            bookSequence: track.bookSequence,
-            studyStatusOverrides: track.studyStatusOverrides,
-            calendarEvents: trackCalendarEvents
-        });
-
-        return {
-            ...track,
-            calendarEvents: trackCalendarEvents,
-            studySchedule: calculatedSchedule
-        };
+        if (typeof hydrateTrackFn === 'function') {
+            try {
+                // Execute whatever custom function was injected
+                return await hydrateTrackFn(track); 
+            } catch (err) {
+                console.error("Error hydrating track via injected function:", err);
+            }
+        }
+        // Fallback profile if no hydrator was passed or if it failed
+        return { ...track, calendarEvents: {}, studySchedule: [] };
     }));
     
     const parsedActiveTrack = getActiveTrack(safeParsed, hydratedTracks);
