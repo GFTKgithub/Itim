@@ -704,11 +704,11 @@ export function setupCloudAuth({ onRegister, onLogin, onLogout, onFetchData }) {
                 { label: "סיסמה", type: "password", name: "password", placeholder: "••••••••" }
             ]
         });
-
+    
         if (credentials && credentials.email && credentials.password) {
             const email = credentials.email.trim();
             const password = credentials.password;
-
+    
             if (isLogin) {
                 if (onLogin) onLogin(email, password);
             } else {

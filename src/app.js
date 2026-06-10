@@ -22,13 +22,8 @@ import {
 } from './setup.js';
 
 // Firebase
-import { auth, getFriendlyErrorMessage } from './firebase-config.js';
-import {
-    createUserWithEmailAndPassword,
-    signInWithEmailAndPassword,
-    signOut,
-    onAuthStateChanged
-} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+import { registerUser, loginUser, logoutUser, initAuthListener } from './services/auth.js'
+import { getFriendlyFirebaseErrorMessage } from './utils/errors.js';
 import { loadFromFirebase } from './persistence.js';
 
 const DEFAULT_USER_PREFERENCES = {
@@ -186,25 +181,27 @@ function setupMainPage() {
     // 1. Initialize the UI and capture the UI updater function
     const { updateAuthUI } = setupCloudAuth({
         onRegister: async (email, password) => {
-            if (!email || !password) return alert("נא להזין אימייל וסיסמה");
             try {
-                await createUserWithEmailAndPassword(auth, email, password);
+                await registerUser(email, password);
                 alert("החשבון נוצר וחובר בהצלחה!");
             } catch (err) {
-                alert(`שגיאת רישום: ${getFriendlyErrorMessage(err.code)}`);
+                console.error(err);
+                // If it's a validation error thrown manually, use its message. Otherwise, use Firebase's code.
+                const errorMsg = err.code ? getFriendlyFirebaseErrorMessage(err.code) : err.message;
+                alert(`שגיאת רישום: ${errorMsg}`); 
             }
         },
         
         onLogin: async (email, password) => {
             try { 
-                await signInWithEmailAndPassword(auth, email, password); 
+                await loginUser(email, password); 
             } catch (err) { 
-                alert(`שגיאת התחברות: ${getFriendlyErrorMessage(err.code)}`); 
+                alert(`שגיאת התחברות: ${getFriendlyFirebaseErrorMessage(err.code)}`); 
             }
         },
         
         onLogout: () => {
-            signOut(auth);
+            logoutUser();
         },
         
         onFetchData: async () => {
@@ -221,10 +218,9 @@ function setupMainPage() {
             }
         }
     });
-
-    // 2. Wire up your Firebase listener in the controller layer to update the UI
-    onAuthStateChanged(auth, (user) => {
-        const userEmail = user ? user.email : null;
+    
+    // 2. Wire up your Firebase listener via the auth service
+    initAuthListener((userEmail) => {
         updateAuthUI(userEmail);
     });
 }
