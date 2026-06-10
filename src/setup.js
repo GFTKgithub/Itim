@@ -4,6 +4,9 @@ import { HEBREW_MILESTONE_DATES, getNearestHebrewMilestone } from "./utils/dates
 import { showDialog } from "./ui/components.js";
 import { ContextMenuTemplates, showContextMenu } from "./ui/context-menu.js";
 
+// temporary
+import { renderDateLabels } from "./ui/track-config.js";
+
 // --- 1. Main Controls ---
 export function setupMainControls({ onGenerate, onAddNewTrack, onSwitchTrack, onAddToSequence, onClearSequence, onExportExcel, onExportICal}) {
     const select = document.getElementById('bookSelect');
@@ -121,6 +124,7 @@ export function setupSettings({ userPreferences, onUpdateUserPreference, onUpdat
 
     const handleDateChange = () => {
         onUpdateTrackSetting('startDate', startDateInput.value);
+        renderDateLabels(startDateInput.value)
     };
 
     startDateInput?.addEventListener('change', handleDateChange);
