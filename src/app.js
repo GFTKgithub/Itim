@@ -49,12 +49,12 @@ document.addEventListener('DOMContentLoaded', init);
 
 
 // Main page initiation function
-function init() {
+async function init() {
     console.log("HTML page initialized successfully");
 
     initPersistence(AppState, tracks);
 
-    loadFromLocalStorage();
+    await loadFromLocalStorage();
 
     if (tracks.length === 0) {
         console.log("No tracks found in storage. Creating default track.");
@@ -67,7 +67,7 @@ function init() {
     
     setupMainPage()
 
-    window.addEventListener('load', refreshTrackConfigPanel);
+    refreshTrackConfigPanel();
 }
 
 // Executes setup helpers for index.html

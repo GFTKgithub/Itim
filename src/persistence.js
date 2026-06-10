@@ -20,7 +20,7 @@ export function initPersistence(AppState, tracks) {
 function minimizeTracks(tracks) {
     return (tracks || []).map(track => {
         // Extract studySchedule out, and bundle everything else into leanTrack
-        const { studySchedule, ...leanTrack } = track;
+        const { studySchedule, calendarEvents, ...leanTrack } = track;
         return leanTrack; 
     });
 }
@@ -65,7 +65,7 @@ export async function loadFromLocalStorage() {
     try {
         const saved = localStorage.getItem(STORAGE_KEY);
         if (!saved) return;
-        applyParsedState(JSON.parse(saved));
+        await applyParsedState(JSON.parse(saved));
         console.log("State restored successfully from localStorage");
     } catch (e) {
         console.error("Error loading state from localStorage:", e);
@@ -73,7 +73,7 @@ export async function loadFromLocalStorage() {
 }
 
 // Helper to map parsed JSON data onto the active AppState references
-function applyParsedState(parsed) {
+async function applyParsedState(parsed) {
     if (!parsed) return;
 
     const safeParsed = {
@@ -83,26 +83,32 @@ function applyParsedState(parsed) {
 
     const leanTracks = safeParsed.tracks || [];
     
-    // 3. Rebuild studySchedule on the fly using the 4 arguments saved in the track
-    const hydratedTracks = leanTracks.map(track => {
+    // Use Promise.all to map async operations correctly
+    const hydratedTracks = await Promise.all(leanTracks.map(async (track) => {
+        // Reconstruct calendarEvents as an empty object. 
+        // ensureCalendarEvents() will auto-populate it with only the years this track needs!
+        const trackCalendarEvents = {}; 
+
+        const calculatedSchedule = await generateStudyCalendar({
+            trackSettings: track.settings,
+            bookSequence: track.bookSequence,
+            studyStatusOverrides: track.studyStatusOverrides,
+            calendarEvents: trackCalendarEvents
+        });
+
         return {
             ...track,
-
-            studySchedule: generateStudyCalendar(
-                track.settings,
-                track.bookSequence,
-                track.studyStatusOverrides,
-                track.calendarEvents
-            )
+            calendarEvents: trackCalendarEvents,
+            studySchedule: calculatedSchedule
         };
-    });
+    }));
     
     const parsedActiveTrack = getActiveTrack(safeParsed, hydratedTracks);
 
     if (parsedActiveTrack) {
         stateRef.activeTrackId = safeParsed.activeTrackId;
         
-        // Push the completely reconstructed tracks back into runtime memory
+        // Push fully complete data back into runtime memory pointers cleanly
         tracksRef.length = 0; 
         hydratedTracks.forEach(track => {
             tracksRef.push(track);
@@ -156,7 +162,7 @@ export async function loadFromFirebase() {
             const cloudData = docSnap.data().userData;
             if (cloudData) {
                 // 1. Apply to active runtime state
-                applyParsedState(cloudData);
+                await applyParsedState(cloudData);
                 // 2. Mirror it to local storage for offline PWA capabilities
                 localStorage.setItem(STORAGE_KEY, JSON.stringify(cloudData));
                 console.log("State synchronized from Firestore cloud successfully.");
@@ -232,7 +238,7 @@ export async function importStateBackup(event) {
         try {
             const parsed = JSON.parse(e.target.result);
 
-            if (!parsed.userPreferences && !parsed.trackSettings && !parsed.bookSequence && !parsed.studyStatusOverrides) {
+            if (!parsed.userPreferences && !parsed.settings && !parsed.bookSequence && !parsed.studyStatusOverrides) {
                 throw new Error("קובץ הגיבוי אינו תואם או פגום.");
             }
 
