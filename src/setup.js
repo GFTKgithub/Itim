@@ -699,20 +699,25 @@ export function setupCloudAuth({ onRegister, onLogin, onLogout, onFetchData }) {
             showCancel: true,
             confirmText: isLogin ? "התחבר" : "בצע הרשמה",
             cancelText: "חזור",
-            inputs: [
+            inputs: isLogin ? [
                 { label: "כתובת אימייל", type: "email", name: "email", placeholder: "you@example.com" },
                 { label: "סיסמה", type: "password", name: "password", placeholder: "••••••••" }
+            ] : [
+                { label: "כתובת אימייל", type: "email", name: "email", placeholder: "you@example.com" },
+                { label: "סיסמה", type: "password", name: "password", placeholder: "••••••••" },
+                { label: "כינוי (שם משתמש)", type: "text", name: "nickname", placeholder: "שם משתמש" }
             ]
         });
-    
+
         if (credentials && credentials.email && credentials.password) {
             const email = credentials.email.trim();
             const password = credentials.password;
-    
+            const nickname = credentials.nickname ? credentials.nickname.trim() : "";
+
             if (isLogin) {
                 if (onLogin) onLogin(email, password);
             } else {
-                if (onRegister) onRegister(email, password);
+                if (onRegister) onRegister(email, password, nickname);
             }
         }
     }

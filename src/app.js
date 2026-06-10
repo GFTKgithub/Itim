@@ -180,9 +180,9 @@ function setupMainPage() {
 
     // 1. Initialize the UI and capture the UI updater function
     const { updateAuthUI } = setupCloudAuth({
-        onRegister: async (email, password) => {
+        onRegister: async (email, password, nickname) => {
             try {
-                await registerUser(email, password);
+                await registerUser(email, password, nickname);
                 alert("החשבון נוצר וחובר בהצלחה!");
             } catch (err) {
                 console.error(err);
