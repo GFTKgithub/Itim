@@ -3,6 +3,8 @@ import { doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/10.12.0/
 
 import { getActiveTrack } from './track.js';
 
+// Temporary
+import { generateStudyCalendar } from './scheduler.js';
 
 let stateRef = null;
 let tracksRef = [];
@@ -14,12 +16,21 @@ export function initPersistence(AppState, tracks) {
     tracksRef = tracks;
 }
 
+// Helper to strip ONLY studySchedule, keeping the other configuration arguments intact
+function minimizeTracks(tracks) {
+    return (tracks || []).map(track => {
+        // Extract studySchedule out, and bundle everything else into leanTrack
+        const { studySchedule, ...leanTrack } = track;
+        return leanTrack; 
+    });
+}
+
 // Helper to grab only the user-affected state data for LocalStorage
 function extractSavableStateForLocalStorage() {
     return {
         userPreferences: stateRef.userPreferences,
         activeTrackId: stateRef.activeTrackId,
-        tracks: tracksRef
+        tracks: minimizeTracks(tracksRef)
     };
 }
 
@@ -29,7 +40,7 @@ function extractSavableStateForFirebase() {
 
     const payload = {
         activeTrackId: stateRef.activeTrackId ?? null,
-        tracks: tracksRef || []
+        tracks: minimizeTracks(tracksRef)
     };
 
     // If syncing is enabled locally, attach the stripped preferences to the payload
@@ -65,28 +76,38 @@ export async function loadFromLocalStorage() {
 function applyParsedState(parsed) {
     if (!parsed) return;
 
-    // Fallback missing userPreferences to an empty object to prevent downstream crashes
     const safeParsed = {
         ...parsed,
         userPreferences: parsed.userPreferences || {}
     };
 
-    const parsedTracks = safeParsed.tracks || [];
+    const leanTracks = safeParsed.tracks || [];
     
-    // Pass the safe parsed object with guaranteed userPreferences block
-    const parsedActiveTrack = getActiveTrack(safeParsed, parsedTracks);
+    // 3. Rebuild studySchedule on the fly using the 4 arguments saved in the track
+    const hydratedTracks = leanTracks.map(track => {
+        return {
+            ...track,
+
+            studySchedule: generateStudyCalendar(
+                track.settings,
+                track.bookSequence,
+                track.studyStatusOverrides,
+                track.calendarEvents
+            )
+        };
+    });
+    
+    const parsedActiveTrack = getActiveTrack(safeParsed, hydratedTracks);
 
     if (parsedActiveTrack) {
-        // 1. Force the global AppState references to update cleanly
         stateRef.activeTrackId = safeParsed.activeTrackId;
         
-        // 2. Clear out the old track data without breaking the array reference
+        // Push the completely reconstructed tracks back into runtime memory
         tracksRef.length = 0; 
-        parsedTracks.forEach(track => {
+        hydratedTracks.forEach(track => {
             tracksRef.push(track);
         });
 
-        // 3. Handle global user preferences safely
         stateRef.userPreferences = { 
             ...stateRef.userPreferences, 
             ...safeParsed.userPreferences 
