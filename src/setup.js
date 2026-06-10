@@ -704,8 +704,8 @@ export function setupCloudAuth({ onRegister, onLogin, onLogout, onFetchData }) {
                 { label: "סיסמה", type: "password", name: "password", placeholder: "••••••••" }
             ] : [
                 { label: "כתובת אימייל", type: "email", name: "email", placeholder: "you@example.com" },
-                { label: "סיסמה", type: "password", name: "password", placeholder: "••••••••" },
-                { label: "כינוי (שם משתמש)", type: "text", name: "nickname", placeholder: "שם משתמש" }
+                { label: "כינוי (שם משתמש)", type: "text", name: "nickname", placeholder: "שם משתמש" },
+                { label: "סיסמה", type: "password", name: "password", placeholder: "••••••••" }
             ]
         });
 
