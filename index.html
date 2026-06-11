@@ -240,7 +240,7 @@
 
             <div class="flex-1 overflow-y-auto p-4 sm:p-6 space-y-6">
                 
-                <div class="bg-slate-50 p-4 rounded-xl border border-slate-200 font-sans">
+                <div class="bg-slate-50 p-4 rounded-xl border border-slate-200 font-sans space-y-4">
                     <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 max-w-4xl mx-auto">
                         
                         <div class="flex flex-col bg-white p-3 sm:p-4 rounded-xl border border-slate-200/80 shadow-sm">
@@ -310,6 +310,44 @@
                                 class="w-full h-11 border border-amber-200/80 rounded-lg px-3 text-sm font-bold text-amber-900 bg-white focus:border-amber-500 focus:ring-2 focus:ring-amber-100 transition-all mt-auto">
                         </div>
                         
+                    </div>
+
+                    <div class="border-t border-slate-200/60 pt-3 max-w-4xl mx-auto flex flex-wrap items-center justify-between gap-2 bg-slate-50/50 p-2 rounded-xl border border-slate-200/40">
+                        <div class="text-xs font-bold text-slate-500 tracking-wide shrink-0">
+                            טווח לימוד:
+                        </div>
+                        
+                        <div class="flex flex-wrap items-center gap-2 xs:gap-3 sm:gap-4">
+                            
+                            <div class="flex items-center gap-1.5 shrink-0">
+                                <span class="text-xs text-slate-400 font-medium">מדף</span>
+                                <div class="flex items-center gap-0.5">
+                                    <select id="bookConfigStartDaf" class="h-7 min-w-[55px] border border-slate-200 rounded-md bg-white text-xs font-bold text-slate-800 focus:border-blue-500 px-1 cursor-pointer"></select>
+                                    <select id="bookConfigStartAmud" class="h-7 border border-slate-200 rounded-md bg-white text-xs font-bold text-slate-800 focus:border-blue-500 px-1 cursor-pointer">
+                                        <option value="a">א׳</option>
+                                        <option value="b">ב׳</option>
+                                    </select>
+                                </div>
+                            </div>
+                            
+                            <div class="text-slate-300 hidden xs:block shrink-0">
+                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M15 19l-7-7 7-7"></path>
+                                </svg>
+                            </div>
+                            
+                            <div class="flex items-center gap-1.5 shrink-0">
+                                <span class="text-xs text-slate-400 font-medium">עד דף</span>
+                                <div class="flex items-center gap-0.5">
+                                    <select id="bookConfigEndDaf" class="h-7 min-w-[55px] border border-slate-200 rounded-md bg-white text-xs font-bold text-slate-800 focus:border-blue-500 px-1 cursor-pointer"></select>
+                                    <select id="bookConfigEndAmud" class="h-7 border border-slate-200 rounded-md bg-white text-xs font-bold text-slate-800 focus:border-blue-500 px-1 cursor-pointer">
+                                        <option value="a">א׳</option>
+                                        <option value="b" selected>ב׳</option>
+                                    </select>
+                                </div>
+                            </div>
+                    
+                        </div>
                     </div>
                 </div>
 

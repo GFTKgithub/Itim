@@ -4,6 +4,9 @@ import { HEBREW_MILESTONE_DATES, getNearestHebrewMilestone } from "./utils/dates
 import { showDialog } from "./ui/components.js";
 import { ContextMenuTemplates, showContextMenu } from "./ui/context-menu.js";
 
+import { getTotalAmudim } from "./utils/talmud.js";
+import { numberToHebrew } from "./utils/gematria.js";
+
 // temporary
 import { renderDateLabels } from "./ui/track-config.js";
 
@@ -386,6 +389,62 @@ export function setupBookConfigModal({ getSchedule, getBookSequence, getBookRang
     const configPaceInput = document.getElementById('bookConfigPaceInput');
     const configTargetDateInput = document.getElementById('bookConfigTargetDateInput');
 
+    // Range Bound Elements
+    const startDafSelect = document.getElementById('bookConfigStartDaf');
+    const startAmudSelect = document.getElementById('bookConfigStartAmud');
+    const endDafSelect = document.getElementById('bookConfigEndDaf');
+    const endAmudSelect = document.getElementById('bookConfigEndAmud');
+
+    // Reactively populates the bounds select structures matching specific book depths
+    function populateRangeDropdowns(totalAmudim) {
+        if (!startDafSelect || !endDafSelect) return;
+
+        startDafSelect.innerHTML = '';
+        endDafSelect.innerHTML = '';
+
+        // Loop through the pages numerically. 
+        // Talmud always starts at Daf 2 (index 0 = Daf 2 Amud A, index 1 = Daf 2 Amud B)
+        for (let i = 0; i < totalAmudim; i += 2) {
+            const dafNumber = Math.floor(i / 2) + 2;
+            const dafHeb = numberToHebrew(dafNumber); // Direct, clean gematria conversion (e.g., "ב׳")
+
+            const optStart = new Option(dafHeb, dafHeb);
+            const optEnd = new Option(dafHeb, dafHeb);
+            startDafSelect.add(optStart);
+            endDafSelect.add(optEnd);
+        }
+    }
+
+    // Helper mapping selected dropdown states back into global array index values
+    function getSelectedIndices() {
+        const uniqueDafList = [];
+        const opts = startDafSelect.options;
+        for (let i = 0; i < opts.length; i++) uniqueDafList.push(opts[i].value);
+
+        const startDafIdx = uniqueDafList.indexOf(startDafSelect.value);
+        const endDafIdx = uniqueDafList.indexOf(endDafSelect.value);
+
+        const startAmudIdx = (startDafIdx * 2) + (startAmudSelect.value === 'b' ? 1 : 0);
+        const endAmudIdx = (endDafIdx * 2) + (endAmudSelect.value === 'b' ? 1 : 0);
+
+        return { startAmudIdx, endAmudIdx };
+    }
+
+    // Range guard constraint system to prevent backward selections
+    function validateRangeConstraints() {
+        const { startAmudIdx, endAmudIdx } = getSelectedIndices();
+        if (startAmudIdx > endAmudIdx) {
+            // Force end point to snap back onto start boundary limit safely
+            endDafSelect.value = startDafSelect.value;
+            endAmudSelect.value = startAmudSelect.value;
+        }
+    }
+
+    startDafSelect?.addEventListener('change', validateRangeConstraints);
+    startAmudSelect?.addEventListener('change', validateRangeConstraints);
+    endDafSelect?.addEventListener('change', validateRangeConstraints);
+    endAmudSelect?.addEventListener('change', validateRangeConstraints);
+
     // Dynamic Visibility Toggle Engine for Modal Inputs
     function toggleModalFields(method) {
         if (method === 'targetDate') {
@@ -446,6 +505,27 @@ export function setupBookConfigModal({ getSchedule, getBookSequence, getBookRang
         document.getElementById('bookConfigModalTitle').innerText = `הגדרות מסכת ${bookName}`;
         document.getElementById('bookConfigReviewDays').value = book.reviewDays || 0;
 
+        // Populate range controls matching current pool size limits
+        const totalAmudimCount = getTotalAmudim(bookName);
+        populateRangeDropdowns(totalAmudimCount);
+
+        // Load existing custom range state if bounds are present
+        const savedStartAmudIdx = book.startAmudIdx !== undefined ? book.startAmudIdx : 0;
+        const savedEndAmudIdx = book.endAmudIdx !== undefined ? book.endAmudIdx : (totalAmudimCount - 1);
+
+        // Convert saved indices directly to clean gematria text values (Talmud always starts at Daf 2)
+        const startDafHeb = numberToHebrew(Math.floor(savedStartAmudIdx / 2) + 2);
+        const startAmudVal = (savedStartAmudIdx % 2 === 1) ? 'b' : 'a';
+
+        const endDafHeb = numberToHebrew(Math.floor(savedEndAmudIdx / 2) + 2);
+        const endAmudVal = (savedEndAmudIdx % 2 === 1) ? 'b' : 'a';
+
+        // Update the dropdown selections to match the loaded values
+        if (startDafSelect) startDafSelect.value = startDafHeb;
+        if (startAmudSelect) startAmudSelect.value = startAmudVal;
+        if (endDafSelect) endDafSelect.value = endDafHeb;
+        if (endAmudSelect) endAmudSelect.value = endAmudVal;
+
         // --- ENFORCE SYNCHRONOUS CONSTRAINTS ---
         const limits = getBookRangeLimits(currentEditingIndex);
         if (configTargetDateInput && limits.minDate) {
@@ -469,7 +549,7 @@ export function setupBookConfigModal({ getSchedule, getBookSequence, getBookRang
         toggleModalFields(savedMethod);
 
         tempAmudStates = (!book.amudStates || book.amudStates.length === 0) 
-            ? new Array(120).fill(0) 
+            ? new Array(totalAmudimCount).fill(0) 
             : [...book.amudStates];
 
         currentDaySlots = computeDaySlots(currentSchedule, bookName, currentEditingIndex, currentBookSequence);
@@ -529,11 +609,21 @@ export function setupBookConfigModal({ getSchedule, getBookSequence, getBookRang
 
     document.getElementById('saveConfigBtn')?.addEventListener('click', () => {
         const reviewDays = parseInt(document.getElementById('bookConfigReviewDays').value, 10) || 0;
+        const calcMethod = configCalcMethod ? configCalcMethod.value : 'pace';
+        const paceValue = configPaceInput ? parseFloat(configPaceInput.value) : 1;
+        const targetDate = configTargetDateInput ? configTargetDateInput.value : '';
+        const { startAmudIdx, endAmudIdx } = getSelectedIndices();
         
         onSaveConfig({
             index: currentEditingIndex,
+            calcMethod: calcMethod,
+            paceValue: paceValue,
+            targetDate: targetDate,
             reviewDays: reviewDays,
-            amudStates: [...tempAmudStates]
+            amudStates: [...tempAmudStates],
+            // Append explicit boundary limits to storage models downstream
+            startAmudIdx: startAmudIdx,
+            endAmudIdx: endAmudIdx
         });
 
         configModal.classList.add('hidden');

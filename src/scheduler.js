@@ -49,14 +49,19 @@ export async function generateStudyTimeline({ trackSettings, bookSequence, study
 
     let comprehensiveTimeline = [];
 
-    // Step 1 & 2: Process sequentially book-by-book
     for (let i = 0; i < bookSequence.length; i++) {
         let entry = bookSequence[i];
         
-        // Normalize book to object wrapper structure
-        const bookObj = typeof entry === 'string' ? { name: entry, calcMethod: 'pace', paceValue: 1, reviewDays: 0 } : entry;
+        // Normalize book to object wrapper structure with fallback to entire book bounds
+        const bookObj = typeof entry === 'string' 
+            ? { name: entry, calcMethod: 'pace', paceValue: 1, reviewDays: 0, startAmudIdx: 0, endAmudIdx: getTotalAmudim(entry) - 1 } 
+            : { 
+                ...entry, 
+                startAmudIdx: entry.startAmudIdx !== undefined ? entry.startAmudIdx : 0, 
+                endAmudIdx: entry.endAmudIdx !== undefined ? entry.endAmudIdx : (getTotalAmudim(entry.name) - 1) 
+              };
         
-        // Build isolated single-book amud pool sequence layout
+        // Build isolated single-book amud pool sequence layout restricted to custom bounds
         const singleBookPool = buildMasterAmudPool([bookObj]); 
 
         // Ensure localized cache frames for the current date boundaries are available 
@@ -80,7 +85,6 @@ export async function generateStudyTimeline({ trackSettings, bookSequence, study
         }
     }
 
-    // Step 3: Map textual progress onto active days
     const studyTimeline = [];
     let bookPointers = {}; 
 
@@ -104,20 +108,21 @@ export async function generateStudyTimeline({ trackSettings, bookSequence, study
         };
 
         if (day.isRestDay) {
-            if (day.overrideState === 1) {
-                dayData.content = "הפסקה";
-            } else if (checkIsBeinHazmanim(day.date)) {
-                dayData.content = "בין הזמנים";
-            } else {
-                dayData.content = "";
-            }
+            if (day.overrideState === 1) dayData.content = "הפסקה";
+            else if (checkIsBeinHazmanim(day.date)) dayData.content = "בין הזמנים";
+            else dayData.content = "";
         } else if (day.isReviewDay) {
             dayData.content = "חזרה";
         } else if (day.amudimToCount > 0) {
             const bKey = `${day.targetBook}_${day.bookIndex ?? 0}`;
             if (bookPointers[bKey] === undefined) bookPointers[bKey] = 0;
 
-            const targetPool = buildMasterAmudPool([{ name: day.targetBook }]); 
+            // Resolve the current entry bounds from bookSequence to align tracking markers
+            const currentEntry = bookSequence[day.bookIndex];
+            const startAmudIdx = (currentEntry && currentEntry.startAmudIdx !== undefined) ? currentEntry.startAmudIdx : 0;
+            const endAmudIdx = (currentEntry && currentEntry.endAmudIdx !== undefined) ? currentEntry.endAmudIdx : (getTotalAmudim(day.targetBook) - 1);
+
+            const targetPool = buildMasterAmudPool([{ name: day.targetBook, startAmudIdx, endAmudIdx }]); 
             let pointer = bookPointers[bKey];
 
             if (pointer < targetPool.length) {
@@ -131,8 +136,8 @@ export async function generateStudyTimeline({ trackSettings, bookSequence, study
 
                 dayData.pages = day.amudimToCount / 2;
 
-                const totalAmudimForThisTrack = getTotalAmudim(day.targetBook);
-                if (endAmud.amudIdx === totalAmudimForThisTrack - 1) {
+                // Siyum occurs when reaching the defined end limit for this run
+                if (endAmud.amudIdx === endAmudIdx) {
                     dayData.isSiyum = true;
                 }
 
@@ -327,25 +332,19 @@ function generatePaceTimeline(startDate, bookObj, singleBookPool, studyStatusOve
 */
 
 // Builds a flat master pool of all amudim across the selected books, starting from the specified daf/amud if given.
-function buildMasterAmudPool(bookSequence, startDaf, startAmud) {
+function buildMasterAmudPool(bookSequence) {
     if (!bookSequence || bookSequence.length === 0) return [];
     
     let masterAmudPool = [];
     bookSequence.forEach((entry, idx) => {
         const name = typeof entry === 'string' ? entry : entry.name;
+        
+        // Extract boundaries if explicit object configs exist
+        let startIdx = (entry && entry.startAmudIdx !== undefined) ? entry.startAmudIdx : 0;
+        let endIdx = (entry && entry.endAmudIdx !== undefined) ? entry.endAmudIdx : (getTotalAmudim(name) - 1);
 
-        let startIdx = 0;
-        if (idx === 0 && startDaf) {
-            const startDafHeb = startDaf.trim();
-            if (startDafHeb) {
-                startIdx = Math.max(0, (hebrewToNumber(startDafHeb) * 2) - 4);
-                if (startAmud === "ב") startIdx += 1;
-            }
-        }
-
-        const totalAmudim = getTotalAmudim(name);
-        for (let i = startIdx; i < totalAmudim; i++) {
-            masterAmudPool.push({ book: name, amudIdx: i, bookIdx: idx });
+        for (let i = startIdx; i <= endIdx; i++) {
+            masterAmudPool.push({ book: name, amudIdx: i, bookIdx: entry.bookIdx ?? idx });
         }
     });
     return masterAmudPool;

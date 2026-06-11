@@ -168,18 +168,22 @@ function setupMainPage() {
         updateModalProgressStats: updateModalProgressStats, // Pass it down
 
         // Handle the data adjustments and app side-effects here
-        onSaveConfig: ({ index, reviewDays, amudStates }) => {
+        onSaveConfig: ({ index, calcMethod, paceValue, targetDate, reviewDays, amudStates, startAmudIdx, endAmudIdx }) => {
             let book = activeTrack.bookSequence[index];
             if (typeof book === 'string') {
                 book = { name: book };
             }
             
-            // Capture values from the modal elements
-            book.reviewDays = parseInt(reviewDays, 10) || 0;
+            // Capture all calculation settings packaged from the configuration modal fields
+            book.calcMethod = calcMethod;
+            book.paceValue = paceValue;
+            book.targetDate = targetDate;
+            book.reviewDays = reviewDays;
             book.amudStates = amudStates || [];
-            book.calcMethod = document.getElementById('bookConfigCalcMethod').value;
-            book.paceValue = parseFloat(document.getElementById('bookConfigPaceInput').value) || 1;
-            book.targetDate = document.getElementById('bookConfigTargetDateInput').value;
+            
+            // Persist the user-defined boundaries safely into the track sequence store
+            book.startAmudIdx = startAmudIdx;
+            book.endAmudIdx = endAmudIdx;
         
             activeTrack.bookSequence[index] = book;
         
@@ -191,7 +195,7 @@ function setupMainPage() {
         onStudyStatusOverride: (date) => {
             handleStudyStatusOverride(date);
         }
-    });
+    });;
     
     setupCalendarContextMenus();
 
