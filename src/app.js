@@ -12,7 +12,9 @@ import { initPersistence, saveState, loadFromLocalStorage, exportStateBackup, im
 import { exportScheduleToExcel, exportScheduleToICal } from './exports.js';
 
 import {
-    setupMainControls,
+    setupActionDock,
+    setupBookSequence,
+    setupTrackSelector,
     setupBackupManagement,
     setupSettings,
     setupBookSequenceDragAndDrop,
@@ -89,10 +91,12 @@ async function init() {
 
 // Executes setup helpers for index.html
 function setupMainPage() {
-    setupMainControls({
-        onGenerate: handleScheduleGeneration,
+    setupTrackSelector({
         onAddNewTrack: async (name) => await handleAddNewTrack(name),
-        onSwitchTrack: async (trackId) => handleSwitchTrack(trackId),
+        onSwitchTrack: async (trackId) => await handleSwitchTrack(trackId)
+    });
+
+    setupBookSequence({
         onAddToSequence: () => { 
             activeTrack.bookSequence = addToSequence(activeTrack.bookSequence);
             saveState();
@@ -101,7 +105,11 @@ function setupMainPage() {
             activeTrack.bookSequence = await clearSequence(activeTrack.bookSequence);
             saveState();
             handleScheduleGeneration();
-        },
+        }
+    });
+
+    setupActionDock({
+        onGenerate: handleScheduleGeneration,
         onExportExcel: () => exportScheduleToExcel(activeTrack.studySchedule),
         onExportICal: () => exportScheduleToICal(activeTrack.studySchedule)
     });

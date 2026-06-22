@@ -10,53 +10,41 @@ import { numberToHebrew } from "./utils/gematria.js";
 // temporary
 import { renderDateLabels } from "./ui/track-config.js";
 
-// --- 1. Main Controls ---
-export function setupMainControls({ onGenerate, onAddNewTrack, onSwitchTrack, onAddToSequence, onClearSequence, onExportExcel, onExportICal}) {
-    const select = document.getElementById('bookSelect');
-    const generateBtn = document.getElementById('generateBtn');
-    const addToSequenceBtn = document.getElementById('addToSequenceBtn');
-    const clearSequenceBtn = document.getElementById('clearSequenceBtn');
-    const icalBtn = document.getElementById('exportToICalBtn');
-    const exportBtn = document.getElementById('exportToExcelBtn');
-    const printBtn = document.getElementById('printBtn');
-    
-    // Handle the "Add New Track" button click to create a new track based on the selected masechet
-    document.getElementById('addNewTrackBtn').addEventListener('click', async () => {
+// --- Track Selector Component ---
+export function setupTrackSelector({ onAddNewTrack, onSwitchTrack }) {
+    const newTrackBtn = document.getElementById('addNewTrackBtn');
+    const trackDropdown = document.getElementById('trackSelectDropdown');
+
+    newTrackBtn?.addEventListener('click', async () => {
         const inputInput = document.getElementById('newTrackNameInput');
-        const name = inputInput.value;
+        const name = inputInput?.value;
         
         await onAddNewTrack(name);
         
-        inputInput.value = ""; 
+        if (inputInput) inputInput.value = ""; 
     });
     
-    // Handle track switching from the dropdown
-    document.getElementById('trackSelectDropdown').addEventListener('change', async (e) => {
+    trackDropdown?.addEventListener('change', async (e) => {
         const selectedTrackId = e.target.value;
-
-        onSwitchTrack(selectedTrackId);
+        await onSwitchTrack(selectedTrackId);
     });
+}
 
-    talmud_bavli_masechtot.forEach(m => {
-        const opt = document.createElement('option');
-        opt.value = m.name;
-        opt.innerText = m.name;
-        select.appendChild(opt);
-    });
+// --- Book Sequence Component ---
+export function setupBookSequence({ onAddToSequence, onClearSequence }) {
+    const select = document.getElementById('bookSelect');
+    const addToSequenceBtn = document.getElementById('addToSequenceBtn');
+    const clearSequenceBtn = document.getElementById('clearSequenceBtn');
 
-    generateBtn?.addEventListener('click', async () => {
-        // 1. Tell the controller to generate the schedule and wait for it to finish
-        await onGenerate();
-        
-        // 2. Pure UI Behavior: Handle smooth scrolling locally
-        const listContainer = document.getElementById('bookSequenceList');
-        if (listContainer && listContainer.children.length > 0) {
-            document.getElementById('calendarContainer')?.scrollIntoView({ 
-                behavior: 'smooth', 
-                block: 'start' 
-            });
-        }
-    });
+    // Populate dropdown with Talmud Bavli volumes if global array exists
+    if (select && typeof talmud_bavli_masechtot !== 'undefined') {
+        talmud_bavli_masechtot.forEach(m => {
+            const opt = document.createElement('option');
+            opt.value = m.name;
+            opt.innerText = m.name;
+            select.appendChild(opt);
+        });
+    }
 
     addToSequenceBtn?.addEventListener('click', () => {
         onAddToSequence();
@@ -64,6 +52,26 @@ export function setupMainControls({ onGenerate, onAddNewTrack, onSwitchTrack, on
 
     clearSequenceBtn?.addEventListener('click', () => {
         onClearSequence();
+    });
+}
+
+// --- Action Dock Component ---
+export function setupActionDock({ onGenerate, onExportExcel, onExportICal }) {
+    const generateBtn = document.getElementById('generateBtn');
+    const icalBtn = document.getElementById('exportToICalBtn');
+    const exportBtn = document.getElementById('exportToExcelBtn');
+    const printBtn = document.getElementById('printBtn');
+    
+    generateBtn?.addEventListener('click', async () => {
+        await onGenerate();
+        
+        const listContainer = document.getElementById('bookSequenceList');
+        if (listContainer && listContainer.children.length > 0) {
+            document.getElementById('calendarContainer')?.scrollIntoView({ 
+                behavior: 'smooth', 
+                block: 'start' 
+            });
+        }
     });
 
     icalBtn?.addEventListener('click', () => {
@@ -77,7 +85,7 @@ export function setupMainControls({ onGenerate, onAddNewTrack, onSwitchTrack, on
     printBtn?.addEventListener('click', () => window.print());
 }
 
-// --- 2. Backup Management ---
+// --- Backup Management ---
 export function setupBackupManagement({onExport, onImport, onResetSettings, onResetStudyStatusOverrides}) {
     const backupExportBtn = document.getElementById('backupExportBtn');
     const backupImportBtn = document.getElementById('backupImportBtn');
@@ -92,7 +100,7 @@ export function setupBackupManagement({onExport, onImport, onResetSettings, onRe
     resetStudyStatusOverridesBtn?.addEventListener('click', onResetStudyStatusOverrides);
 }
 
-// --- 3. Settings Synchronization ---
+// --- Settings Synchronization ---
 export function setupSettings({ userPreferences, onUpdateUserPreference, onUpdateTrackSetting, onGenerate, onSyncToToday }) {
     const calendarSystem = document.getElementById('calendarSystem');
     const includeHolidaysInput = document.getElementById('includeHolidaysInput');
@@ -229,7 +237,7 @@ export function setupSettings({ userPreferences, onUpdateUserPreference, onUpdat
     });
 }
 
-// --- 4. Book Sequence Drag and Drop Interaction ---
+// --- Book Sequence Drag and Drop Interaction ---
 export function setupBookSequenceDragAndDrop({ onReorder, onRemove }) {
     const bookSequenceList = document.getElementById('bookSequenceList');
     if (!bookSequenceList) return;
@@ -370,7 +378,7 @@ export function setupBookSequenceDragAndDrop({ onReorder, onRemove }) {
     });
 }
 
-// --- 5. Book Config Modal ---
+// --- Book Config Modal ---
 export function setupBookConfigModal({ getSchedule, getBookSequence, getBookRangeLimits, computeDaySlots, renderAmudGrid, renderDailyView, updateModalProgressStats, onSaveConfig, onStudyStatusOverride }) {
     let currentEditingIndex = null;
     let tempAmudStates = [];
@@ -693,7 +701,7 @@ export function setupBookConfigModal({ getSchedule, getBookSequence, getBookRang
     });
 }
 
-// --- 6. Cloud Authentication ---
+// --- Cloud Authentication ---
 export function setupCloudAuth({ onRegister, onLogin, onLogout, onFetchData }) {
     let currentLoggedUserEmail = null;
 
@@ -866,7 +874,7 @@ export function setupCloudAuth({ onRegister, onLogin, onLogout, onFetchData }) {
     return { updateAuthUI };
 }
 
-// --- 7. Calendar Grid Context Menu ---
+// --- Calendar Grid Context Menu ---
 export function setupCalendarContextMenus() {
     const container = document.getElementById('calendarContainer');
     if (!container) return;
