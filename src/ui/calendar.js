@@ -35,14 +35,14 @@ function createDayHTML(day, state, mainDateDisplay, secondaryDateDisplay) {
     let dayBgClass = '';
     if (day.isSiyum) {
         dayBgClass = 'siyum-bg bg-amber-50 border-amber-400 shadow-inner';
+    } else if (state === 1 || state === 2) {
+        dayBgClass = statusClass; 
     } else if (day.isShabbat) {
         dayBgClass = 'shabbat-bg';
     } else if (day.isHoliday) {
         dayBgClass = 'holiday-bg';
     } else if (day.isReviewDay) {
         dayBgClass = 'review-bg';
-    } else {
-        dayBgClass = statusClass;
     }
 
     // 3. Prepare component snippets
