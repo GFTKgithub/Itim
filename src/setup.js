@@ -908,3 +908,23 @@ export function setupCalendarContextMenus() {
         showContextMenu(event, menuItems);
     });
 }
+
+// --- Calendar View Mode Toggle ---
+export function setupViewModeToggle({ onGenerate, onUpdateUserPreference, onUpdateViewToggle, getCalendarViewMode }) {
+    const toggleBtn = document.getElementById('toggleCalendarViewModeBtn');
+    if (!toggleBtn) return;
+
+    toggleBtn.addEventListener('click', () => {
+        const currentMode = getCalendarViewMode() || 'paginated';
+        const nextMode = currentMode === 'paginated' ? 'continuous' : 'paginated';
+        
+        // Save the setting using the correct preference key
+        onUpdateUserPreference('calendarViewMode', nextMode);
+        
+        // Update the button's icon and label with the new mode
+        onUpdateViewToggle(nextMode);
+        
+        // Redraw the calendar with the new view strategy
+        onGenerate();
+    });
+}

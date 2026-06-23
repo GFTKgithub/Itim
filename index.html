@@ -206,6 +206,18 @@
             </div>
         </div>
 
+        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 bg-slate-50 p-4 rounded-2xl border border-slate-200/80 mb-6 select-none no-print" dir="rtl">
+            <div class="flex items-center gap-2">
+                <span class="text-xl">📅</span>
+                <h3 class="text-md font-bold text-slate-800">תצוגת לוח הלימוד</h3>
+            </div>
+            <button id="toggleCalendarViewModeBtn" 
+                class="w-full sm:w-auto bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 font-bold px-4 py-2.5 rounded-xl shadow-sm transition-all active:scale-95 flex items-center justify-center gap-2 text-sm">
+                <span id="toggleViewIcon">📄</span>
+                <span id="toggleViewText">הצג את כל החודשים ברצף</span>
+            </button>
+        </div>
+
         <div id="calendarContainer" class="space-y-12 mb-24"></div>
 
         <div id="action-dock" class="fixed bottom-0 left-0 w-full bg-white/60 backdrop-blur-md border-t border-slate-200 flex gap-3 md:gap-4 justify-center py-4 hidden select-none no-print z-50 shadow-lg">

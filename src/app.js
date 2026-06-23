@@ -4,7 +4,7 @@ import { talmud_bavli_masechtot } from './data.js';
 import { hydrateHtmlFromAppState, updateBookSequenceUI, renderDateLabels, renderTrackSwitcher } from './ui/track-config.js';
 import { renderAmudGrid, renderDailyView, updateModalProgressStats } from './ui/book-config-modal.js';
 import { showDialog } from './ui/components.js';
-import { renderCalendar } from './ui/calendar.js';
+import { renderCalendar, updateCalendarViewToggle } from './ui/calendar.js';
 
 import { addToSequence, removeFromSequence, clearSequence } from './book-sequence.js';
 import { generateStudyCalendar, cycleStudyStatusOverride, computeDaySlots } from './scheduler.js';
@@ -20,7 +20,8 @@ import {
     setupBookSequenceDragAndDrop,
     setupBookConfigModal,
     setupCloudAuth,
-    setupCalendarContextMenus
+    setupCalendarContextMenus,
+    setupViewModeToggle
 } from './setup.js';
 
 // Firebase
@@ -30,12 +31,14 @@ import { loadFromFirebase } from './persistence.js';
 
 const DEFAULT_USER_PREFERENCES = {
     minimalCalendar: false,
+    calendarViewMode: 'paginated',
     syncUserPreferences: true
 }
 
 let AppState = {
     userPreferences: { ...DEFAULT_USER_PREFERENCES },       // User Preferences (with default values)
-    activeTrackId: null // To keep track of which track is currently active in the UI, for when multiple tracks are implemented in the future
+    activeTrackId: null, // To keep track of which track is currently active in the UI, for when multiple tracks are implemented in the future
+    activeMonthIndex: 0  // Tracks current page index for paginated calendar view mode
 }
 
 let activeTrack = null; // This will be dynamically set to the active track object based on activeTrackId, for easier access in the code.
@@ -207,6 +210,39 @@ function setupMainPage() {
     
     setupCalendarContextMenus();
 
+    setupViewModeToggle({
+        onGenerate: handleScheduleGeneration,
+        onUpdateUserPreference: handleUpdateUserPreference,
+        onUpdateViewToggle: updateCalendarViewToggle,
+        getCalendarViewMode: () => AppState.userPreferences.calendarViewMode
+    })
+
+    // Handle print: temporarily switch to continuous (all-months) mode so the printout shows everything
+    window.addEventListener('beforeprint', () => {
+        const calendarContainer = document.getElementById('calendarContainer');
+        if (!calendarContainer || !activeTrack.studySchedule || activeTrack.studySchedule.length === 0) return;
+
+        // Save the current view mode preference
+        window.__printRestoreViewMode = AppState.userPreferences?.calendarViewMode || 'paginated';
+
+        // Render all months for printing by forcing continuous mode just for the print
+        renderCalendar('calendarContainer', activeTrack.studySchedule, {
+            calendarSystem: activeTrack.settings.calendarSystem,
+            overrides: activeTrack.studyStatusOverrides,
+            isMinimal: AppState.userPreferences?.minimalCalendar === true || AppState.userPreferences?.minimalCalendar === 'true',
+            calendarViewMode: 'continuous',
+            activeMonthIndex: 0
+        });
+    });
+
+    window.addEventListener('afterprint', () => {
+        const restoreMode = window.__printRestoreViewMode || 'paginated';
+        
+        // Re-render the calendar in the original view mode
+        handleScheduleGeneration();
+    });
+
+
     // 1. Initialize the UI and capture the UI updater function
     const { updateAuthUI } = setupCloudAuth({
         onRegister: async (email, password, nickname) => {
@@ -312,10 +348,18 @@ async function handleScheduleGeneration() {
         const isMinimal = AppState.userPreferences?.minimalCalendar === true || 
         AppState.userPreferences?.minimalCalendar === 'true';
 
+        const currentCalendarViewMode = AppState.userPreferences?.calendarViewMode || 'paginated';
+        
         renderCalendar('calendarContainer', activeTrack.studySchedule, {
             calendarSystem: activeTrack.settings.calendarSystem,
             overrides: activeTrack.studyStatusOverrides,
-            isMinimal: isMinimal
+            isMinimal: isMinimal,
+            calendarViewMode: currentCalendarViewMode,
+            activeMonthIndex: AppState.activeMonthIndex,
+            onMonthChange: (direction) => {
+                AppState.activeMonthIndex = Math.max(0, (AppState.activeMonthIndex || 0) + direction);
+                handleScheduleGeneration();
+            }
         });
 
         document.getElementById('action-dock').classList.remove('hidden');
