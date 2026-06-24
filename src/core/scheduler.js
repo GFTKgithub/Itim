@@ -37,7 +37,7 @@ export async function generateStudyCalendar({ trackSettings, bookSequence, study
     return monthlyCalendarGrid;
 }
 
-// Generates a continuous, gap-free chronological timeline of study progress data.
+// Generates a continuous, chronological timeline of study progress data.
 export async function generateStudyTimeline({ trackSettings, bookSequence, studyStatusOverrides, calendarEvents }) {
     if (!bookSequence || bookSequence.length === 0) return [];
 
@@ -52,7 +52,6 @@ export async function generateStudyTimeline({ trackSettings, bookSequence, study
     for (let i = 0; i < bookSequence.length; i++) {
         let entry = bookSequence[i];
         
-        // Normalize book to object wrapper structure with fallback to entire book bounds
         const bookObj = typeof entry === 'string' 
             ? { name: entry, calcMethod: 'pace', paceValue: 1, reviewDays: 0, startAmudIdx: 0, endAmudIdx: getTotalAmudim(entry) - 1 } 
             : { 
@@ -61,13 +60,38 @@ export async function generateStudyTimeline({ trackSettings, bookSequence, study
                 endAmudIdx: entry.endAmudIdx !== undefined ? entry.endAmudIdx : (getTotalAmudim(entry.name) - 1) 
               };
         
-        // Build isolated single-book amud pool sequence layout restricted to custom bounds
-        const singleBookPool = buildMasterAmudPool([bookObj]); 
+        if (bookObj.startDate) {
+            let overriddenStart = new Date(bookObj.startDate);
+            overriddenStart.setHours(0, 0, 0, 0);
 
-        // Ensure localized cache frames for the current date boundaries are available 
+            // If the overridden start date is strictly after our current tracking pointer,
+            // we must explicitly populate the "gap" days as rest/empty days in the timeline.
+            while (currentTimelineStart < overriddenStart) {
+                const dateString = formatDateToIL(currentTimelineStart);
+                const overrideState = studyStatusOverrides[dateString] || 0;
+
+                comprehensiveTimeline.push({
+                    date: new Date(currentTimelineStart),
+                    dateString: dateString,
+                    isRestDay: true, // Force it to be an empty gap day
+                    isStudyDay: false,
+                    isReviewDay: false,
+                    overrideState: overrideState,
+                    amudimToCount: 0,
+                    targetBook: "-", // No book assigned to this gap
+                    bookIndex: i
+                });
+
+                currentTimelineStart.setDate(currentTimelineStart.getDate() + 1);
+            }
+            
+            // Sync the tracking pointer precisely to the override date
+            currentTimelineStart = overriddenStart;
+        }
+
+        const singleBookPool = buildMasterAmudPool([bookObj]); 
         await ensureCalendarEvents(currentTimelineStart, trackSettings, [bookObj], singleBookPool, calendarEvents);
 
-        // Calculate specific schedule step maps
         let bookTimeline = [];
         if (bookObj.calcMethod === 'targetDate') {
             bookTimeline = generateTargetDateTimeline(currentTimelineStart, bookObj, singleBookPool, studyStatusOverrides, calendarEvents, trackSettings, i);
@@ -78,7 +102,7 @@ export async function generateStudyTimeline({ trackSettings, bookSequence, study
         if (bookTimeline.length > 0) {
             comprehensiveTimeline = comprehensiveTimeline.concat(bookTimeline);
             
-            // Set the start date of the next book to the day after the current book finishes
+            // Set the fallback start date of the next book to the day after the current book finishes
             let lastDayOfBook = bookTimeline[bookTimeline.length - 1].date;
             currentTimelineStart = new Date(lastDayOfBook);
             currentTimelineStart.setDate(currentTimelineStart.getDate() + 1);
@@ -99,7 +123,7 @@ export async function generateStudyTimeline({ trackSettings, bookSequence, study
             isShabbat: isShabbat || traits.isParasha,
             isHoliday: !!calendarEvents[day.dateString]?.displayText,
             holidayTitle: calendarEvents[day.dateString]?.displayText || "",
-            isEmpty: day.isRestDay || day.isReviewDay,
+            isEmpty: day.isRestDay || day.isReviewDay || day.targetBook === "-",
             override: day.overrideState,
             content: "",
             pages: 0,
@@ -110,14 +134,13 @@ export async function generateStudyTimeline({ trackSettings, bookSequence, study
         if (day.isRestDay) {
             if (day.overrideState === 1) dayData.content = "הפסקה";
             else if (checkIsBeinHazmanim(day.date)) dayData.content = "בין הזמנים";
-            else dayData.content = "";
+            else dayData.content = ""; // Structural breaks will cleanly hit this empty state
         } else if (day.isReviewDay) {
             dayData.content = "חזרה";
-        } else if (day.amudimToCount > 0) {
+        } else if (day.amudimToCount > 0 && day.targetBook !== "-") {
             const bKey = `${day.targetBook}_${day.bookIndex ?? 0}`;
             if (bookPointers[bKey] === undefined) bookPointers[bKey] = 0;
 
-            // Resolve the current entry bounds from bookSequence to align tracking markers
             const currentEntry = bookSequence[day.bookIndex];
             const startAmudIdx = (currentEntry && currentEntry.startAmudIdx !== undefined) ? currentEntry.startAmudIdx : 0;
             const endAmudIdx = (currentEntry && currentEntry.endAmudIdx !== undefined) ? currentEntry.endAmudIdx : (getTotalAmudim(day.targetBook) - 1);
