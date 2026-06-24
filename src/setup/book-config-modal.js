@@ -19,6 +19,7 @@ export function setupBookConfigModal({ getSchedule, getBookSequence, getBookRang
     const configTargetDateSection = document.getElementById('bookConfigTargetDateSection');
     const configPaceInput = document.getElementById('bookConfigPaceInput');
     const configTargetDateInput = document.getElementById('bookConfigTargetDateInput');
+    const configStartDateInput = document.getElementById('bookConfigStartDateInput'); // Added in step 3
 
     // Range Bound Elements
     const startDafSelect = document.getElementById('bookConfigStartDaf');
@@ -132,6 +133,37 @@ export function setupBookConfigModal({ getSchedule, getBookSequence, getBookRang
         document.getElementById('bookConfigModalTitle').innerText = `הגדרות מסכת ${bookName}`;
         document.getElementById('bookConfigReviewDays').value = book.reviewDays || 0;
 
+        if (configStartDateInput) {
+            // Set current config option value if it exists
+            configStartDateInput.value = book.startDate || '';
+
+            // Gray everything out before or during the previous book's timeline runtime
+            if (editingIndex > 0 && currentSchedule && currentSchedule.length > 0) {
+                const previousBookName = typeof currentBookSequence[editingIndex - 1] === 'string' 
+                    ? currentBookSequence[editingIndex - 1] 
+                    : currentBookSequence[editingIndex - 1].name;
+                
+                // Track down all schedule entries belonging to the previous book index
+                const prevBookDays = currentSchedule.filter(d => d.book === previousBookName);
+                
+                if (prevBookDays.length > 0) {
+                    // Extract the absolute last assigned learning date for that book segment
+                    const lastDayString = prevBookDays[prevBookDays.length - 1].dateString;
+                    
+                    if (lastDayString) {
+                        const nextAvailableDate = new Date(lastDayString);
+                        nextAvailableDate.setDate(nextAvailableDate.getDate() + 1);
+                        
+                        // Set standard 'min' attribute boundary (native date pickers gray out everything before this day)
+                        configStartDateInput.min = nextAvailableDate.toISOString().split('T')[0];
+                    }
+                }
+            } else {
+                // If it's the very first book track item, clear any min restrictions
+                configStartDateInput.min = '';
+            }
+        }
+
         const totalAmudimCount = getTotalAmudim(bookName);
         populateRangeDropdowns(totalAmudimCount);
 
@@ -172,7 +204,6 @@ export function setupBookConfigModal({ getSchedule, getBookSequence, getBookRang
 
         const daySlots = computeDaySlots(currentSchedule, bookName, editingIndex, currentBookSequence);
 
-        // Initialize modal state
         modalState.open(editingIndex, amudStates, daySlots);
         
         setActiveView('individual');
@@ -209,6 +240,7 @@ export function setupBookConfigModal({ getSchedule, getBookSequence, getBookRang
         const calcMethod = configCalcMethod ? configCalcMethod.value : 'pace';
         const paceValue = configPaceInput ? parseFloat(configPaceInput.value) : 1;
         const targetDate = configTargetDateInput ? configTargetDateInput.value : '';
+        const startDateOverride = configStartDateInput ? configStartDateInput.value : ''; // <--- Capture raw picker input
         const { startAmudIdx, endAmudIdx } = getSelectedIndices();
         
         onSaveConfig({
@@ -216,6 +248,7 @@ export function setupBookConfigModal({ getSchedule, getBookSequence, getBookRang
             calcMethod: calcMethod,
             paceValue: paceValue,
             targetDate: targetDate,
+            startDate: startDateOverride || undefined, // <--- Ship property override back upstream
             reviewDays: reviewDays,
             amudStates: [...modalState.getAmudStates()],
             startAmudIdx: startAmudIdx,

@@ -375,7 +375,7 @@ export function createAppState() {
 
         /* ---- Book Config Modal Save ---- */
 
-        handleSaveBookConfig: function ({ index, calcMethod, paceValue, targetDate, reviewDays, amudStates, startAmudIdx, endAmudIdx }) {
+        handleSaveBookConfig: function ({ index, calcMethod, paceValue, targetDate, startDate, reviewDays, amudStates, startAmudIdx, endAmudIdx }) {
             let book = activeTrack.bookSequence[index];
             if (typeof book === 'string') {
                 book = { name: book };
@@ -388,6 +388,12 @@ export function createAppState() {
             book.amudStates = amudStates || [];
             book.startAmudIdx = startAmudIdx;
             book.endAmudIdx = endAmudIdx;
+
+            if (startDate) {
+                book.startDate = startDate;
+            } else {
+                delete book.startDate; // Clean up if they cleared the field
+            }
 
             activeTrack.bookSequence[index] = book;
 
