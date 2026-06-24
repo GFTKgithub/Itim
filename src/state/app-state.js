@@ -175,6 +175,50 @@ export function createAppState() {
             renderTrackSwitcher(tracks, state.activeTrackId);
         },
 
+        handleDeleteTrack: async function (trackId) {
+            const trackToDelete = tracks.find(t => t.id === trackId);
+            if (!trackToDelete) return;
+
+            // Prevent deleting the last track
+            if (tracks.length <= 1) {
+                await showDialog({
+                    title: 'לא ניתן למחוק',
+                    message: 'חייב להישאר לפחות מסלול לימוד אחד פעיל.',
+                    icon: '⚠️',
+                    confirmText: 'הבנתי'
+                });
+                return;
+            }
+
+            const confirmed = await showDialog({
+                title: 'מחיקת מסלול לימוד',
+                message: `האם אתה בטוח שברצונך למחוק את המסלול "${trackToDelete.name}" לצמיתות?`,
+                icon: '🗑️',
+                showCancel: true,
+                confirmText: 'כן, מחק מסלול',
+                cancelText: 'ביטול'
+            });
+            if (!confirmed) return;
+
+            const wasActive = trackToDelete.id === state.activeTrackId;
+
+            // Remove the track from the array
+            const index = tracks.findIndex(t => t.id === trackId);
+            if (index !== -1) tracks.splice(index, 1);
+
+            // If the deleted track was active, switch to another track
+            if (wasActive) {
+                const nextTrack = tracks[Math.min(index, tracks.length - 1)] || tracks[0];
+                state.activeTrackId = nextTrack.id;
+                state.activeMonthIndex = 0;
+                activeTrack = nextTrack;
+            }
+
+            await saveState();
+            await this.refreshTrackConfigPanel();
+            renderTrackSwitcher(tracks, state.activeTrackId);
+        },
+
         handleSwitchTrack: async function (trackId) {
             const selectedTrack = tracks.find(t => t.id === trackId);
             if (!selectedTrack) {

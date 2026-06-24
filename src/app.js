@@ -42,7 +42,8 @@ async function init() {
 function setupMainPage(app) {
     setupTrackSelector({
         onAddNewTrack: async (name) => await app.handleAddNewTrack(name),
-        onSwitchTrack: async (trackId) => await app.handleSwitchTrack(trackId)
+        onSwitchTrack: async (trackId) => await app.handleSwitchTrack(trackId),
+        onDeleteTrack: async (trackId) => await app.handleDeleteTrack(trackId)
     });
 
     setupBookSequence({

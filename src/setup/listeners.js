@@ -1,9 +1,10 @@
 import { talmud_bavli_masechtot } from "../core/data.js";
 
 // --- Track Selector Component ---
-export function setupTrackSelector({ onAddNewTrack, onSwitchTrack }) {
+export function setupTrackSelector({ onAddNewTrack, onSwitchTrack, onDeleteTrack }) {
     const newTrackBtn = document.getElementById('addNewTrackBtn');
     const trackDropdown = document.getElementById('trackSelectDropdown');
+    const deleteTrackBtn = document.getElementById('deleteTrackBtn');
 
     newTrackBtn?.addEventListener('click', async () => {
         const inputInput = document.getElementById('newTrackNameInput');
@@ -15,6 +16,13 @@ export function setupTrackSelector({ onAddNewTrack, onSwitchTrack }) {
     trackDropdown?.addEventListener('change', async (e) => {
         const selectedTrackId = e.target.value;
         await onSwitchTrack(selectedTrackId);
+    });
+
+    deleteTrackBtn?.addEventListener('click', async () => {
+        const selectedTrackId = trackDropdown?.value;
+        if (selectedTrackId && onDeleteTrack) {
+            await onDeleteTrack(selectedTrackId);
+        }
     });
 }
 
