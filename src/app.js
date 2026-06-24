@@ -208,7 +208,10 @@ function setupMainPage() {
         }
     });;
     
-    setupCalendarContextMenus();
+    setupCalendarContextMenus({
+        getActiveTrack: () => activeTrack,
+        onGenerate: handleScheduleGeneration // Automatically triggers engine re-calc and re-renders layout
+    });
 
     setupViewModeToggle({
         onGenerate: handleScheduleGeneration,

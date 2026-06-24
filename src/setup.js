@@ -2,7 +2,10 @@ import { talmud_bavli_masechtot } from "./data.js";
 import { HEBREW_MILESTONE_DATES, getNearestHebrewMilestone } from "./utils/dates.js";
 
 import { showDialog } from "./ui/components.js";
-import { ContextMenuTemplates, showContextMenu } from "./ui/context-menu.js";
+
+import { showContextMenu } from "./context-menu/context-menu.js";
+import { ContextMenuTemplates } from "./context-menu/ContextMenuTemplates.js";
+import { ContextActions } from "./context-menu/context-menu-actions.js";
 
 import { getTotalAmudim } from "./utils/talmud.js";
 import { numberToHebrew } from "./utils/gematria.js";
@@ -875,36 +878,39 @@ export function setupCloudAuth({ onRegister, onLogin, onLogout, onFetchData }) {
 }
 
 // --- Calendar Grid Context Menu ---
-export function setupCalendarContextMenus() {
+export function setupCalendarContextMenus({ getActiveTrack, onGenerate }) {
     const container = document.getElementById('calendarContainer');
     if (!container) return;
     
-    container.addEventListener('contextmenu', async (event) => {
-        // Find the closest day cell, even if the user right-clicked a text label inside it
+    container.addEventListener('contextmenu', (event) => {
         const dayCell = event.target.closest('.calendar-day');
         if (!dayCell) return;
 
         // Prevent the browser's default right-click menu from popping up
         event.preventDefault();
 
-        // Extract the metadata injected by ui/calendar.js
         const dateString = dayCell.dataset.date;
         const bookLabelEl = dayCell.querySelector('[data-book-label]');
         
         // Check if there is an official book text in this specific cell
         const bookLabel = bookLabelEl ? bookLabelEl.textContent.trim() : '';
+        const activeTrack = getActiveTrack();
 
-        // Dynamic routing template choice
-        let menuItems;
-        if (!bookLabel || bookLabel == '-') {
-            // No learned book officially -> Use the empty cell layout
-            menuItems = ContextMenuTemplates.EMPTY_DAY(dateString);
-        } else {
-            // Has an active book track -> Use the study day layout
-            menuItems = ContextMenuTemplates.STUDY_DAY(dateString, bookLabel);
-        }
+        // Map UI interactions directly to our isolated handler file
+        const menuHandlers = {
+            onAdjustTargetDate: (date, book) => ContextActions.onAdjustTargetDate(date, book, activeTrack, onGenerate),
+            onAdjustPacing: (date) => ContextActions.onAdjustPacing(date, bookLabel, activeTrack, onGenerate),
+            onCancelReviewDay: (date) => ContextActions.onCancelReviewDay(date, bookLabel, activeTrack, onGenerate),
+            onAddCustomEvent: (date) => ContextActions.onAddCustomEvent(date, activeTrack, onGenerate),
+            onAddBreakDays: (date) => ContextActions.onAddBreakDays(date, activeTrack, onGenerate),
+            onSetPeriodicReview: (date) => ContextActions.onSetPeriodicReview(date, activeTrack, onGenerate),
+            onStartNewBook: (date) => ContextActions.onStartNewBook(date, activeTrack, onGenerate)
+        };
 
-        // Trigger the menu right at the cursor position
+        const menuItems = (!bookLabel || bookLabel === '-')
+            ? ContextMenuTemplates.CALENDAR_EMPTY_DAY(dateString, menuHandlers)
+            : ContextMenuTemplates.CALENDAR_STUDY_DAY(dateString, bookLabel, menuHandlers);
+
         showContextMenu(event, menuItems);
     });
 }
