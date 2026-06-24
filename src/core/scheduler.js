@@ -1,10 +1,10 @@
-import { fetchCalendarEvents } from './api.js';
+import { fetchCalendarEvents } from '../services/api.js';
 import { talmud_bavli_masechtot } from './data.js';
 
 // utils
-import { hebrewToNumber } from './utils/gematria.js';
-import { indexToDaf, getTotalAmudim } from './utils/talmud.js';
-import { formatDateToIL, formatDateToISO, checkIsBeinHazmanim } from './utils/dates.js';
+import { hebrewToNumber } from '../utils/gematria.js';
+import { indexToDaf, getTotalAmudim } from '../utils/talmud.js';
+import { formatDateToIL, formatDateToISO, checkIsBeinHazmanim } from '../utils/dates.js';
 
 /* 
     Core generation functions 

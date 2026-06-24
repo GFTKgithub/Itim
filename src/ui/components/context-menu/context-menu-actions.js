@@ -1,10 +1,10 @@
-import { saveState } from '../persistence.js';
-import { updateBookSequenceUI } from '../ui/track-config.js';
+import { saveState } from '../../../services/persistence.js';
+import { updateBookSequenceUI } from '../book-sequence-list.js';
 
-import { talmud_bavli_masechtot } from '../data.js';
-import { getTotalAmudim } from '../utils/talmud.js';
+import { talmud_bavli_masechtot } from '../../../core/data.js';
+import { getTotalAmudim } from '../../../utils/talmud.js';
 
-import { showDialog } from '../ui/components.js';
+import { showDialog } from '../dialog.js';
 
 /**
  * Handles actions dispatched from the calendar day context menus.

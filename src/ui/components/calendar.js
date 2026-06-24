@@ -1,5 +1,5 @@
-import { numberToHebrew, formatGematria } from '../utils/gematria.js';
-import { formatHebrewMonthTitle } from '../utils/dates.js';
+import { numberToHebrew, formatGematria } from '../../utils/gematria.js';
+import { formatHebrewMonthTitle } from '../../utils/dates.js';
 
 // Internal fallback state tracker for when config.activeMonthIndex isn't managed externally
 let internalMonthIndex = 0;

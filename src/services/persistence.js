@@ -1,7 +1,7 @@
-import { auth, db } from './firebase-config.js';
+import { auth, db } from '../firebase-config.js';
 import { doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
-import { getActiveTrack } from './track.js';
+import { getActiveTrack } from '../core/track.js';
 
 let stateRef = null;
 let tracksRef = [];

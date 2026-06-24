@@ -1,5 +1,5 @@
-import { numberToHebrew } from '../utils/gematria.js';
-import { indexToDaf } from '../utils/talmud.js';
+import { numberToHebrew } from '../../utils/gematria.js';
+import { indexToDaf } from '../../utils/talmud.js';
 
 // Renders the interactive Amud Grid inside the configuration modal
 export function renderAmudGrid(containerId, amudStates, isBunched = false) {
@@ -125,4 +125,3 @@ export function updateModalProgressStats(amudStates) {
         infoEl.innerText = `התקדמות: ${learned}/${total} עמודים (${percent}%)`;
     }
 }
-

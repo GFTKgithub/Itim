@@ -1,7 +1,7 @@
 // utils
-import { formatHebrewMonthTitle } from "./utils/dates.js";
-import { numberToHebrew } from "./utils/gematria.js";
-import { showDialog } from "./ui/components.js";
+import { formatHebrewMonthTitle } from "../utils/dates.js";
+import { numberToHebrew } from "../utils/gematria.js";
+import { showDialog } from "../ui/components/dialog.js";
 
 // Generates an RTL grid-structured workbook and downloads the schedule as an Excel file.
 export async function exportScheduleToExcel(schedule) {

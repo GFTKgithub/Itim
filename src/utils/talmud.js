@@ -1,5 +1,5 @@
 import { numberToHebrew, hebrewToNumber } from "./gematria.js";
-import { talmud_bavli_masechtot } from "../data.js";
+import { talmud_bavli_masechtot } from "../core/data.js";
 
 // Takes an amud index and converts it to a Daf and Amud string
 export function indexToDaf(index) {
