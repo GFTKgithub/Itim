@@ -182,6 +182,7 @@ export function createAppState() {
                 return;
             }
             state.activeTrackId = trackId;
+            state.activeMonthIndex = 0;
             activeTrack = selectedTrack;
             await saveState();
             await this.refreshTrackConfigPanel();
