@@ -252,7 +252,8 @@ export const ContextActions = {
             paceValue: 1,
             reviewDays: 0,
             startAmudIdx: 0,
-            endAmudIdx: totalAmudim - 1
+            endAmudIdx: totalAmudim - 1,
+            startDate: dateString
         };
 
         activeTrack.bookSequence.push(newBookEntry);
