@@ -1,4 +1,5 @@
 import { talmud_bavli_masechtot } from "../core/data.js";
+import { updateCalendarViewToggle } from '../ui/components/calendar.js';
 
 // --- Track Selector Component ---
 export function setupTrackSelector({ onAddNewTrack, onSwitchTrack, onDeleteTrack }) {
@@ -43,7 +44,10 @@ export function setupBookSequence({ onAddToSequence, onClearSequence }) {
     }
 
     addToSequenceBtn?.addEventListener('click', () => {
-        onAddToSequence();
+        const selectedName = select?.value; 
+        if (selectedName) {
+            onAddToSequence(selectedName); 
+        }
     });
 
     clearSequenceBtn?.addEventListener('click', () => {
@@ -90,15 +94,18 @@ export function setupBackupManagement({onExport, onImport, onResetSettings, onRe
 }
 
 // --- Calendar View Mode Toggle ---
-export function setupViewModeToggle({ onGenerate, onUpdateUserPreference, onUpdateViewToggle, getCalendarViewMode }) {
+export function setupViewModeToggle({ onGenerate, onUpdateUserPreference, getCalendarViewMode }) {
     const toggleBtn = document.getElementById('toggleCalendarViewModeBtn');
     if (!toggleBtn) return;
 
     toggleBtn.addEventListener('click', () => {
         const currentMode = getCalendarViewMode() || 'paginated';
         const nextMode = currentMode === 'paginated' ? 'continuous' : 'paginated';
+        
         onUpdateUserPreference('calendarViewMode', nextMode);
-        onUpdateViewToggle(nextMode);
+        
+        updateCalendarViewToggle(nextMode); 
+        
         onGenerate();
     });
 }

@@ -1,11 +1,6 @@
 import { createAppState } from './state/app-state.js';
-import { addToSequence } from './core/book-sequence.js';
-import { computeDaySlots } from './core/scheduler.js';
-import { showDialog } from './ui/components/dialog.js';
-import { updateCalendarViewToggle, renderCalendar } from './ui/components/calendar.js';
-import { updateBookSequenceUI } from './ui/components/book-sequence-list.js';
+import { updateCalendarViewToggle, initPrintLayoutHandler } from './ui/components/calendar.js';
 import { initAuthListener } from './services/auth.js';
-import { saveState } from './services/persistence.js';
 
 import { setupTrackSelector, setupBookSequence, setupActionDock, setupBackupManagement, setupViewModeToggle } from './setup/listeners.js';
 import { setupTrackSettings } from './setup/track-settings.js';
@@ -41,33 +36,14 @@ async function init() {
 // Executes setup helpers for index.html
 function setupMainPage(app) {
     setupTrackSelector({
-        onAddNewTrack: async (name) => await app.handleAddNewTrack(name),
-        onSwitchTrack: async (trackId) => await app.handleSwitchTrack(trackId),
-        onDeleteTrack: async (trackId) => await app.handleDeleteTrack(trackId)
+        onAddNewTrack: (name) => app.handleAddNewTrack(name),
+        onSwitchTrack: (trackId) => app.handleSwitchTrack(trackId),
+        onDeleteTrack: (trackId) => app.handleDeleteTrack(trackId)
     });
 
     setupBookSequence({
-        onAddToSequence: () => {
-            const selectedName = document.getElementById('bookSelect')?.value;
-            app.handleAddToSequence(selectedName);
-        },
-        onClearSequence: async () => {
-            const confirmed = await showDialog({
-                title: 'ניקוי רשימת המסכתות במסלול',
-                message: 'האם אתה בטוח שברצונך לנקות את רשימת המסכתות במסלול?',
-                icon: '🗑️',
-                showCancel: true,
-                confirmText: 'כן, נקה הכל',
-                cancelText: 'לא, התחרטתי'
-            });
-            if (!confirmed) return;
-            
-            const track = app.getActiveTrack();
-            track.bookSequence = [];
-            saveState();
-            updateBookSequenceUI(track.bookSequence);
-            app.handleScheduleGeneration();
-        }
+        onAddToSequence: (selectedName) => app.handleAddToSequence(selectedName),
+        onClearSequence: () => app.handleClearSequence()
     });
 
     setupActionDock({
@@ -103,23 +79,8 @@ function setupMainPage(app) {
     setupBookConfigModal({
         getBookSequence: () => app.getActiveTrack().bookSequence,
         getSchedule: () => app.getActiveTrack().studySchedule,
-        getBookRangeLimits: (index) => {
-            const track = app.getActiveTrack();
-            if (index === 0) {
-                return { minDate: track.settings.startDate };
-            }
-            const previousBook = track.bookSequence[index - 1];
-            const previousBookName = typeof previousBook === 'string' ? previousBook : previousBook.name;
-            const previousBookDays = track.studySchedule.filter(day => day.book === previousBookName);
-            if (previousBookDays.length > 0) {
-                const lastDay = previousBookDays[previousBookDays.length - 1].dateString;
-                const nextAvailableDate = new Date(lastDay);
-                nextAvailableDate.setDate(nextAvailableDate.getDate() + 1);
-                return { minDate: nextAvailableDate.toISOString().split('T')[0] };
-            }
-            return { minDate: track.settings.startDate };
-        },
-        computeDaySlots: computeDaySlots,
+        getBookRangeLimits: (index) => app.getBookRangeLimitsForIndex(index),
+        computeDaySlots: app.computeDaySlots,
         onSaveConfig: (config) => app.handleSaveBookConfig(config),
         onStudyStatusOverride: (date) => app.handleStudyStatusOverride(date)
     });
@@ -132,52 +93,27 @@ function setupMainPage(app) {
     setupViewModeToggle({
         onGenerate: () => app.handleScheduleGeneration(),
         onUpdateUserPreference: (key, value) => app.handleUpdateUserPreference(key, value),
-        onUpdateViewToggle: (viewMode) => updateCalendarViewToggle(viewMode),
         getCalendarViewMode: () => app.getStateRef().userPreferences.calendarViewMode
     });
 
     // Handle print: temporarily switch to continuous mode
-    window.addEventListener('beforeprint', () => {
-        const calendarContainer = document.getElementById('calendarContainer');
-        const track = app.getActiveTrack();
-        if (!calendarContainer || !track?.studySchedule || track.studySchedule.length === 0) return;
-
-        window.__printRestoreViewMode = app.getStateRef().userPreferences?.calendarViewMode || 'paginated';
-
-        renderCalendar('calendarContainer', track.studySchedule, {
-            calendarSystem: track.settings.calendarSystem,
-            overrides: track.studyStatusOverrides,
-            isMinimal: app.getStateRef().userPreferences?.minimalCalendar === true || app.getStateRef().userPreferences?.minimalCalendar === 'true',
-            calendarViewMode: 'continuous',
-            activeMonthIndex: 0
-        });
-    });
-
-    window.addEventListener('afterprint', () => {
-        app.handleScheduleGeneration();
+    initPrintLayoutHandler({
+        getActiveTrack: () => app.getActiveTrack(),
+        getUserPreferences: () => app.getStateRef().userPreferences,
+        onGenerate: () => app.handleScheduleGeneration()
     });
 }
 
 // Setup Firebase auth listener
 function setupFirebaseAuth(app) {
     const { updateAuthUI } = setupCloudAuth({
-        onRegister: async (email, password, nickname) => {
-            await app.handleCloudRegister(email, password, nickname);
-        },
-        onLogin: async (email, password) => {
-            await app.handleCloudLogin(email, password);
-        },
-        onLogout: () => {
-            app.handleCloudLogout();
-        },
-        onFetchData: async () => {
-            await app.handleCloudFetchData();
-        }
+        onRegister: (email, password, nickname) => app.handleCloudRegister(email, password, nickname), // ⚡ Cleaned
+        onLogin: (email, password) => app.handleCloudLogin(email, password),                          // ⚡ Cleaned
+        onLogout: () => app.handleCloudLogout(),
+        onFetchData: () => app.handleCloudFetchData()                                                 // ⚡ Cleaned
     });
 
-    initAuthListener((userEmail) => {
-        updateAuthUI(userEmail);
-    });
+    initAuthListener((userEmail) => updateAuthUI(userEmail));
 }
 
 // Initiate service worker

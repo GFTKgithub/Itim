@@ -4,6 +4,8 @@ import { formatHebrewMonthTitle } from '../../utils/dates.js';
 // Internal fallback state tracker for when config.activeMonthIndex isn't managed externally
 let internalMonthIndex = 0;
 
+let originalViewMode = 'paginated';
+
 // Orchestrates the rendering of the calendar UI
 export function renderCalendar(containerId, studySchedule, config = {}) {
     const container = document.getElementById(containerId);
@@ -340,6 +342,7 @@ function captureScrollStates(container) {
     return snapshots;
 }
 
+// Updates the toggle button UI to reflect the current calendar view mode
 export function updateCalendarViewToggle(viewMode) {
     const iconEl = document.getElementById('toggleViewIcon');
     const textEl = document.getElementById('toggleViewText');
@@ -355,4 +358,32 @@ export function updateCalendarViewToggle(viewMode) {
         iconEl.textContent = '📄';
         textEl.textContent = 'הצג את כל החודשים ברצף';
     }
+}
+
+// Initializes print layout handling to temporarily switch to continuous mode for printing
+export function initPrintLayoutHandler({ getActiveTrack, getUserPreferences, onGenerate }) {
+    
+    // 1. Prepare for printing (Switch to full continuous view)
+    window.addEventListener('beforeprint', () => {
+        const calendarContainer = document.getElementById('calendarContainer');
+        const track = getActiveTrack();
+        const preferences = getUserPreferences();
+        
+        if (!calendarContainer || !track?.studySchedule || track.studySchedule.length === 0) return;
+
+        originalViewMode = preferences?.calendarViewMode || 'paginated';
+
+        renderCalendar('calendarContainer', track.studySchedule, {
+            calendarSystem: track.settings.calendarSystem,
+            overrides: track.studyStatusOverrides,
+            isMinimal: preferences?.minimalCalendar === true || preferences?.minimalCalendar === 'true',
+            calendarViewMode: 'continuous',
+            activeMonthIndex: 0
+        });
+    });
+
+    // 2. Cleanup after printing (Restore layout and state)
+    window.addEventListener('afterprint', () => {
+        onGenerate();
+    });
 }

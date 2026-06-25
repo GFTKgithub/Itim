@@ -34,7 +34,7 @@ export function createAppState() {
 
     /* ---- Track Hydrator (for persistence) ---- */
 
-    const trackHydratorRule = async (leanTrack) => {
+    async function trackHydratorRule(leanTrack) {
         const trackCalendarEvents = {};
         const calculatedSchedule = await generateStudyCalendar({
             trackSettings: leanTrack.trackSettings || leanTrack.settings,
@@ -47,7 +47,7 @@ export function createAppState() {
             calendarEvents: trackCalendarEvents,
             studySchedule: calculatedSchedule
         };
-    };
+    }
 
     /* ---- Internal helpers ---- */
 
@@ -63,6 +63,39 @@ export function createAppState() {
         getTracksRef: () => tracks,
         getActiveTrack: () => activeTrack,
         getTrackHydrator: () => trackHydratorRule,
+
+        getBookRangeLimitsForIndex: function (index) {
+            if (!activeTrack) return { minDate: '' };
+
+            // 1. If it's the first book, the limit is simply the track's start date
+            if (index === 0) {
+                return { minDate: activeTrack.settings.startDate };
+            }
+
+            // 2. Safely grab the previous book entry
+            const previousBook = activeTrack.bookSequence[index - 1];
+            if (!previousBook) {
+                return { minDate: activeTrack.settings.startDate };
+            }
+
+            const previousBookName = typeof previousBook === 'string' ? previousBook : previousBook.name;
+            
+            // 3. Find the final day allocated to that previous book
+            const previousBookDays = activeTrack.studySchedule.filter(day => day.book === previousBookName);
+            
+            if (previousBookDays.length > 0) {
+                const lastDay = previousBookDays[previousBookDays.length - 1].dateString;
+                
+                // Calculate next available calendar day safely
+                const nextAvailableDate = new Date(lastDay);
+                nextAvailableDate.setDate(nextAvailableDate.getDate() + 1);
+                
+                return { minDate: nextAvailableDate.toISOString().split('T')[0] };
+            }
+
+            // Fallback default
+            return { minDate: activeTrack.settings.startDate };
+        },
 
         /** Full initialization — call once on DOMContentLoaded */
         init: async function () {
@@ -308,6 +341,26 @@ export function createAppState() {
             this.handleScheduleGeneration();
         },
 
+        handleClearSequence: async function() {
+            const confirmed = await showDialog({
+                title: 'ניקוי רשימת המסכתות במסלול',
+                message: 'האם אתה בטוח שברצונך לנקות את רשימת המסכתות במסלול?',
+                icon: '🗑️',
+                showCancel: true,
+                confirmText: 'כן, נקה הכל',
+                cancelText: 'לא, התחרטתי'
+            });
+            
+            if (!confirmed) return; // Guard clause approach keeps code flatter
+
+            const track = this.getActiveTrack();
+            track.bookSequence = [];
+            
+            saveState();
+            updateBookSequenceUI(track.bookSequence);
+            this.handleScheduleGeneration();
+        },
+
         handleBookSequenceReorder: function (newOrderOfIndices) {
             activeTrack.bookSequence = newOrderOfIndices.map(oldIndex => {
                 const entry = activeTrack.bookSequence[oldIndex];
@@ -373,7 +426,8 @@ export function createAppState() {
             }
         },
 
-        /* ---- Book Config Modal Save ---- */
+        /* ---- Book Config Modal ---- */
+        computeDaySlots: computeDaySlots,
 
         handleSaveBookConfig: function ({ index, calcMethod, paceValue, targetDate, startDate, reviewDays, amudStates, startAmudIdx, endAmudIdx }) {
             let book = activeTrack.bookSequence[index];
