@@ -221,26 +221,30 @@ export const ContextActions = {
 
     // Append New Tract to current track sequence
     onStartNewBook: async (dateString, activeTrack, onGenerate) => {
+        // Map the array of masechtot to the structure expected by the updated showDialog
+        const masechtotOptions = talmud_bavli_masechtot.map(m => ({
+            value: m.name,
+            text: m.name
+        }));
+
         const res = await showDialog({
             title: 'הוספת מסכת חדשה למחזור',
-            message: 'הזן שם מסכת מדויק ותקני מתוך הש"ס (לדוגמה: ברכות, שבת, עירובין, פסחים):',
+            message: 'בחר מסכת מתוך הרשימה הבאה:',
             icon: '➕',
             showCancel: true,
-            inputs: [{ name: 'bookName', type: 'text', label: 'שם המסכת בעברית', placeholder: 'שם המסכת...' }]
+            inputs: [
+                { 
+                    name: 'bookName', 
+                    type: 'select', 
+                    label: 'שם המסכת בעברית',
+                    options: masechtotOptions 
+                }
+            ]
         });
 
         if (!res || !res.bookName) return;
         const cleanName = res.bookName.trim();
 
-        const validBook = talmud_bavli_masechtot.find(m => m.name === cleanName);
-        if (!validBook) {
-            await showDialog({
-                title: 'מסכת לא נמצאה',
-                message: `השם "${cleanName}" אינו נמצא במאגר מסכתות הש"ס. אנא ודא כתיב תקין.`,
-                icon: '❌'
-            });
-            return;
-        }
 
         if (!activeTrack.bookSequence) activeTrack.bookSequence = [];
         if (!activeTrack.studyStatusOverrides) activeTrack.studyStatusOverrides = {};
