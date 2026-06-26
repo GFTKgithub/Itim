@@ -216,6 +216,10 @@ function generateTargetDateTimeline(startDate, bookObj, singleBookPool, studySta
     let currentDate = new Date(startDate);
     const reviewDaysCount = parseInt(bookObj.reviewDays, 10) || 0;
 
+    // Periodic review config
+    const periodic = bookObj.periodicReview;
+    const hasPeriodicReviews = periodic && periodic.enabled && periodic.frequency > 0;
+
     // 1. Gather all calendar days in the range
     while (currentDate <= endDate) {
         const dateString = formatDateToIL(currentDate);
@@ -244,50 +248,139 @@ function generateTargetDateTimeline(startDate, bookObj, singleBookPool, studySta
         return generatePaceTimeline(startDate, { ...bookObj, calcMethod: 'pace', paceValue: 1 }, singleBookPool, studyStatusOverrides, calendarEvents, trackSettings, bookIndex);
     }
 
-    const netStudyDaysCount = activeStudyDays.length - reviewDaysCount;
+    // 2. Count periodic review days and adjust net study day count
+    let periodicReviewCount = 0;
+    if (hasPeriodicReviews) {
+        let studyCounter = 0;
+        let pendingReview = 0;
+        let cumAmudim = 0;
+        const totalDays = activeStudyDays.length;
+
+        if (periodic.mode === 'days') {
+            for (let d = 1; d <= totalDays; d++) {
+                if (pendingReview > 0) {
+                    periodicReviewCount++;
+                    pendingReview--;
+                } else {
+                    // Check if this upcoming slot should be a review day instead of a study day
+                    if (studyCounter > 0 && (studyCounter + 1) % periodic.frequency === 0) {
+                        periodicReviewCount++;
+                        pendingReview += (periodic.amount || 1) - 1;
+                        studyCounter = 0; // Reset
+                    } else {
+                        studyCounter++;
+                    }
+                }
+            }
+        } else if (periodic.mode === 'dafs') {
+            const totalAmudim = singleBookPool.length;
+            const perDay = Math.floor(totalAmudim / totalDays);
+            const remainder = totalAmudim % totalDays;
+            for (let d = 0; d < totalDays; d++) {
+                if (pendingReview > 0) {
+                    periodicReviewCount++;
+                    pendingReview--;
+                } else {
+                    cumAmudim += perDay + (d >= totalDays - remainder ? 1 : 0);
+                    if (cumAmudim / 2 >= periodic.frequency) {
+                        pendingReview += (periodic.amount || 1);
+                        cumAmudim = 0;
+                    }
+                }
+            }
+        }
+    }
+
     const totalAmudim = singleBookPool.length;
+    // Net study days available for new material = total study days - trailing review days - periodic review days
+    const netStudyDaysCount = Math.max(1, activeStudyDays.length - reviewDaysCount - periodicReviewCount);
 
     const baseAmudim = Math.floor(totalAmudim / netStudyDaysCount);
     
     let planSlots = [];
 
-    // 2. EDGE CASE: The target date is too far away (Pace drops below 1 Amud per day)
+    // 3. EDGE CASE: The target date is too far away (Pace drops below 1 Amud per day)
     if (baseAmudim < 1) {
-        // We force a minimum pace of 1 amud per day
         const requiredStudyDays = totalAmudim; 
-        
-        // Push the study slots to the very beginning
         for (let i = 0; i < requiredStudyDays; i++) {
             planSlots.push({ type: 'study', count: 1 });
         }
-        
-        // Fill ALL remaining active days in the timeline with review days
         const totalRemainingActiveDays = activeStudyDays.length - requiredStudyDays;
         for (let r = 0; r < totalRemainingActiveDays; r++) {
             planSlots.push({ type: 'review', count: 0 });
         }
     } 
-    // 3. NORMAL CASE: Distribute material evenly across the timeline
+    // 4. NORMAL CASE: Distribute material evenly across the timeline
     else {
         const remainder = totalAmudim % netStudyDaysCount;
-
         for (let i = 0; i < netStudyDaysCount; i++) {
             let extra = (i >= netStudyDaysCount - remainder) ? 1 : 0;
             planSlots.push({ type: 'study', count: baseAmudim + extra });
         }
-        
-        // Append explicit user-requested review days at the end
+        // Append explicit user-requested trailing review days
         for (let r = 0; r < reviewDaysCount; r++) {
+            planSlots.push({ type: 'review', count: 0 });
+        }
+        // Append periodic review days (these will be distributed among the study days)
+        for (let p = 0; p < periodicReviewCount; p++) {
             planSlots.push({ type: 'review', count: 0 });
         }
     }
 
-    // 4. Map the planned slots onto the actual timeline days
+    // 5. Build a reordered list of plan slots by interleaving periodic reviews
+    let orderedSlots = [];
+    if (hasPeriodicReviews && periodic.mode === 'days') {
+        // Interleave study slots with periodic review slots
+        let studySlotPointer = 0;
+        let studyCounter = 0;
+        let pendingReview = 0;
+
+        // First, push all trailing review slots separately (they go at the very end)
+        const trailingReviewSlots = planSlots.slice(netStudyDaysCount, netStudyDaysCount + reviewDaysCount);
+        // Periodic review slots come after trailing
+        const periodicReviewSlots = planSlots.slice(netStudyDaysCount + reviewDaysCount);
+
+        studyCounter = 0; // Reset tracking pointer before the loop
+        for (let d = 0; d < activeStudyDays.length; d++) {
+            if (pendingReview > 0) {
+                if (periodicReviewSlots.length > 0) {
+                    orderedSlots.push(periodicReviewSlots.shift());
+                }
+                pendingReview--;
+            } else if (studySlotPointer < netStudyDaysCount) {
+                // If the NEXT slot needs to be a review day
+                if (studyCounter > 0 && (studyCounter + 1) % periodic.frequency === 0) {
+                    if (periodicReviewSlots.length > 0) {
+                        orderedSlots.push(periodicReviewSlots.shift());
+                    }
+                    pendingReview += (periodic.amount || 1) - 1;
+                    studyCounter = 0;
+                } else {
+                    orderedSlots.push(planSlots[studySlotPointer]);
+                    studySlotPointer++;
+                    studyCounter++;
+                }
+            }
+        }
+        // Append any remaining periodic review slots
+        while (periodicReviewSlots.length > 0) {
+            orderedSlots.push(periodicReviewSlots.shift());
+        }
+        // Append trailing review slots
+        orderedSlots = orderedSlots.concat(trailingReviewSlots);
+    } else if (hasPeriodicReviews && periodic.mode === 'dafs') {
+        // For dafs mode, just use planSlots as-is since they include periodic reviews at the end
+        orderedSlots = [...planSlots];
+    } else {
+        orderedSlots = [...planSlots];
+    }
+
+    // 6. Map the ordered slots onto the actual timeline days
     let planPointer = 0;
     timelineDays.forEach(day => {
         if (day.isStudyDay) {
-            if (planPointer < planSlots.length) {
-                const currentSlot = planSlots[planPointer];
+            if (planPointer < orderedSlots.length) {
+                const currentSlot = orderedSlots[planPointer];
                 if (currentSlot.type === 'review') {
                     day.isStudyDay = false;
                     day.isReviewDay = true;
@@ -312,6 +405,14 @@ function generatePaceTimeline(startDate, bookObj, singleBookPool, studyStatusOve
     const parsedPace = parseFloat(bookObj.paceValue) || 1;
     const dailyAmudimPace = Math.max(1, Math.ceil(parsedPace * 2));
 
+    // Periodic review configuration
+    const periodic = bookObj.periodicReview;
+    const hasPeriodicReviews = periodic && periodic.enabled && periodic.frequency > 0;
+
+    let studyDayCounter = 0;
+    let cumulativeAmudim = 0;
+    let pendingReviewDays = 0;
+
     while (amudPoolCopy.length > 0) {
         const dateString = formatDateToIL(currentDate);
         const overrideState = studyStatusOverrides[dateString] || 0;
@@ -321,15 +422,43 @@ function generatePaceTimeline(startDate, bookObj, singleBookPool, studyStatusOve
         );
 
         let amudimToCountForDay = 0;
+        let isReviewDay = false;
         let triggerReviewPhase = false;
 
         if (!isRestDay) {
-            let limit = Math.min(dailyAmudimPace, amudPoolCopy.length);
-            let drained = amudPoolCopy.splice(0, limit);
-            amudimToCountForDay = drained.length;
+            if (pendingReviewDays > 0) {
+                isReviewDay = true;
+                pendingReviewDays--;
+            } else if (hasPeriodicReviews) {
+                if (periodic.mode === 'days') {
+                    // Check if the NEXT day should be the review day (e.g., 6 days studied, 7th is review)
+                    if (studyDayCounter > 0 && (studyDayCounter + 1) % periodic.frequency === 0) {
+                        isReviewDay = true;
+                        // Since this day is already turning into a review day, add any EXTRA review days needed
+                        pendingReviewDays += (periodic.amount || 1) - 1; 
+                        studyDayCounter = 0; // Reset counter for the next cycle
+                    }
+                }
+            }
 
-            if (amudPoolCopy.length === 0) {
-                triggerReviewPhase = true;
+            if (!isReviewDay && amudPoolCopy.length > 0) {
+                let limit = Math.min(dailyAmudimPace, amudPoolCopy.length);
+                let drained = amudPoolCopy.splice(0, limit);
+                amudimToCountForDay = drained.length;
+                studyDayCounter++;
+                cumulativeAmudim += amudimToCountForDay;
+
+                if (hasPeriodicReviews && periodic.mode === 'dafs') {
+                    const dafsCompleted = cumulativeAmudim / 2;
+                    if (dafsCompleted >= periodic.frequency) {
+                        pendingReviewDays += (periodic.amount || 1);
+                        cumulativeAmudim = 0;
+                    }
+                }
+
+                if (amudPoolCopy.length === 0) {
+                    triggerReviewPhase = true;
+                }
             }
         }
 
@@ -337,8 +466,8 @@ function generatePaceTimeline(startDate, bookObj, singleBookPool, studyStatusOve
             date: new Date(currentDate),
             dateString: dateString,
             isRestDay: isRestDay,
-            isStudyDay: !isRestDay,
-            isReviewDay: false,
+            isStudyDay: !isRestDay && !isReviewDay,
+            isReviewDay: isReviewDay,
             overrideState: overrideState,
             amudimToCount: amudimToCountForDay,
             targetBook: bookObj.name,
@@ -373,6 +502,29 @@ function generatePaceTimeline(startDate, bookObj, singleBookPool, studyStatusOve
         }
         currentDate.setDate(currentDate.getDate() + 1);
     }
+
+    // Flush any remaining pending periodic review days
+    while (pendingReviewDays > 0) {
+        const dateString = formatDateToIL(currentDate);
+        const overrideState = studyStatusOverrides[dateString] || 0;
+        let isRestDay = (overrideState === 1) || (overrideState !== 2 && 
+            shouldDayBeRest(currentDate, studyDays, includeHolidays, includeBeinHazmanim, calendarEvents)
+        );
+        timelineDays.push({
+            date: new Date(currentDate),
+            dateString: dateString,
+            isRestDay: isRestDay,
+            isStudyDay: !isRestDay,
+            isReviewDay: !isRestDay,
+            overrideState: overrideState,
+            amudimToCount: 0,
+            targetBook: bookObj.name,
+            bookIndex: bookIndex
+        });
+        if (!isRestDay) pendingReviewDays--;
+        currentDate.setDate(currentDate.getDate() + 1);
+    }
+
     return timelineDays;
 }
 

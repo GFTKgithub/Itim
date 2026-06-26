@@ -185,8 +185,8 @@ export const ContextActions = {
         await onGenerate();
     },
 
-    // Set Periodic Book Review Days
-    onSetPeriodicReview: async (dateString, bookLabel, activeTrack, onGenerate) => {
+    // Set Trailing Review Days (post-book concentrated review)
+    onSetTrailingReviewDays: async (dateString, bookLabel, activeTrack, onGenerate) => {
         const bookIdx = activeTrack.bookSequence.findIndex(b => 
             (typeof b === 'string' ? b : b.name) === bookLabel
         );
@@ -212,6 +212,51 @@ export const ContextActions = {
         }
 
         currentEntry.reviewDays = parseInt(res.reviewDays, 10);
+        activeTrack.bookSequence[bookIdx] = currentEntry;
+
+        saveState();
+        if (typeof updateBookSequenceUI === 'function') updateBookSequenceUI(activeTrack.bookSequence);
+        await onGenerate();
+    },
+
+    // Set Periodic Review Days (interleaved during the book)
+    onSetPeriodicReview: async (dateString, bookLabel, activeTrack, onGenerate) => {
+        const bookIdx = activeTrack.bookSequence.findIndex(b => 
+            (typeof b === 'string' ? b : b.name) === bookLabel
+        );
+        if (bookIdx === -1) return;
+
+        let currentEntry = activeTrack.bookSequence[bookIdx];
+        const existingPeriodic = typeof currentEntry === 'object' ? (currentEntry.periodicReview || {}) : {};
+
+        const res = await showDialog({
+            title: `חזרות מחזוריות - ${bookLabel}`,
+            message: 'הגדר חזרות מחזוריות תוך כדי לימוד המסכת:',
+            icon: '🔄',
+            showCancel: true,
+            inputs: [
+                { name: 'mode', type: 'select', label: 'בחר אופן החישוב', value: existingPeriodic.mode || 'days', options: [
+                    { value: 'days', text: 'לפי ימי לימוד' },
+                    { value: 'dafs', text: 'לפי דפים שנלמדו' }
+                ]},
+                { name: 'frequency', type: 'number', min: '1', step: '1', label: 'כל כמה? (ימים או דפים)', value: existingPeriodic.frequency || 7 },
+                { name: 'amount', type: 'number', min: '1', step: '1', label: 'כמה ימי חזרה בכל מחזור?', value: existingPeriodic.amount || 1 }
+            ]
+        });
+
+        if (!res) return;
+
+        if (typeof currentEntry === 'string') {
+            currentEntry = { name: currentEntry };
+        }
+
+        currentEntry.periodicReview = {
+            enabled: true,
+            mode: res.mode || 'days',
+            frequency: parseInt(res.frequency, 10) || 7,
+            amount: parseInt(res.amount, 10) || 1
+        };
+
         activeTrack.bookSequence[bookIdx] = currentEntry;
 
         saveState();

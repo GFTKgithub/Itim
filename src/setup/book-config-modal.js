@@ -4,6 +4,10 @@ import { HEBREW_MILESTONE_DATES, getNearestHebrewMilestone } from "../utils/date
 import { renderAmudGrid, renderDailyView, updateModalProgressStats } from "../ui/components/book-config-modal.js";
 import { createBookConfigModalState } from "../ui/modal/book-config-modal-state.js";
 
+
+
+
+
 // --- Book Config Modal ---
 export function setupBookConfigModal({ getSchedule, getBookSequence, getBookRangeLimits, computeDaySlots, onSaveConfig, onStudyStatusOverride }) {
     const modalState = createBookConfigModalState();
@@ -20,6 +24,14 @@ export function setupBookConfigModal({ getSchedule, getBookSequence, getBookRang
     const configPaceInput = document.getElementById('bookConfigPaceInput');
     const configTargetDateInput = document.getElementById('bookConfigTargetDateInput');
     const configStartDateInput = document.getElementById('bookConfigStartDateInput'); // Added in step 3
+    
+    // Periodic Review Elements
+    const configPeriodicToggle = document.getElementById('bookConfigPeriodicReviewToggle');
+    const configPeriodicFields = document.getElementById('bookConfigPeriodicReviewFields');
+    const configPeriodicFrequency = document.getElementById('bookConfigPeriodicFrequency');
+    const configPeriodicMode = document.getElementById('bookConfigPeriodicMode');
+    const configPeriodicAmount = document.getElementById('bookConfigPeriodicAmount');
+    const configPeriodicSummary = document.getElementById('bookConfigPeriodicSummary');
 
     // Range Bound Elements
     const startDafSelect = document.getElementById('bookConfigStartDaf');
@@ -88,6 +100,31 @@ export function setupBookConfigModal({ getSchedule, getBookSequence, getBookRang
     configCalcMethod?.addEventListener('change', (e) => {
         toggleModalFields(e.target.value);
     });
+
+    // Periodic review toggle visibility
+    configPeriodicToggle?.addEventListener('change', () => {
+        if (configPeriodicFields) {
+            configPeriodicFields.classList.toggle('hidden', !configPeriodicToggle.checked);
+        }
+        updatePeriodicReviewSummary();
+    });
+
+    // Periodic review live summary update
+    function updatePeriodicReviewSummary() {
+        if (!configPeriodicSummary || !configPeriodicMode || !configPeriodicFrequency || !configPeriodicAmount) return;
+        const mode = configPeriodicMode.value;
+        const freq = configPeriodicFrequency.value || '7';
+        const amount = configPeriodicAmount.value || '1';
+        if (mode === 'days') {
+            configPeriodicSummary.textContent = `${amount} ימי חזרה בכל ${freq} ימי לימוד`;
+        } else {
+            configPeriodicSummary.textContent = `${amount} ימי חזרה אחרי כל ${freq} דפים`;
+        }
+    }
+
+    configPeriodicFrequency?.addEventListener('input', updatePeriodicReviewSummary);
+    configPeriodicMode?.addEventListener('change', updatePeriodicReviewSummary);
+    configPeriodicAmount?.addEventListener('input', updatePeriodicReviewSummary);
 
     function setActiveView(view) {
         const btnIndividual = document.getElementById('toggleViewIndividual');
@@ -202,6 +239,15 @@ export function setupBookConfigModal({ getSchedule, getBookSequence, getBookRang
             ? new Array(totalAmudimCount).fill(0)
             : [...book.amudStates];
 
+        // Populate periodic review fields from book data
+        const periodic = (typeof book === 'object' && book.periodicReview) || {};
+        if (configPeriodicToggle) configPeriodicToggle.checked = periodic.enabled || false;
+        if (configPeriodicFields) configPeriodicFields.classList.toggle('hidden', !periodic.enabled);
+        if (configPeriodicMode) configPeriodicMode.value = periodic.mode || 'days';
+        if (configPeriodicFrequency) configPeriodicFrequency.value = periodic.frequency || 7;
+        if (configPeriodicAmount) configPeriodicAmount.value = periodic.amount || 1;
+        updatePeriodicReviewSummary();
+
         const daySlots = computeDaySlots(currentSchedule, bookName, editingIndex, currentBookSequence);
 
         modalState.open(editingIndex, amudStates, daySlots);
@@ -243,6 +289,17 @@ export function setupBookConfigModal({ getSchedule, getBookSequence, getBookRang
         const startDateOverride = configStartDateInput ? configStartDateInput.value : ''; // <--- Capture raw picker input
         const { startAmudIdx, endAmudIdx } = getSelectedIndices();
         
+        // Build periodicReview config from UI
+        let periodicReview = null;
+        if (configPeriodicToggle && configPeriodicToggle.checked) {
+            periodicReview = {
+                enabled: true,
+                mode: (configPeriodicMode ? configPeriodicMode.value : 'days'),
+                frequency: parseInt(configPeriodicFrequency ? configPeriodicFrequency.value : 7, 10) || 7,
+                amount: parseInt(configPeriodicAmount ? configPeriodicAmount.value : 1, 10) || 1
+            };
+        }
+
         onSaveConfig({
             index: modalState.getEditingIndex(),
             calcMethod: calcMethod,
@@ -252,7 +309,8 @@ export function setupBookConfigModal({ getSchedule, getBookSequence, getBookRang
             reviewDays: reviewDays,
             amudStates: [...modalState.getAmudStates()],
             startAmudIdx: startAmudIdx,
-            endAmudIdx: endAmudIdx
+            endAmudIdx: endAmudIdx,
+            periodicReview: periodicReview
         });
 
         configModal.classList.add('hidden');

@@ -24,7 +24,7 @@ export function setupCalendarContextMenus({ getActiveTrack, onGenerate }) {
             onCancelReviewDay: (date) => ContextActions.onCancelReviewDay(date, bookLabel, activeTrack, onGenerate),
             onAddCustomEvent: (date) => ContextActions.onAddCustomEvent(date, activeTrack, onGenerate),
             onAddBreakDays: (date) => ContextActions.onAddBreakDays(date, activeTrack, onGenerate),
-            onSetPeriodicReview: (date) => ContextActions.onSetPeriodicReview(date, activeTrack, onGenerate),
+            onSetPeriodicReview: (date) => ContextActions.onSetPeriodicReview(date, bookLabel, activeTrack, onGenerate),
             onStartNewBook: (date) => ContextActions.onStartNewBook(date, activeTrack, onGenerate)
         };
 

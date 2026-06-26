@@ -429,7 +429,7 @@ export function createAppState() {
         /* ---- Book Config Modal ---- */
         computeDaySlots: computeDaySlots,
 
-        handleSaveBookConfig: function ({ index, calcMethod, paceValue, targetDate, startDate, reviewDays, amudStates, startAmudIdx, endAmudIdx }) {
+        handleSaveBookConfig: function ({ index, calcMethod, paceValue, targetDate, startDate, reviewDays, amudStates, startAmudIdx, endAmudIdx, periodicReview }) {
             let book = activeTrack.bookSequence[index];
             if (typeof book === 'string') {
                 book = { name: book };
@@ -447,6 +447,15 @@ export function createAppState() {
                 book.startDate = startDate;
             } else {
                 delete book.startDate;
+            }
+
+            // Save periodic review config if provided
+            if (periodicReview !== undefined) {
+                if (periodicReview) {
+                    book.periodicReview = periodicReview;
+                } else {
+                    delete book.periodicReview;
+                }
             }
 
             activeTrack.bookSequence[index] = book;
