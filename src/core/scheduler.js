@@ -201,6 +201,76 @@ export async function generateStudyTimeline({ trackSettings, bookSequence, study
     return { studyTimeline, comprehensiveTimeline };
 }
 
+/*
+ * Periodic Review — Anchor-Based Helpers
+ *
+ * "calendar" mode: every N calendar days from the anchor date, the day is a review day.
+ * "weekdays"  mode: every occurrence of the specified weekdays (0=Sun … 6=Sat) from the anchor.
+ * Both are fixed to the calendar: manual overrides and config changes do NOT shift them.
+ * The only way to suppress a review is overrideState === 1 (force rest).
+ */
+
+/** Resolve the effective anchor date for periodic review */
+function resolvePeriodicAnchor(bookObj, trackStartDate) {
+    return bookObj.startDate || trackStartDate;
+}
+
+/** Pre-compute a Set of dateStrings that are anchored review days for a range [rangeStart, rangeEnd] */
+function computeAnchoredReviewDays(periodic, anchorDateStr, rangeStart, rangeEnd) {
+    const anchored = new Set();
+    if (!periodic || !periodic.enabled) return anchored;
+
+    const anchor = new Date(anchorDateStr);
+    anchor.setHours(0, 0, 0, 0);
+
+    const start = new Date(rangeStart);
+    start.setHours(0, 0, 0, 0);
+    // For weekdays mode, start from max(anchor, rangeStart)
+    const effectiveStart = new Date(Math.max(start.getTime(), anchor.getTime()));
+
+    const end = new Date(rangeEnd);
+    end.setHours(0, 0, 0, 0);
+
+    if (effectiveStart > end) return anchored;
+
+    const mode = periodic.mode;
+
+    if (mode === 'calendar') {
+        const freq = periodic.frequency || 7;
+        const amount = periodic.amount || 1;
+
+        let cursor = new Date(effectiveStart);
+        while (cursor <= end) {
+            const daysSinceAnchor = Math.floor((cursor - anchor) / (24 * 60 * 60 * 1000));
+            if (daysSinceAnchor > 0 && daysSinceAnchor % freq === 0) {
+                for (let a = 0; a < amount; a++) {
+                    const rd = new Date(cursor);
+                    rd.setDate(rd.getDate() + a);
+                    if (rd <= end) {
+                        anchored.add(formatDateToIL(rd));
+                    }
+                }
+            }
+            cursor.setDate(cursor.getDate() + 1);
+        }
+    } else if (mode === 'weekdays') {
+        const weekdays = periodic.weekdays || [];
+
+        // If no weekdays selected, treat all days as potential review days (defensive)
+        const targetDays = weekdays.length > 0 ? weekdays : [];
+
+        let cursor = new Date(effectiveStart);
+        while (cursor <= end) {
+            if (targetDays.length === 0 || targetDays.includes(cursor.getDay())) {
+                anchored.add(formatDateToIL(cursor));
+            }
+            cursor.setDate(cursor.getDate() + 1);
+        }
+    }
+
+    return anchored;
+}
+
 // --- Strategy A: Target Date ---
 function generateTargetDateTimeline(startDate, bookObj, singleBookPool, studyStatusOverrides, calendarEvents, trackSettings, bookIndex) {
     const { studyDays, includeHolidays, includeBeinHazmanim } = trackSettings;
@@ -218,23 +288,46 @@ function generateTargetDateTimeline(startDate, bookObj, singleBookPool, studySta
 
     // Periodic review config
     const periodic = bookObj.periodicReview;
-    const hasPeriodicReviews = periodic && periodic.enabled && periodic.frequency > 0;
+    const hasPeriodicReviews = periodic && periodic.enabled && (
+        (periodic.mode === 'weekdays' && periodic.weekdays && periodic.weekdays.length > 0) ||
+        (periodic.mode !== 'weekdays' && periodic.frequency > 0)
+    );
+    const isTimeBased = periodic && periodic.enabled && (periodic.mode === 'calendar' || periodic.mode === 'weekdays');
+
+    // Precompute anchored review days for time-based periodic modes
+    let anchoredReviewDays = new Set();
+    if (hasPeriodicReviews && isTimeBased) {
+        const anchorStr = resolvePeriodicAnchor(bookObj, formatDateToISO(startDate));
+        anchoredReviewDays = computeAnchoredReviewDays(periodic, anchorStr, startDate, endDate);
+    }
 
     // 1. Gather all calendar days in the range
     while (currentDate <= endDate) {
         const dateString = formatDateToIL(currentDate);
         const overrideState = studyStatusOverrides[dateString] || 0;
-        
-        let isRestDay = (overrideState === 1) || (overrideState !== 2 && 
-            shouldDayBeRest(currentDate, studyDays, includeHolidays, includeBeinHazmanim, calendarEvents)
-        );
+
+        let isRestDay;
+        let isAnchoredReview = false;
+
+        // Time-anchored periodic reviews override rest day checks (unless force-rest)
+        if (anchoredReviewDays.has(dateString) && overrideState !== 1) {
+            isAnchoredReview = true;
+            isRestDay = false;
+        } else if (anchoredReviewDays.has(dateString) && overrideState === 1) {
+            // Force rest overrides anchored review
+            isRestDay = true;
+        } else {
+            isRestDay = (overrideState === 1) || (overrideState !== 2 && 
+                shouldDayBeRest(currentDate, studyDays, includeHolidays, includeBeinHazmanim, calendarEvents)
+            );
+        }
 
         timelineDays.push({
             date: new Date(currentDate),
             dateString: dateString,
             isRestDay: isRestDay,
-            isStudyDay: !isRestDay,
-            isReviewDay: false,
+            isStudyDay: !isRestDay && !isAnchoredReview,
+            isReviewDay: isAnchoredReview,
             overrideState: overrideState,
             amudimToCount: 0,
             targetBook: bookObj.name,
@@ -250,7 +343,8 @@ function generateTargetDateTimeline(startDate, bookObj, singleBookPool, studySta
 
     // 2. Count periodic review days and adjust net study day count
     let periodicReviewCount = 0;
-    if (hasPeriodicReviews) {
+    if (hasPeriodicReviews && !isTimeBased) {
+        // Only count non-time-based periodic reviews for study day adjustment
         let studyCounter = 0;
         let pendingReview = 0;
         let cumAmudim = 0;
@@ -289,6 +383,9 @@ function generateTargetDateTimeline(startDate, bookObj, singleBookPool, studySta
                 }
             }
         }
+    } else if (isTimeBased) {
+        // For time-based, count the anchored review days that fall within our timeline
+        periodicReviewCount = timelineDays.filter(d => d.isReviewDay).length;
     }
 
     const totalAmudim = singleBookPool.length;
@@ -329,18 +426,17 @@ function generateTargetDateTimeline(startDate, bookObj, singleBookPool, studySta
 
     // 5. Build a reordered list of plan slots by interleaving periodic reviews
     let orderedSlots = [];
-    if (hasPeriodicReviews && periodic.mode === 'days') {
-        // Interleave study slots with periodic review slots
+    if (hasPeriodicReviews && !isTimeBased && periodic.mode === 'days') {
+        // Interleave study slots with periodic review slots (legacy study-day-based mode)
         let studySlotPointer = 0;
-        let studyCounter = 0;
+        let studyCounterTrack = 0;
         let pendingReview = 0;
 
-        // First, push all trailing review slots separately (they go at the very end)
+        // Split out trailing review slots and periodic review slots
         const trailingReviewSlots = planSlots.slice(netStudyDaysCount, netStudyDaysCount + reviewDaysCount);
-        // Periodic review slots come after trailing
         const periodicReviewSlots = planSlots.slice(netStudyDaysCount + reviewDaysCount);
 
-        studyCounter = 0; // Reset tracking pointer before the loop
+        studyCounterTrack = 0;
         for (let d = 0; d < activeStudyDays.length; d++) {
             if (pendingReview > 0) {
                 if (periodicReviewSlots.length > 0) {
@@ -348,28 +444,24 @@ function generateTargetDateTimeline(startDate, bookObj, singleBookPool, studySta
                 }
                 pendingReview--;
             } else if (studySlotPointer < netStudyDaysCount) {
-                // If the NEXT slot needs to be a review day
-                if (studyCounter > 0 && (studyCounter + 1) % periodic.frequency === 0) {
+                if (studyCounterTrack > 0 && (studyCounterTrack + 1) % periodic.frequency === 0) {
                     if (periodicReviewSlots.length > 0) {
                         orderedSlots.push(periodicReviewSlots.shift());
                     }
                     pendingReview += (periodic.amount || 1) - 1;
-                    studyCounter = 0;
+                    studyCounterTrack = 0;
                 } else {
                     orderedSlots.push(planSlots[studySlotPointer]);
                     studySlotPointer++;
-                    studyCounter++;
+                    studyCounterTrack++;
                 }
             }
         }
-        // Append any remaining periodic review slots
         while (periodicReviewSlots.length > 0) {
             orderedSlots.push(periodicReviewSlots.shift());
         }
-        // Append trailing review slots
         orderedSlots = orderedSlots.concat(trailingReviewSlots);
-    } else if (hasPeriodicReviews && periodic.mode === 'dafs') {
-        // For dafs mode, just use planSlots as-is since they include periodic reviews at the end
+    } else if (hasPeriodicReviews && !isTimeBased && periodic.mode === 'dafs') {
         orderedSlots = [...planSlots];
     } else {
         orderedSlots = [...planSlots];
@@ -407,7 +499,26 @@ function generatePaceTimeline(startDate, bookObj, singleBookPool, studyStatusOve
 
     // Periodic review configuration
     const periodic = bookObj.periodicReview;
-    const hasPeriodicReviews = periodic && periodic.enabled && periodic.frequency > 0;
+    const hasPeriodicReviews = periodic && periodic.enabled && (
+        (periodic.mode === 'weekdays' && periodic.weekdays && periodic.weekdays.length > 0) ||
+        (periodic.mode !== 'weekdays' && periodic.frequency > 0)
+    );
+    const isTimeBased = periodic && periodic.enabled && (periodic.mode === 'calendar' || periodic.mode === 'weekdays');
+
+    // Precompute anchored review days for time-based periodic modes
+    // We need to estimate an end date first, or compute on the fly.
+    // Since pace mode doesn't have a fixed end, we'll compute anchored reviews
+    // up to a projected end date (similar to ensureCalendarEvents logic).
+    let anchoredReviewDays = new Set();
+    if (hasPeriodicReviews && isTimeBased) {
+        const anchorStr = resolvePeriodicAnchor(bookObj, formatDateToISO(startDate));
+        // Project a reasonable end: totalAmudim / pace * 1.5 buffer + review days
+        const totalAmudim = singleBookPool.length;
+        const projectedStudyDays = Math.ceil(totalAmudim / dailyAmudimPace) + 30; // generous buffer
+        const projectedEnd = new Date(startDate);
+        projectedEnd.setDate(projectedEnd.getDate() + projectedStudyDays);
+        anchoredReviewDays = computeAnchoredReviewDays(periodic, anchorStr, startDate, projectedEnd);
+    }
 
     let studyDayCounter = 0;
     let cumulativeAmudim = 0;
@@ -416,20 +527,32 @@ function generatePaceTimeline(startDate, bookObj, singleBookPool, studyStatusOve
     while (amudPoolCopy.length > 0) {
         const dateString = formatDateToIL(currentDate);
         const overrideState = studyStatusOverrides[dateString] || 0;
-        
-        let isRestDay = (overrideState === 1) || (overrideState !== 2 && 
-            shouldDayBeRest(currentDate, studyDays, includeHolidays, includeBeinHazmanim, calendarEvents)
-        );
+
+        let isRestDay;
+        let isReviewDay = false;
+        let isAnchoredReview = false;
+
+        // Time-anchored periodic reviews override rest day checks (unless force-rest)
+        if (anchoredReviewDays.has(dateString) && overrideState !== 1) {
+            isAnchoredReview = true;
+            isRestDay = false;
+            isReviewDay = true;
+        } else if (anchoredReviewDays.has(dateString) && overrideState === 1) {
+            isRestDay = true;
+        } else {
+            isRestDay = (overrideState === 1) || (overrideState !== 2 && 
+                shouldDayBeRest(currentDate, studyDays, includeHolidays, includeBeinHazmanim, calendarEvents)
+            );
+        }
 
         let amudimToCountForDay = 0;
-        let isReviewDay = false;
         let triggerReviewPhase = false;
 
-        if (!isRestDay) {
+        if (!isRestDay && !isAnchoredReview) {
             if (pendingReviewDays > 0) {
                 isReviewDay = true;
                 pendingReviewDays--;
-            } else if (hasPeriodicReviews) {
+            } else if (hasPeriodicReviews && !isTimeBased) {
                 if (periodic.mode === 'days') {
                     // Check if the NEXT day should be the review day (e.g., 6 days studied, 7th is review)
                     if (studyDayCounter > 0 && (studyDayCounter + 1) % periodic.frequency === 0) {
@@ -448,7 +571,7 @@ function generatePaceTimeline(startDate, bookObj, singleBookPool, studyStatusOve
                 studyDayCounter++;
                 cumulativeAmudim += amudimToCountForDay;
 
-                if (hasPeriodicReviews && periodic.mode === 'dafs') {
+                if (hasPeriodicReviews && !isTimeBased && periodic.mode === 'dafs') {
                     const dafsCompleted = cumulativeAmudim / 2;
                     if (dafsCompleted >= periodic.frequency) {
                         pendingReviewDays += (periodic.amount || 1);
@@ -481,7 +604,7 @@ function generatePaceTimeline(startDate, bookObj, singleBookPool, studyStatusOve
                 currentDate.setDate(currentDate.getDate() + 1);
                 const rStr = formatDateToIL(currentDate);
                 const rOverride = studyStatusOverrides[rStr] || 0;
-                
+
                 let rIsRest = (rOverride === 1) || (rOverride !== 2 && 
                     shouldDayBeRest(currentDate, studyDays, includeHolidays, includeBeinHazmanim, calendarEvents)
                 );
@@ -503,8 +626,8 @@ function generatePaceTimeline(startDate, bookObj, singleBookPool, studyStatusOve
         currentDate.setDate(currentDate.getDate() + 1);
     }
 
-    // Flush any remaining pending periodic review days
-    while (pendingReviewDays > 0) {
+    // Flush any remaining pending periodic review days (non-time-based only)
+    while (pendingReviewDays > 0 && !isTimeBased) {
         const dateString = formatDateToIL(currentDate);
         const overrideState = studyStatusOverrides[dateString] || 0;
         let isRestDay = (overrideState === 1) || (overrideState !== 2 && 

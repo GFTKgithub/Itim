@@ -237,6 +237,8 @@ export const ContextActions = {
             inputs: [
                 { name: 'mode', type: 'select', label: 'בחר אופן החישוב', value: existingPeriodic.mode || 'days', options: [
                     { value: 'days', text: 'לפי ימי לימוד' },
+                    { value: 'calendar', text: 'לפי ימים בלוח' },
+                    { value: 'weekdays', text: 'ימי שבוע קבועים' },
                     { value: 'dafs', text: 'לפי דפים שנלמדו' }
                 ]},
                 { name: 'frequency', type: 'number', min: '1', step: '1', label: 'כל כמה? (ימים או דפים)', value: existingPeriodic.frequency || 7 },

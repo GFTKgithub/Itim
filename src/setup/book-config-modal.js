@@ -115,8 +115,22 @@ export function setupBookConfigModal({ getSchedule, getBookSequence, getBookRang
         const mode = configPeriodicMode.value;
         const freq = configPeriodicFrequency.value || '7';
         const amount = configPeriodicAmount.value || '1';
+        
+        // Show/hide weekday selection
+        const weekdaysContainer = document.getElementById('bookConfigPeriodicWeekdays');
+        if (weekdaysContainer) {
+            weekdaysContainer.classList.toggle('hidden', mode !== 'weekdays');
+        }
+        
         if (mode === 'days') {
             configPeriodicSummary.textContent = `${amount} ימי חזרה בכל ${freq} ימי לימוד`;
+        } else if (mode === 'calendar') {
+            configPeriodicSummary.textContent = `${amount} ימי חזרה בכל ${freq} ימים בלוח`;
+        } else if (mode === 'weekdays') {
+            const checked = document.querySelectorAll('.periodic-weekday-cb:checked');
+            const dayNames = ['א', 'ב', 'ג', 'ד', 'ה', 'ו', 'ש'];
+            const selected = Array.from(checked).map(cb => dayNames[parseInt(cb.value)]).join(', ');
+            configPeriodicSummary.textContent = selected ? `חזרה בימים: ${selected}` : 'בחר ימי חזרה שבועיים';
         } else {
             configPeriodicSummary.textContent = `${amount} ימי חזרה אחרי כל ${freq} דפים`;
         }
@@ -125,6 +139,11 @@ export function setupBookConfigModal({ getSchedule, getBookSequence, getBookRang
     configPeriodicFrequency?.addEventListener('input', updatePeriodicReviewSummary);
     configPeriodicMode?.addEventListener('change', updatePeriodicReviewSummary);
     configPeriodicAmount?.addEventListener('input', updatePeriodicReviewSummary);
+    
+    // Listen for weekday checkbox changes
+    document.querySelectorAll('.periodic-weekday-cb').forEach(cb => {
+        cb.addEventListener('change', updatePeriodicReviewSummary);
+    });
 
     function setActiveView(view) {
         const btnIndividual = document.getElementById('toggleViewIndividual');
@@ -246,6 +265,13 @@ export function setupBookConfigModal({ getSchedule, getBookSequence, getBookRang
         if (configPeriodicMode) configPeriodicMode.value = periodic.mode || 'days';
         if (configPeriodicFrequency) configPeriodicFrequency.value = periodic.frequency || 7;
         if (configPeriodicAmount) configPeriodicAmount.value = periodic.amount || 1;
+        
+        // Restore weekday checkboxes from saved data
+        const savedWeekdays = periodic.weekdays || [];
+        document.querySelectorAll('.periodic-weekday-cb').forEach(cb => {
+            cb.checked = savedWeekdays.includes(parseInt(cb.value, 10));
+        });
+        
         updatePeriodicReviewSummary();
 
         const daySlots = computeDaySlots(currentSchedule, bookName, editingIndex, currentBookSequence);
@@ -298,6 +324,14 @@ export function setupBookConfigModal({ getSchedule, getBookSequence, getBookRang
                 frequency: parseInt(configPeriodicFrequency ? configPeriodicFrequency.value : 7, 10) || 7,
                 amount: parseInt(configPeriodicAmount ? configPeriodicAmount.value : 1, 10) || 1
             };
+            // Capture weekday checkboxes for 'weekdays' mode
+            if (periodicReview.mode === 'weekdays') {
+                const checkedWeekdays = [];
+                document.querySelectorAll('.periodic-weekday-cb:checked').forEach(cb => {
+                    checkedWeekdays.push(parseInt(cb.value, 10));
+                });
+                periodicReview.weekdays = checkedWeekdays;
+            }
         }
 
         onSaveConfig({

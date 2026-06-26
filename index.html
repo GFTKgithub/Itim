@@ -357,12 +357,47 @@
                                         class="w-14 h-8 border border-indigo-200/80 rounded-lg px-1 text-xs font-bold text-indigo-900 bg-white focus:border-indigo-500 text-center">
                                     <select id="bookConfigPeriodicMode" class="h-8 border border-indigo-200 rounded-lg px-1 text-[11px] font-bold text-indigo-900 bg-white focus:border-indigo-500 cursor-pointer">
                                         <option value="days">ימי לימוד</option>
+                                        <option value="calendar">ימים בלוח</option>
+                                        <option value="weekdays">ימי שבוע קבועים</option>
                                         <option value="dafs">דפים</option>
                                     </select>
                                     <span class="text-[11px] font-bold text-indigo-700 whitespace-nowrap">—</span>
                                     <input type="number" id="bookConfigPeriodicAmount" min="1" value="1"
                                         class="w-12 h-8 border border-indigo-200/80 rounded-lg px-1 text-xs font-bold text-indigo-900 bg-white focus:border-indigo-500 text-center">
                                     <span class="text-[11px] font-bold text-indigo-700 whitespace-nowrap">ימי חזרה</span>
+                                </div>
+                                <div id="bookConfigPeriodicWeekdays" class="hidden mt-2">
+                                    <span class="text-[10px] font-bold text-indigo-700 block mb-1">בחר ימי חזרה שבועיים:</span>
+                                    <div class="flex justify-between gap-1 select-none" dir="rtl">
+                                        <label class="flex-1 text-center cursor-pointer group">
+                                            <input type="checkbox" name="periodicWeekday" value="0" class="peer hidden periodic-weekday-cb">
+                                            <div class="py-1 text-[10px] font-bold rounded-lg border border-indigo-200 text-indigo-600 peer-checked:bg-indigo-500 peer-checked:border-indigo-500 peer-checked:text-white transition-all">א</div>
+                                        </label>
+                                        <label class="flex-1 text-center cursor-pointer group">
+                                            <input type="checkbox" name="periodicWeekday" value="1" class="peer hidden periodic-weekday-cb">
+                                            <div class="py-1 text-[10px] font-bold rounded-lg border border-indigo-200 text-indigo-600 peer-checked:bg-indigo-500 peer-checked:border-indigo-500 peer-checked:text-white transition-all">ב</div>
+                                        </label>
+                                        <label class="flex-1 text-center cursor-pointer group">
+                                            <input type="checkbox" name="periodicWeekday" value="2" class="peer hidden periodic-weekday-cb">
+                                            <div class="py-1 text-[10px] font-bold rounded-lg border border-indigo-200 text-indigo-600 peer-checked:bg-indigo-500 peer-checked:border-indigo-500 peer-checked:text-white transition-all">ג</div>
+                                        </label>
+                                        <label class="flex-1 text-center cursor-pointer group">
+                                            <input type="checkbox" name="periodicWeekday" value="3" class="peer hidden periodic-weekday-cb">
+                                            <div class="py-1 text-[10px] font-bold rounded-lg border border-indigo-200 text-indigo-600 peer-checked:bg-indigo-500 peer-checked:border-indigo-500 peer-checked:text-white transition-all">ד</div>
+                                        </label>
+                                        <label class="flex-1 text-center cursor-pointer group">
+                                            <input type="checkbox" name="periodicWeekday" value="4" class="peer hidden periodic-weekday-cb">
+                                            <div class="py-1 text-[10px] font-bold rounded-lg border border-indigo-200 text-indigo-600 peer-checked:bg-indigo-500 peer-checked:border-indigo-500 peer-checked:text-white transition-all">ה</div>
+                                        </label>
+                                        <label class="flex-1 text-center cursor-pointer group">
+                                            <input type="checkbox" name="periodicWeekday" value="5" class="peer hidden periodic-weekday-cb">
+                                            <div class="py-1 text-[10px] font-bold rounded-lg border border-indigo-200 text-indigo-600 peer-checked:bg-indigo-500 peer-checked:border-indigo-500 peer-checked:text-white transition-all">ו</div>
+                                        </label>
+                                        <label class="flex-1 text-center cursor-pointer group">
+                                            <input type="checkbox" name="periodicWeekday" value="6" class="peer hidden periodic-weekday-cb">
+                                            <div class="py-1 text-[10px] font-bold rounded-lg border border-indigo-200 text-indigo-600 peer-checked:bg-indigo-500 peer-checked:border-indigo-500 peer-checked:text-white transition-all">ש</div>
+                                        </label>
+                                    </div>
                                 </div>
                                 <div id="bookConfigPeriodicSummary" class="mt-1.5 text-[11px] text-indigo-600/80 font-medium">
                                     1 יום חזרה בכל 7 ימי לימוד
