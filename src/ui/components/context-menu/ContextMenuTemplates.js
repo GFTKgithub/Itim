@@ -14,7 +14,7 @@ export const ContextMenuTemplates = {
             }
         },
         {
-            label: 'שינוי קצב הלימוד מהיום',
+            label: `שינוי קצב הלימוד עבור ספר זה (${bookLabel})`,
             icon: '⚡',
             action: () => {
                 handlers.onAdjustPacing(dateString);
