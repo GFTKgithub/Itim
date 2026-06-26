@@ -43,21 +43,39 @@ export function showDialog({
                 wrapper.appendChild(label);
             }
 
-            const input = document.createElement('input');
-            input.type = inputConfig.type || 'text'; // text, date, number, password
-            input.placeholder = inputConfig.placeholder || '';
-            input.value = inputConfig.value !== undefined ? inputConfig.value : '';
-            input.dataset.key = inputConfig.name || `input_${index}`;
-            
-            input.className = 'w-full border border-slate-300 rounded-lg p-2 bg-white text-sm focus:outline-none focus:border-blue-500';
+            let element;
 
-            if (inputConfig.type === 'number') {
-                if (inputConfig.min !== undefined) input.min = inputConfig.min;
-                if (inputConfig.max !== undefined) input.max = inputConfig.max;
-                if (inputConfig.step !== undefined) input.step = inputConfig.step;
+            // Handle Dropdown / Select menu
+            if (inputConfig.type === 'select') {
+                element = document.createElement('select');
+                
+                if (inputConfig.options && Array.isArray(inputConfig.options)) {
+                    inputConfig.options.forEach(opt => {
+                        const option = document.createElement('option');
+                        // Supports both objects { value, text } or plain strings
+                        option.value = opt.value !== undefined ? opt.value : opt;
+                        option.textContent = opt.text !== undefined ? opt.text : opt;
+                        element.appendChild(option);
+                    });
+                }
+            } else {
+                // Handle standard text/number inputs
+                element = document.createElement('input');
+                element.type = inputConfig.type || 'text';
+                element.placeholder = inputConfig.placeholder || '';
+                
+                if (inputConfig.type === 'number') {
+                    if (inputConfig.min !== undefined) element.min = inputConfig.min;
+                    if (inputConfig.max !== undefined) element.max = inputConfig.max;
+                    if (inputConfig.step !== undefined) element.step = inputConfig.step;
+                }
             }
 
-            wrapper.appendChild(input);
+            element.value = inputConfig.value !== undefined ? inputConfig.value : '';
+            element.dataset.key = inputConfig.name || `input_${index}`;
+            element.className = 'w-full border border-slate-300 rounded-lg p-2 bg-white text-sm focus:outline-none focus:border-blue-500';
+
+            wrapper.appendChild(element);
             inputContainer.appendChild(wrapper);
         });
 
@@ -66,14 +84,15 @@ export function showDialog({
 
             if (isConfirmed && inputs.length > 0) {
                 result = {};
-                const generatedInputs = inputContainer.querySelectorAll('input');
-                generatedInputs.forEach(input => {
-                    const key = input.dataset.key;
+                // Query both input and select tags
+                const generatedFields = inputContainer.querySelectorAll('input, select');
+                generatedFields.forEach(field => {
+                    const key = field.dataset.key;
 
-                    if (input.type === 'number') {
-                        result[key] = input.value !== '' ? Number(input.value) : '';
+                    if (field.type === 'number') {
+                        result[key] = field.value !== '' ? Number(field.value) : '';
                     } else {
-                        result[key] = input.value;
+                        result[key] = field.value;
                     }
                 });
             }
@@ -105,8 +124,8 @@ export function showDialog({
             overlay.classList.remove('opacity-0', 'scale-95');
             overlay.classList.add('opacity-100', 'scale-100');
             
-            const firstInput = inputContainer.querySelector('input');
-            if (firstInput) firstInput.focus();
+            const firstField = inputContainer.querySelector('input, select');
+            if (firstField) firstField.focus();
         }, 10);
     });
 }
