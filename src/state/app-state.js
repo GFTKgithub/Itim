@@ -446,14 +446,17 @@ export function createAppState() {
             if (startDate) {
                 book.startDate = startDate;
             } else {
-                delete book.startDate; // Clean up if they cleared the field
+                delete book.startDate;
             }
 
             activeTrack.bookSequence[index] = book;
 
+            // Run schedule generation FIRST so cascading items write back down into bookSequence
+            this.handleScheduleGeneration();
+            
+            // Now persist the modified bookSequence containing clean rippled dates
             saveState();
             updateBookSequenceUI(activeTrack.bookSequence);
-            this.handleScheduleGeneration();
         },
 
         /* ---- Cloud Auth Integration ---- */

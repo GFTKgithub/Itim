@@ -60,33 +60,59 @@ export async function generateStudyTimeline({ trackSettings, bookSequence, study
                 endAmudIdx: entry.endAmudIdx !== undefined ? entry.endAmudIdx : (getTotalAmudim(entry.name) - 1) 
               };
         
+        // Timezone-safe local YYYY-MM-DD date formatter
+        const getLocalDateString = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+
         if (bookObj.startDate) {
             let overriddenStart = new Date(bookObj.startDate);
             overriddenStart.setHours(0, 0, 0, 0);
 
-            // If the overridden start date is strictly after our current tracking pointer,
-            // we must explicitly populate the "gap" days as rest/empty days in the timeline.
-            while (currentTimelineStart < overriddenStart) {
-                const dateString = formatDateToIL(currentTimelineStart);
-                const overrideState = studyStatusOverrides[dateString] || 0;
+            // If the user's set date falls before the previous book ended, it's an invasion.
+            if (overriddenStart < currentTimelineStart) {
+                const correctedDateStr = getLocalDateString(currentTimelineStart);
+                
+                // If it's a string, upgrade it to an object so the property sticks
+                if (typeof bookSequence[i] === 'string') {
+                    bookSequence[i] = { name: bookSequence[i] };
+                }
+                bookSequence[i].startDate = correctedDateStr;
+                bookObj.startDate = correctedDateStr;
+            } 
+            // If it's strictly in the future, fill the empty gap days up to it.
+            else if (overriddenStart > currentTimelineStart) {
+                while (currentTimelineStart < overriddenStart) {
+                    const dateString = formatDateToIL(currentTimelineStart);
+                    const overrideState = studyStatusOverrides[dateString] || 0;
 
-                comprehensiveTimeline.push({
-                    date: new Date(currentTimelineStart),
-                    dateString: dateString,
-                    isRestDay: true, // Force it to be an empty gap day
-                    isStudyDay: false,
-                    isReviewDay: false,
-                    overrideState: overrideState,
-                    amudimToCount: 0,
-                    targetBook: "-", // No book assigned to this gap
-                    bookIndex: i
-                });
+                    comprehensiveTimeline.push({
+                        date: new Date(currentTimelineStart),
+                        dateString: dateString,
+                        isRestDay: true,
+                        isStudyDay: false,
+                        isReviewDay: false,
+                        overrideState: overrideState,
+                        amudimToCount: 0,
+                        targetBook: "-",
+                        bookIndex: i
+                    });
 
-                currentTimelineStart.setDate(currentTimelineStart.getDate() + 1);
+                    currentTimelineStart.setDate(currentTimelineStart.getDate() + 1);
+                }
             }
-            
-            // Sync the tracking pointer precisely to the override date
-            currentTimelineStart = overriddenStart;
+        } else if (i > 0) {
+            // If a book has no explicit start date, calculate it and assign it back safely
+            const correctedDateStr = getLocalDateString(currentTimelineStart);
+            if (typeof bookSequence[i] === 'string') {
+                bookSequence[i] = { name: bookSequence[i] };
+            }
+            bookSequence[i].startDate = correctedDateStr;
+            bookObj.startDate = correctedDateStr;
+        }
+
+        // Always ensure our local tracking pointer is synchronized with the finalized bookObj state
+        if (bookObj.startDate) {
+            currentTimelineStart = new Date(bookObj.startDate);
+            currentTimelineStart.setHours(0, 0, 0, 0);
         }
 
         const singleBookPool = buildMasterAmudPool([bookObj]); 

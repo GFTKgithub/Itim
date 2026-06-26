@@ -245,6 +245,33 @@ export const ContextActions = {
         if (!activeTrack.bookSequence) activeTrack.bookSequence = [];
         if (!activeTrack.studyStatusOverrides) activeTrack.studyStatusOverrides = {};
 
+        // 1. Convert DD/MM/YYYY dateString to standard YYYY-MM-DD format so Date parsing doesn't crash
+        // 1. Robust date parsing that handles both YYYY-MM-DD and DD/MM/YYYY seamlessly
+        let rawDate;
+        if (dateString.includes('-')) {
+            // It's already YYYY-MM-DD
+            const [y, m, d] = dateString.split('-');
+            rawDate = new Date(+y, +m - 1, +d);
+        } else if (dateString.includes('/')) {
+            // It's DD/MM/YYYY
+            const [d, m, y] = dateString.split('/');
+            rawDate = new Date(+y, +m - 1, +d);
+        } else {
+            // Fallback for native string timestamps
+            rawDate = new Date(dateString);
+        }
+
+        // Generate safe components manually without string methods
+        const finalY = rawDate.getFullYear();
+        const rawM = rawDate.getMonth() + 1;
+        const rawD = rawDate.getDate();
+        
+        const finalM = rawM < 10 ? '0' + rawM : rawM;
+        const finalD = rawD < 10 ? '0' + rawD : rawD;
+        
+        const isoStartDate = `${finalY}-${finalM}-${finalD}`;
+        const clickedTime = rawDate.getTime();
+
         const totalAmudim = getTotalAmudim(cleanName);
         const newBookEntry = {
             name: cleanName,
@@ -253,10 +280,28 @@ export const ContextActions = {
             reviewDays: 0,
             startAmudIdx: 0,
             endAmudIdx: totalAmudim - 1,
-            startDate: dateString
+            startDate: isoStartDate // Clean standard format
         };
 
-        activeTrack.bookSequence.push(newBookEntry);
+        // 2. Loop through sequence to find exactly where this start time belongs
+        let insertionIndex = activeTrack.bookSequence.length;
+
+        for (let i = 0; i < activeTrack.bookSequence.length; i++) {
+            const currentBook = activeTrack.bookSequence[i];
+            
+            if (currentBook && currentBook.startDate) {
+                const [bYear, bMonth, bDay] = currentBook.startDate.split('-');
+                const bookStartTime = new Date(+bYear, +bMonth - 1, +bDay).getTime();
+
+                if (clickedTime < bookStartTime) {
+                    insertionIndex = i;
+                    break;
+                }
+            }
+        }
+
+        // 3. Splice into position
+        activeTrack.bookSequence.splice(insertionIndex, 0, newBookEntry);
 
         saveState();
         if (typeof updateBookSequenceUI === 'function') updateBookSequenceUI(activeTrack.bookSequence);
