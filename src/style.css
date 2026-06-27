@@ -308,19 +308,18 @@ select:focus {
         page-break-inside: avoid;
         break-inside: avoid;
 
-        /* Your original layout code */
         display: flex !important;
         flex-direction: column !important;
-        width: 100vw !important;
-        height: 100vh !important;
+        width: 100% !important;
+        height: auto !important;
+        min-height: 0 !important;
         box-sizing: border-box !important;
         border: none !important;
         margin: 0 !important;
+        padding: 0.25in 0 !important;
+        overflow: visible !important;
         -webkit-print-color-adjust: exact;
         print-color-adjust: exact;
-
-        justify-content: center !important;
-        align-items: center !important;
     }
 
     .calendar-month:first-child {
