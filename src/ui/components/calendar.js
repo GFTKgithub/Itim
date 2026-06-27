@@ -235,11 +235,19 @@ function renderFullCalendarLayout(container, studySchedule, config) {
         
         // Render headers containing navigation triggers only when running single-month views
         if (calendarViewMode === 'paginated') {
+            const isFirstPage = validatedIndex === 0;
+            const isLastPage = validatedIndex === monthKeys.length - 1;
             htmlBuffer.push(`
                 <div class="bg-slate-800 text-white p-4 flex justify-between items-center font-bold text-xl select-none no-print">
-                    <button data-nav="prev" class="cursor-pointer px-2 opacity-80 hover:opacity-100 no-print">&rarr;</button>
-                    <span>${key}</span>
-                    <button data-nav="next" class="cursor-pointer px-2 opacity-80 hover:opacity-100 no-print">&larr;</button>
+                    <div class="flex items-center gap-1">
+                        <button data-nav="skip-prev" class="cursor-pointer px-2 opacity-80 hover:opacity-100 no-print ${isFirstPage ? 'invisible' : ''}">&laquo;&laquo;</button>
+                        <button data-nav="prev" class="cursor-pointer px-2 opacity-80 hover:opacity-100 no-print ${isFirstPage ? 'invisible' : ''}">&rarr;</button>
+                    </div>
+                    <span class="flex-1 text-center">${key}</span>
+                    <div class="flex items-center gap-1">
+                        <button data-nav="next" class="cursor-pointer px-2 opacity-80 hover:opacity-100 no-print ${isLastPage ? 'invisible' : ''}">&larr;</button>
+                        <button data-nav="skip-next" class="cursor-pointer px-2 opacity-80 hover:opacity-100 no-print ${isLastPage ? 'invisible' : ''}">&raquo;&raquo;</button>
+                    </div>
                 </div>
             `);
         } else {
@@ -289,6 +297,8 @@ function renderFullCalendarLayout(container, studySchedule, config) {
         if (calendarViewMode === 'paginated') {
             const prevBtn = monthWrapper.querySelector('[data-nav="prev"]');
             const nextBtn = monthWrapper.querySelector('[data-nav="next"]');
+            const skipPrevBtn = monthWrapper.querySelector('[data-nav="skip-prev"]');
+            const skipNextBtn = monthWrapper.querySelector('[data-nav="skip-next"]');
             
             if (prevBtn && typeof config.onMonthChange === 'function') {
                 prevBtn.addEventListener('click', () => {
@@ -313,6 +323,34 @@ function renderFullCalendarLayout(container, studySchedule, config) {
                 nextBtn.addEventListener('click', () => {
                     if (validatedIndex < monthKeys.length - 1) {
                         internalMonthIndex++;
+                        renderFullCalendarLayout(container, studySchedule, config);
+                    }
+                });
+            }
+
+            if (skipPrevBtn && typeof config.onMonthChange === 'function') {
+                skipPrevBtn.addEventListener('click', () => {
+                    if (validatedIndex > 0) config.onMonthChange(-validatedIndex);
+                });
+            } else if (skipPrevBtn) {
+                // Self-contained fallback click handler if controller callback is omitted
+                skipPrevBtn.addEventListener('click', () => {
+                    if (validatedIndex > 0) {
+                        internalMonthIndex = 0;
+                        renderFullCalendarLayout(container, studySchedule, config);
+                    }
+                });
+            }
+
+            if (skipNextBtn && typeof config.onMonthChange === 'function') {
+                skipNextBtn.addEventListener('click', () => {
+                    if (validatedIndex < monthKeys.length - 1) config.onMonthChange(monthKeys.length - 1 - validatedIndex);
+                });
+            } else if (skipNextBtn) {
+                // Self-contained fallback click handler if controller callback is omitted
+                skipNextBtn.addEventListener('click', () => {
+                    if (validatedIndex < monthKeys.length - 1) {
+                        internalMonthIndex = monthKeys.length - 1;
                         renderFullCalendarLayout(container, studySchedule, config);
                     }
                 });
