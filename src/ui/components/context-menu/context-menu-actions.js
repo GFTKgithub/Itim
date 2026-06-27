@@ -86,36 +86,37 @@ export const ContextActions = {
         await onGenerate();
     },
 
-    // Remove Review Day Status
-    onCancelReviewDay: async (dateString, bookLabel, activeTrack, onGenerate) => {
-        if (!activeTrack || !activeTrack.bookSequence) {
-            console.error("Context Actions Error: activeTrack state mapping is missing or corrupt", activeTrack);
-            return;
-        }
+    // Remove Review Day Status // ! temporarily removed
+    // onCancelReviewDay: async (dateString, bookLabel, activeTrack, onGenerate) => {
+    //     if (!activeTrack || !activeTrack.bookSequence) {
+    //         console.error("Context Actions Error: activeTrack state mapping is missing or corrupt", activeTrack);
+    //         return;
+    //     }
 
-        const bookIdx = activeTrack.bookSequence.findIndex(b => 
-            (typeof b === 'string' ? b : b.name) === bookLabel
-        );
+    //     const bookIdx = activeTrack.bookSequence.findIndex(b => 
+    //         (typeof b === 'string' ? b : b.name) === bookLabel
+    //     );
 
-        if (bookIdx !== -1) {
-            let currentEntry = activeTrack.bookSequence[bookIdx];
+    //     if (bookIdx !== -1) {
+    //         let currentEntry = activeTrack.bookSequence[bookIdx];
             
-            if (typeof currentEntry === 'string') {
-                currentEntry = { name: currentEntry, calcMethod: 'pace', paceValue: 1, reviewDays: 0 };
-            }
+    //         if (typeof currentEntry === 'string') {
+    //             currentEntry = { name: currentEntry, calcMethod: 'pace', paceValue: 1, reviewDays: 0 };
+    //         }
 
-            if (currentEntry.reviewDays > 0) {
-                currentEntry.reviewDays = currentEntry.reviewDays - 1;
-                activeTrack.bookSequence[bookIdx] = currentEntry;
-            }
-        }
+    //         if (currentEntry.reviewDays > 0) {
+    //             currentEntry.reviewDays = currentEntry.reviewDays - 1;
+    //             activeTrack.bookSequence[bookIdx] = currentEntry;
+    //         }
+    //     }
 
-        saveState();
-        if (typeof updateBookSequenceUI === 'function') updateBookSequenceUI(activeTrack.bookSequence);
-        await onGenerate();
-    },
+    //     saveState();
+    //     if (typeof updateBookSequenceUI === 'function') updateBookSequenceUI(activeTrack.bookSequence);
+    //     await onGenerate();
+    // },
 
     // Force Multi-Day Breaks
+    
     onAddBreakDays: async (startDateString, activeTrack, onGenerate) => {
         const res = await showDialog({
             title: 'הוספת ימי הפסקה רצופים',

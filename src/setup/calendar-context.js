@@ -21,7 +21,7 @@ export function setupCalendarContextMenus({ getActiveTrack, onGenerate }) {
         const menuHandlers = {
             onAdjustTargetDate: (date, book) => ContextActions.onAdjustTargetDate(date, book, activeTrack, onGenerate),
             onAdjustPacing: (date) => ContextActions.onAdjustPacing(date, bookLabel, activeTrack, onGenerate),
-            onCancelReviewDay: (date) => ContextActions.onCancelReviewDay(date, bookLabel, activeTrack, onGenerate),
+            // onCancelReviewDay: (date) => ContextActions.onCancelReviewDay(date, bookLabel, activeTrack, onGenerate),  // ! temporarily removed
             onAddCustomEvent: (date) => ContextActions.onAddCustomEvent(date, activeTrack, onGenerate),
             onAddBreakDays: (date) => ContextActions.onAddBreakDays(date, activeTrack, onGenerate),
             onSetPeriodicReview: (date) => ContextActions.onSetPeriodicReview(date, bookLabel, activeTrack, onGenerate),

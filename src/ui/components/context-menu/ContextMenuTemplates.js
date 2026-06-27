@@ -21,15 +21,16 @@ export const ContextMenuTemplates = {
                 console.log(`[Action] Adjust pacing/Pace Mode starting from date: ${dateString}`);
             }
         },
-        { divider: true },
-        {
-            label: 'בטל יום חזרה',
-            icon: '❌',
-            action: () => {
-                handlers.onCancelReviewDay(dateString, bookLabel);
-                console.log(`[Action] Cancel review/chazara day status for date: ${dateString}`);
-            }
-        },
+        // 📌 Note: Cancel Review Day option is temporarily removed
+        // { divider: true },
+        // {
+        //     label: 'בטל יום חזרה',
+        //     icon: '❌',
+        //     action: () => {
+        //         handlers.onCancelReviewDay(dateString, bookLabel);
+        //         console.log(`[Action] Cancel review/chazara day status for date: ${dateString}`);
+        //     }
+        // },
         {
             label: 'הוספת אירוע מיוחד',
             icon: '📌',
