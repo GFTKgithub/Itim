@@ -208,6 +208,74 @@ select:focus {
 
 /* --- MOBILE STYLES (Strictly Screen Only) --- */
 @media screen and (max-width: 768px) {
+    /* Navigation Bar Mobile Optimization */
+    #main-nav {
+        height: auto;
+        min-height: 56px;
+    }
+
+    #main-nav .max-w-5xl {
+        padding-left: 0.75rem;
+        padding-right: 0.75rem;
+    }
+
+    #main-nav .flex.items-center.justify-between {
+        flex-wrap: wrap;
+        gap: 0.5rem;
+        padding-top: 0.5rem;
+        padding-bottom: 0.5rem;
+    }
+
+    /* Hide nav link text on mobile, show only icons */
+    .nav-link-text,
+    .settings-text,
+    .cloud-auth-text {
+        display: none;
+    }
+
+    /* Keep cloud auth icon visible on mobile - match SVG icon size */
+    .cloud-auth-icon {
+        display: inline;
+        font-size: 1rem !important;
+        line-height: 1 !important;
+        transform: scale(1.1);
+    }
+
+    /* Make nav links more compact - icon only */
+    .nav-link {
+        padding: 0.5rem !important;
+        min-width: 40px;
+        justify-content: center;
+    }
+
+    .nav-link svg {
+        width: 1.25rem !important;
+        height: 1.25rem !important;
+    }
+
+    /* Compact settings buttons */
+    #openCloudAuthBtn,
+    #toggleSettingsPanelBtn {
+        padding: 0.5rem !important;
+        min-width: 40px;
+        justify-content: center;
+    }
+
+    #toggleSettingsPanelBtn svg {
+        width: 1.25rem !important;
+        height: 1.25rem !important;
+    }
+
+    /* Adjust logo size slightly */
+    #main-nav img {
+        height: 2rem !important;
+        width: 2rem !important;
+    }
+
+    #main-nav .text-lg {
+        font-size: 1rem !important;
+    }
+
     .calendar-scroll-container {
         width: 100% !important;
         overflow-x: auto !important;

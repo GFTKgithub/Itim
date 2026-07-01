@@ -125,7 +125,7 @@ export function setupCloudAuth({ onRegister, onLogin, onLogout, onFetchData }) {
         const panelRow = document.getElementById('settingsPanelCloudRow');
 
         if (userEmail) {
-            if (globalBtnText) globalBtnText.innerText = "👤 החשבון שלי";
+            if (globalBtnText) globalBtnText.textContent = 'החשבון שלי';
             
             if (panelRow) {
                 panelRow.innerHTML = `
@@ -144,7 +144,7 @@ export function setupCloudAuth({ onRegister, onLogin, onLogout, onFetchData }) {
                 document.getElementById('drawerCloudLogoutBtn')?.addEventListener('click', triggerExplicitLogoutSequence);
             }
         } else {
-            if (globalBtnText) globalBtnText.innerText = "👤 התחברות לחשבון";
+            if (globalBtnText) globalBtnText.textContent = 'התחברות לחשבון';
             
             if (panelRow) {
                 panelRow.innerHTML = `
