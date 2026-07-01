@@ -1,3 +1,15 @@
+/* --- Page Transitions --- */
+#page-container {
+    min-height: calc(100vh - 56px); /* Fill viewport minus nav height */
+}
+
+/* --- Sticky Navigation Bar --- */
+#nav-container {
+    position: sticky;
+    top: 0;
+    z-index: 50;
+}
+
 /* --- SCREEN STYLES (Website) --- */
 
 /* --- Drag and Drop Feature Aesthetics --- */

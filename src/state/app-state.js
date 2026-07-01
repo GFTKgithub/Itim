@@ -168,19 +168,27 @@ export function createAppState() {
 
                 const currentCalendarViewMode = state.userPreferences?.calendarViewMode || 'paginated';
 
-                renderCalendar('calendarContainer', activeTrack.studySchedule, {
-                    calendarSystem: activeTrack.settings.calendarSystem,
-                    overrides: activeTrack.studyStatusOverrides,
-                    isMinimal: isMinimal,
-                    calendarViewMode: currentCalendarViewMode,
-                    activeMonthIndex: state.activeMonthIndex,
-                    onMonthChange: (direction) => {
-                        state.activeMonthIndex = Math.max(0, (state.activeMonthIndex || 0) + direction);
-                        this.handleScheduleGeneration();
-                    }
-                });
+                // Determine which calendar container to render to based on current page
+                const calendarContainerId = state.currentPage === 'progress' ? 'progressCalendarContainer' : 'calendarContainer';
+                const calendarContainer = document.getElementById(calendarContainerId);
+                
+                if (calendarContainer) {
+                    renderCalendar(calendarContainerId, activeTrack.studySchedule, {
+                        calendarSystem: activeTrack.settings.calendarSystem,
+                        overrides: activeTrack.studyStatusOverrides,
+                        isMinimal: isMinimal,
+                        calendarViewMode: currentCalendarViewMode,
+                        activeMonthIndex: state.activeMonthIndex,
+                        onMonthChange: (direction) => {
+                            state.activeMonthIndex = Math.max(0, (state.activeMonthIndex || 0) + direction);
+                            this.handleScheduleGeneration();
+                        }
+                    });
+                }
 
-                document.getElementById('action-dock')?.classList.remove('hidden');
+                if (state.currentPage !== 'progress') {
+                    document.getElementById('action-dock')?.classList.remove('hidden');
+                }
 
             } catch (error) {
                 alert(error.message);
@@ -188,10 +196,19 @@ export function createAppState() {
         },
 
         refreshTrackConfigPanel: async function () {
-            hydrateHtmlFromAppState(state, tracks);
-            renderTrackSwitcher(tracks, state.activeTrackId);
+            // Only hydrate planner DOM if the elements exist (we're on planner page)
+            if (document.getElementById('calendarSystem')) {
+                hydrateHtmlFromAppState(state, tracks);
+            }
+            // Only render track switcher if dropdown exists
+            if (document.getElementById('trackSelectDropdown')) {
+                renderTrackSwitcher(tracks, state.activeTrackId);
+            }
             renderDateLabels(activeTrack.settings.startDate, activeTrack.settings.targetDate);
-            updateBookSequenceUI(activeTrack.bookSequence);
+            // Only update book sequence list if the element exists
+            if (document.getElementById('bookSequenceList')) {
+                updateBookSequenceUI(activeTrack.bookSequence);
+            }
             await this.handleScheduleGeneration();
         },
 
@@ -435,18 +452,25 @@ export function createAppState() {
                 book = { name: book };
             }
 
-            book.calcMethod = calcMethod;
-            book.paceValue = paceValue;
-            book.targetDate = targetDate;
-            book.reviewDays = reviewDays;
-            book.amudStates = amudStates || [];
-            book.startAmudIdx = startAmudIdx;
-            book.endAmudIdx = endAmudIdx;
+            // Only update fields that are explicitly provided (not undefined)
+            if (calcMethod !== undefined) book.calcMethod = calcMethod;
+            if (paceValue !== undefined) book.paceValue = paceValue;
+            if (targetDate !== undefined) book.targetDate = targetDate;
+            if (reviewDays !== undefined) book.reviewDays = reviewDays;
+            if (amudStates !== undefined) {
+                book.amudStates = amudStates;
+            } else if (!book.amudStates) {
+                book.amudStates = [];
+            }
+            if (startAmudIdx !== undefined) book.startAmudIdx = startAmudIdx;
+            if (endAmudIdx !== undefined) book.endAmudIdx = endAmudIdx;
 
-            if (startDate) {
-                book.startDate = startDate;
-            } else {
-                delete book.startDate;
+            if (startDate !== undefined) {
+                if (startDate) {
+                    book.startDate = startDate;
+                } else {
+                    delete book.startDate;
+                }
             }
 
             // Save periodic review config if provided
@@ -460,12 +484,14 @@ export function createAppState() {
 
             activeTrack.bookSequence[index] = book;
 
-            // Run schedule generation FIRST so cascading items write back down into bookSequence
-            this.handleScheduleGeneration();
-            
-            // Now persist the modified bookSequence containing clean rippled dates
+            // Persist the modified bookSequence
             saveState();
-            updateBookSequenceUI(activeTrack.bookSequence);
+            
+            // Only schedule generate and update UI if we're on the planner page
+            if (document.getElementById('bookSequenceList')) {
+                this.handleScheduleGeneration();
+                updateBookSequenceUI(activeTrack.bookSequence);
+            }
         },
 
         /* ---- Cloud Auth Integration ---- */

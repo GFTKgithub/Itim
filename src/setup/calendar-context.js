@@ -3,8 +3,8 @@ import { ContextMenuTemplates } from "../ui/components/context-menu/ContextMenuT
 import { ContextActions } from "../ui/components/context-menu/context-menu-actions.js";
 
 // --- Calendar Grid Context Menu ---
-export function setupCalendarContextMenus({ getActiveTrack, onGenerate }) {
-    const container = document.getElementById('calendarContainer');
+export function setupCalendarContextMenus({ getActiveTrack, onGenerate, containerId = 'calendarContainer' }) {
+    const container = document.getElementById(containerId);
     if (!container) return;
     
     container.addEventListener('contextmenu', (event) => {
