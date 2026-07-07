@@ -132,12 +132,6 @@ function setupPlannerPageListeners(app) {
         onSyncToToday: () => app.handleSyncToToday()
     });
 
-    setupSettingsDrawer({
-        userPreferences: app.getStateRef().userPreferences,
-        onUpdateUserPreference: (key, value) => app.handleUpdateUserPreference(key, value),
-        onGenerate: () => app.handleScheduleGeneration()
-    });
-
     setupActionDock({
         onGenerate: () => app.handleScheduleGeneration(),
         onExportExcel: () => app.handleExportExcel(),
@@ -197,6 +191,13 @@ function setupPlannerPageListeners(app) {
 // Executes setup helpers for persistent UI elements (modals, drawers, etc.)
 // These elements exist in the HTML regardless of which page is shown.
 function setupMainPage(app) {
+    // Settings drawer (persistent in HTML)
+    setupSettingsDrawer({
+        userPreferences: app.getStateRef().userPreferences,
+        onUpdateUserPreference: (key, value) => app.handleUpdateUserPreference(key, value),
+        onGenerate: () => app.handleScheduleGeneration()
+    });
+
     // Backup management (persistent in settings drawer, which is in HTML)
     setupBackupManagement({
         onExport: () => app.handleExportBackup(),
