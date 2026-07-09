@@ -79,18 +79,14 @@ export function setupActionDock({ onGenerate, onExportExcel, onExportICal }) {
 }
 
 // --- Backup Management ---
-export function setupBackupManagement({onExport, onImport, onResetSettings, onResetStudyStatusOverrides}) {
+export function setupBackupManagement({onExport, onImport}) {
     const backupExportBtn = document.getElementById('backupExportBtn');
     const backupImportBtn = document.getElementById('backupImportBtn');
     const backupFileInput = document.getElementById('backupFileInput');
-    const resetSettingsBtn = document.getElementById('resetSettingsBtn');
-    const resetStudyStatusOverridesBtn = document.getElementById('resetStudyStatusOverridesBtn');
 
     backupExportBtn?.addEventListener('click', onExport);
     backupImportBtn?.addEventListener('click', () => backupFileInput.click());
     backupFileInput?.addEventListener('change', onImport);
-    resetSettingsBtn?.addEventListener('click', onResetSettings);
-    resetStudyStatusOverridesBtn?.addEventListener('click', onResetStudyStatusOverrides);
 }
 
 // --- Calendar View Mode Toggle ---

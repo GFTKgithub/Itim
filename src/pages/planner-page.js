@@ -143,6 +143,27 @@ export function renderPlannerPage(container, app) {
                                 </div>
 
                             </div>
+
+                            <!-- Reset actions — subtle, non-bloated -->
+                            <div class="pt-2 mt-2 border-t border-slate-200/60">
+                                <details class="group">
+                                    <summary class="text-[11px] text-slate-400 hover:text-slate-600 font-semibold cursor-pointer transition-colors list-none flex items-center gap-1.5 select-none">
+                                        <span class="text-xs group-open:rotate-90 transition-transform">▶</span>
+                                        <span>⚙️ אפשרויות איפוס</span>
+                                    </summary>
+                                    <div class="mt-2 mr-2 space-y-1">
+                                        <button id="resetSettingsBtn" class="w-full text-right text-[11px] text-amber-700 hover:text-amber-900 hover:bg-amber-50 py-1.5 px-2 rounded-lg font-semibold transition-colors flex items-center gap-2">
+                                            <span>⚙️</span>
+                                            <span>איפוס הגדרות מסלול לברירת מחדל</span>
+                                        </button>
+                                        <button id="resetStudyStatusOverridesBtn" class="w-full text-right text-[11px] text-rose-600 hover:text-rose-800 hover:bg-rose-50 py-1.5 px-2 rounded-lg font-semibold transition-colors flex items-center gap-2">
+                                            <span>🔄</span>
+                                            <span>איפוס שינויים ידניים לסטטוס למידה</span>
+                                        </button>
+                                    </div>
+                                </details>
+                            </div>
+
                         </div>
                     </div>
 

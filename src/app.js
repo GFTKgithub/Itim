@@ -2,6 +2,7 @@ import { createAppState } from './state/app-state.js';
 import { initPrintLayoutHandler } from './ui/components/calendar.js';
 import { initAuthListener } from './services/auth.js';
 
+import { setupResetActions } from './setup/reset-actions.js';
 import { setupBookSequence, setupActionDock, setupBackupManagement, setupViewModeToggle } from './setup/listeners.js';
 import { setupTrackSettings } from './setup/track-settings.js';
 import { setupSettingsDrawer } from './setup/settings-drawer.js';
@@ -169,6 +170,11 @@ function setupPlannerPageListeners(app) {
         calendarContainer.addEventListener('click', calendarContainer._plannerCalClick);
     }
 
+    setupResetActions({
+        onResetSettings: () => app.handleResetSettings(),
+        onResetStudyStatusOverrides: () => app.handleResetStudyStatusOverrides()
+    });
+
     setupBookConfigModal({
         getBookSequence: () => app.getActiveTrack().bookSequence,
         getSchedule: () => app.getActiveTrack().studySchedule,
@@ -201,9 +207,7 @@ function setupMainPage(app) {
     // Backup management (persistent in settings drawer, which is in HTML)
     setupBackupManagement({
         onExport: () => app.handleExportBackup(),
-        onImport: (event) => app.handleImportBackup(event),
-        onResetSettings: () => app.handleResetSettings(),
-        onResetStudyStatusOverrides: () => app.handleResetStudyStatusOverrides()
+        onImport: (event) => app.handleImportBackup(event)
     });
 }
 
