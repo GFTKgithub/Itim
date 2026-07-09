@@ -2,6 +2,7 @@ import { DEFAULT_TRACK_SETTINGS, createNewTrack, getActiveTrack } from '../core/
 import { talmud_bavli_masechtot } from '../core/data.js';
 import { addToSequence } from '../core/book-sequence.js';
 import { generateStudyCalendar, cycleStudyStatusOverride, computeDaySlots } from '../core/scheduler.js';
+import { computeProgressDeficit, generateAdjustedSchedule } from '../core/catchup-plan.js';
 import { initPersistence, saveState, loadFromLocalStorage, exportStateBackup, importStateBackup, loadFromFirebase } from '../services/persistence.js';
 import { exportScheduleToExcel, exportScheduleToICal } from '../services/exports.js';
 import { registerUser, loginUser, logoutUser } from '../services/auth.js';
@@ -173,7 +174,13 @@ export function createAppState() {
                 const calendarContainer = document.getElementById(calendarContainerId);
                 
                 if (calendarContainer) {
-                    renderCalendar(calendarContainerId, activeTrack.studySchedule, {
+                    // On the progress page, always show the reality-adjusted schedule
+                    // which accounts for actual amudStates (learned/skipped progress)
+                    const scheduleToRender = (state.currentPage === 'progress')
+                        ? this.getCatchUpSchedule()
+                        : activeTrack.studySchedule;
+
+                    renderCalendar(calendarContainerId, scheduleToRender, {
                         calendarSystem: activeTrack.settings.calendarSystem,
                         overrides: activeTrack.studyStatusOverrides,
                         isMinimal: isMinimal,
@@ -275,6 +282,7 @@ export function createAppState() {
                 alert("המסלול שנבחר לא נמצא.");
                 return;
             }
+
             state.activeTrackId = trackId;
             state.activeMonthIndex = 0;
             activeTrack = selectedTrack;
@@ -546,6 +554,128 @@ export function createAppState() {
 
         handleImportBackup: function (event) {
             importStateBackup(event);
+        },
+
+        /* ---- Catch-Up Plan ---- */
+
+        /**
+         * Calculate the deficit (amudim behind) for each book in the track.
+         * Compares amudStates (actual learned) vs baseline schedule (expected learned up to today).
+         * Uses the new catchup-plan module for robust computation.
+         * @returns {Object} { books: { [bookIndex]: { bookName, totalAmudim, learned, expected, deficit, isBehind, calcMethod, ... } }, totalDeficit, isAnyBehind }
+         */
+        getCatchUpDeficit: function () {
+            if (!activeTrack || !activeTrack.studySchedule || activeTrack.studySchedule.length === 0) {
+                return { books: {}, totalDeficit: 0, isAnyBehind: false };
+            }
+            return computeProgressDeficit(activeTrack.bookSequence, activeTrack.studySchedule);
+        },
+
+        /**
+         * Create or update a catch-up plan for the active track.
+         * The catch-up plan is stored separately from the baseline schedule and never modifies it.
+         * 
+         * Supported strategies:
+         *   - 'move-target': Set a new target date for a targetDate-mode book
+         *   - 'squeeze': Redistribute remaining material evenly over remaining study days
+         *   - 'sprint': Temporarily increase pace for N days, then resume normal pace
+         *
+         * @param {Object} planConfig - { books: { [bookIndex]: { strategy, ... } } }
+         */
+        handleCreateCatchUpPlan: async function (planConfig) {
+            if (!activeTrack) return;
+
+            const now = new Date().toISOString().split('T')[0];
+            const plan = {
+                isActive: true,
+                startDate: now,
+                createdAt: new Date().toISOString(),
+                books: {}
+            };
+
+            for (const [bookIdx, config] of Object.entries(planConfig.books || {})) {
+                const bookEntry = activeTrack.bookSequence[parseInt(bookIdx)];
+                if (!bookEntry) continue;
+                const bookName = typeof bookEntry === 'string' ? bookEntry : bookEntry.name;
+
+                if (config.strategy === 'move-target') {
+                    // Move target date: user sets a new target date
+                    plan.books[bookIdx] = {
+                        strategy: 'move-target',
+                        newTargetDate: config.newTargetDate || null
+                    };
+                } else if (config.strategy === 'squeeze') {
+                    // Squeeze: redistribute remaining material evenly over remaining study days
+                    plan.books[bookIdx] = {
+                        strategy: 'squeeze'
+                    };
+                } else if (config.strategy === 'sprint') {
+                    // Sprint: temporarily increase pace for N days
+                    // The algorithm auto-calculates the daily pace based on remaining material / sprintDays
+                    const sprintDays = Math.max(1, parseInt(config.sprintDays) || 7);
+                    plan.books[bookIdx] = {
+                        strategy: 'sprint',
+                        sprintDays: sprintDays
+                    };
+                } else if (config.strategy === 'increase-pace') {
+                    // Increase pace: user sets a new higher pace value permanently
+                    const newPaceValue = parseFloat(config.newPaceValue) || 1;
+                    plan.books[bookIdx] = {
+                        strategy: 'increase-pace',
+                        newPaceValue: newPaceValue
+                    };
+                }
+            }
+
+            activeTrack.catchUpPlan = plan;
+            saveState();
+        },
+
+        /**
+         * Cancel and remove the active catch-up plan.
+         * @param {boolean} skipConfirmation - If true, skip the confirmation dialog
+         */
+        handleCancelCatchUpPlan: async function (skipConfirmation) {
+            if (!activeTrack) return;
+
+            if (!skipConfirmation) {
+                const confirmed = await showDialog({
+                    title: 'ביטול תכנית השלמה',
+                    message: 'האם אתה בטוח שברצונך לבטל את תכנית ההשלמה הנוכחית?',
+                    icon: '🔄',
+                    showCancel: true,
+                    confirmText: 'כן, בטל תכנית',
+                    cancelText: 'לא, השאר'
+                });
+
+                if (!confirmed) return;
+            }
+
+            activeTrack.catchUpPlan = null;
+            saveState();
+        },
+
+        /**
+         * Get the adjusted schedule for display on the progress page.
+         * Uses the new catchup-plan module which properly accounts for:
+         * - Actual amudStates (learned/skipped progress)
+         * - Discontinuous study patterns
+         * - Active catch-up strategies (move-target, squeeze, sprint)
+         * 
+         * The baseline schedule is NEVER modified.
+         * 
+         * @returns {Array} The adjusted schedule with catch-up overlays applied
+         */
+        getCatchUpSchedule: function () {
+            if (!activeTrack) return [];
+            return generateAdjustedSchedule(
+                activeTrack.studySchedule,
+                activeTrack.catchUpPlan,
+                activeTrack.bookSequence,
+                activeTrack.settings,
+                activeTrack.studyStatusOverrides,
+                activeTrack.calendarEvents
+            );
         }
     };
 }

@@ -21,7 +21,8 @@ export function createNewTrack(name) {
         studySchedule: {}, // dateStr -> { events, traits, displayText }
         bookSequence: [], // Array of { bookName, reviewDays, amudStates }
         studyStatusOverrides: {}, // dateStr -> { status: 0 = default | 1 = force skip | 2 = force study }
-        calendarEvents: {}
+        calendarEvents: {},
+        catchUpPlan: null // { isActive, startDate, books: { [bookIndex]: { strategy, extraAmudimPerDay, durationDays, newTargetDate, usePaceMode } } }
     };
 }
 

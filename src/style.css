@@ -96,6 +96,15 @@
     background-color: #dcfce7;
 }
 
+.catchup-bg {
+    background-color: #fff7ed;
+    border: 1px solid #fdba74;
+}
+
+.catchup-bg:hover {
+    background-color: #ffedd5;
+}
+
 .siyum-bg {
     background-color: #fefce8;
     border: 1px solid #edc04d;
@@ -103,6 +112,15 @@
 
 .siyum-bg:hover {
     background-color: #f1efd9;
+}
+
+.abrupt-stop-bg {
+    background-color: #ffffff;
+    border: 1px solid #94a3b8;
+}
+
+.abrupt-stop-bg:hover {
+    background-color: #f8fafc;
 }
 
 .holiday-label-small {
@@ -130,8 +148,8 @@ select:focus {
     box-shadow: 0 0 0 3px rgba(30, 64, 175, 0.1);
 }
 
-#calendarContainer.minimal-calendar {
-    /* נטרול הגרדיאנטים והצבעים הבולטים בכותרות החודשים/הספרים */
+#calendarContainer.minimal-calendar,
+#progressCalendarContainer.minimal-calendar {
     & .bg-gradient-to-r, 
     & .bg-blue-800, 
     & .bg-slate-800,
@@ -139,49 +157,50 @@ select:focus {
     & h4 {
         background: #ffffff !important;
         background-image: none !important;
-        color: #1e293b !important; /* טקסט כהה ונקי */
+        color: #1e293b !important;
         border-color: #e2e8f0 !important;
     }
 
-    /* הפיכת כל ימי לוח השנה לרקע לבן חלק עם גבול אפור עדין */
     & .calendar-day,
     & .shabbat-bg,
     & .holiday-bg,
     & .review-bg,
     & .siyum-bg,
+    & .abrupt-stop-bg,
     & .force-study,
     & .force-break {
         background-color: #ffffff !important;
         background-image: none !important;
         color: #334155 !important;
-        border: 1px solid #e2e8f0 !important; /* גבול דק ונקי במקום צבע בולט */
+        border: 1px solid #e2e8f0 !important;
     }
 
-    /* אפקט ריחוף (Hover) אחיד, מינימליסטי ורגוע לכל הסוגים */
     & .calendar-day:hover,
     & .shabbat-bg:hover,
     & .holiday-bg:hover,
     & .review-bg:hover,
-    & .siyum-bg:hover {
-        background-color: #f8fafc !important; /* אפור בהיר מאוד (slate-50) */
+    & .siyum-bg:hover,
+    & .abrupt-stop-bg:hover {
+        background-color: #f8fafc !important;
     }
 
-    /* שינוי התוויות הדרמטיות (כמו חגים או סיומים) לטקסט סולידי וסולידי בלבד */
+    & .abrupt-stop-bg {
+        border-bottom: 2px dotted #94a3b8 !important; 
+    }
+
     & .holiday-label-small {
-        color: #64748b !important; /* אפור ניטרלי במקום אדום בולט */
+        color: #64748b !important;
         font-weight: 600;
     }
 
-    /* הבחנה סמלית ועדינה מאוד עבור ימי "סיום מסכת" או "חובה" ללא רעש ויזואלי */
     & .siyum-bg {
-        border-bottom: 3px solid #cbd5e1 !important; /* קו תחתון קצת יותר עבה במקום רקע צהוב */
+        border-bottom: 3px solid #cbd5e1 !important;
     }
     
     & .review-bg {
-        border-bottom: 3px dashed #cbd5e1 !important; /* קו תחתון מרוסק לימי חזרה */
+        border-bottom: 3px dashed #cbd5e1 !important;
     }
 
-    /* ביטול צלליות כבדות אם קיימות */
     & .shadow-xl, 
     & .shadow-md,
     & .shadow-sm {

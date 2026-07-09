@@ -37,6 +37,12 @@ function createDayHTML(day, state, mainDateDisplay, secondaryDateDisplay) {
     let dayBgClass = '';
     if (day.isSiyum) {
         dayBgClass = 'siyum-bg bg-amber-50 border-amber-400 shadow-inner';
+    } else if (day.isAbruptStop) {
+        dayBgClass = 'abrupt-stop-bg';
+    } else if (day.isMissed) {
+        dayBgClass = 'missed-bg bg-red-50 border-red-200';
+        // For missed days, add missed indicator
+        indicatorHtml = '<span class="absolute bottom-1 right-1 text-red-500 font-bold text-[10px]">✕</span>';
     } else if (state === 1 || state === 2) {
         dayBgClass = statusClass; 
     } else if (day.isShabbat) {
@@ -50,6 +56,10 @@ function createDayHTML(day, state, mainDateDisplay, secondaryDateDisplay) {
     // 3. Prepare component snippets
     const siyumBadge = day.isSiyum 
         ? '<span class="block text-[9px] text-amber-800 font-extrabold tracking-wide z-10">★ סיום מסכת ★</span>' 
+        : '';
+
+    const abruptStopBadge = day.isAbruptStop 
+        ? '<span class="block text-[9px] text-slate-600 font-bold tracking-wide z-10">עצר באמצע</span>' 
         : '';
 
     const holidayBadge = day.isHoliday 
@@ -96,6 +106,7 @@ function createDayHTML(day, state, mainDateDisplay, secondaryDateDisplay) {
             <div class="text-[10px] font-bold text-center mt-1 leading-tight ${contentTextClass}">
                 ${holidayBadge}
                 ${siyumBadge}
+                ${abruptStopBadge}
                 ${day.content}
             </div>
 
@@ -139,10 +150,12 @@ function patchExistingCalendarDays(existingDays, studySchedule, overrides) {
         }
 
         // 2. Sync Background Colors (Clearing baseline styles safely)
-        dayEl.classList.remove('siyum-bg', 'bg-amber-50', 'border-amber-400', 'shadow-inner', 'review-bg', 'shabbat-bg', 'holiday-bg');
+        dayEl.classList.remove('siyum-bg', 'bg-amber-50', 'border-amber-400', 'shadow-inner', 'abrupt-stop-bg', 'review-bg', 'shabbat-bg', 'holiday-bg');
         
         if (day.isSiyum) {
             dayEl.classList.add('siyum-bg', 'bg-amber-50', 'border-amber-400', 'shadow-inner');
+        } else if (day.isAbruptStop) {
+            dayEl.classList.add('abrupt-stop-bg');
         } else if (day.isReviewDay) {
             dayEl.classList.add('review-bg');
         } else if (day.isShabbat) {
@@ -168,9 +181,10 @@ function patchExistingCalendarDays(existingDays, studySchedule, overrides) {
             contentEl.className = `text-[10px] font-bold text-center mt-1 leading-tight ${day.isEmpty ? 'text-slate-400 italic' : 'text-slate-800'}`;
 
             const siyumBadge = day.isSiyum ? `<span class="block text-[9px] text-amber-800 font-extrabold tracking-wide z-10">★ סיום מסכת ★</span>` : '';
+            const abruptStopBadge = day.isAbruptStop ? `<span class="block text-[9px] text-slate-600 font-bold tracking-wide z-10">עצר באמצע</span>` : '';
             const newContentHTML = day.isHoliday
-                ? `<span class="holiday-label-small">${day.holidayTitle}</span>\n${day.content}${siyumBadge}`
-                : `${siyumBadge}${day.content}`;
+                ? `<span class="holiday-label-small">${day.holidayTitle}</span>\n${day.content}${siyumBadge}${abruptStopBadge}`
+                : `${siyumBadge}${abruptStopBadge}${day.content}`;
 
             if (contentEl.innerHTML.trim() !== newContentHTML.trim()) {
                 contentEl.innerHTML = newContentHTML;

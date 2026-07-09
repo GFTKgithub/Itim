@@ -59,17 +59,12 @@ export function setupSettingsDrawer({ userPreferences, onUpdateUserPreference, o
 
     // --- Minimal Calendar Toggle (re-applied each time since calendarContainer is re-created) ---
     const minimalistUiToggle = document.getElementById('minimalistUiToggle');
-    const calendarContainer = document.getElementById('calendarContainer');
-
+    
     const isMinimal = userPreferences?.minimalCalendar === true || userPreferences?.minimalCalendar === 'true';
     
-    if (minimalistUiToggle && calendarContainer) {
+    // Set initial toggle state
+    if (minimalistUiToggle) {
         minimalistUiToggle.checked = isMinimal;
-        if (isMinimal) {
-            calendarContainer.classList.add('minimal-calendar');
-        } else {
-            calendarContainer.classList.remove('minimal-calendar');
-        }
     }
     
     // Remove old change listener if it exists to prevent double-wiring
@@ -81,12 +76,7 @@ export function setupSettingsDrawer({ userPreferences, onUpdateUserPreference, o
         if (typeof onUpdateUserPreference === 'function') {
             onUpdateUserPreference('minimalCalendar', checked);
         }
-        const calContainer = document.getElementById('calendarContainer');
-        if (checked) {
-            calContainer?.classList.add('minimal-calendar');
-        } else {
-            calContainer?.classList.remove('minimal-calendar');
-        }
+        // Trigger re-render - the calendar component will apply minimal styling automatically
         if (typeof onGenerate === 'function') {
             onGenerate();            
         }

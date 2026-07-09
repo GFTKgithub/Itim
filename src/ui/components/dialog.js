@@ -230,4 +230,7 @@ export function closeDialog(dialogId) {
     if (dialog) {
         dialog.close();
     }
+    
+    
+    
 }
