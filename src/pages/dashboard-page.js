@@ -27,7 +27,7 @@ export function renderDashboardPage(container, app, navigateTo) {
                         <h2 class="text-xl font-bold text-slate-800">יצירת מסלול לימוד חדש</h2>
                     </div>
                     <div class="flex gap-2 select-none">
-                        <input type="text" id="dashboardNewTrackNameInput" placeholder='שם המסלול (למשל: דף יומי, רמב"ם...)' 
+                        <input type="text" id="dashboardNewTrackNameInput" placeholder='שם המסלול (למשל: דף יומי, סדר ערב...)' 
                             class="flex-1 border border-slate-300 rounded-lg p-3 bg-white shadow-sm font-medium focus:outline-none focus:border-blue-500 text-sm min-w-0">
                         <button id="dashboardAddNewTrackBtn" 
                             class="bg-blue-800 text-white px-5 sm:px-6 rounded-lg font-bold hover:bg-blue-900 transition-all shadow-md active:scale-95 flex items-center justify-center gap-1.5 text-sm shrink-0">
@@ -72,7 +72,7 @@ export function renderDashboardPage(container, app, navigateTo) {
                                             ${isActive ? '<span class="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full font-bold shrink-0">פעיל</span>' : ''}
                                         </div>
                                         <div class="flex flex-wrap gap-3 mt-2 text-sm text-slate-500">
-                                            <span>📚 ${bookSequence.length} מסכות</span>
+                                            <span>📚 ${bookSequence.length} ספרים</span>
                                             <span>📅 ${totalStudyDays} ימי לימוד</span>
                                             ${completedDays > 0 ? `<span>✅ ${completedDays} נלמדו</span>` : ''}
                                         </div>
@@ -107,17 +107,18 @@ export function renderDashboardPage(container, app, navigateTo) {
                                             <span>התקדמות</span>
                                         </button>
                                         <button data-track-id="${track.id}" data-action="delete-track" 
-                                            class="bg-red-50 hover:bg-red-100 text-red-500 border border-red-200 px-4 py-2 rounded-xl font-bold text-xs transition-all active:scale-95 flex items-center justify-center gap-1 ${tracks.length <= 1 ? 'opacity-40 cursor-not-allowed' : ''}">
+                                                class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-xl font-bold text-xs transition-all active:scale-95 shadow-sm flex items-center justify-center gap-1.5 ${tracks.length <= 1 ? 'opacity-40 cursor-not-allowed' : ''}">
                                             <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v2m3 3h7" />
                                             </svg>
+                                            <span>מחיקה</span>
                                         </button>
                                     </div>
                                 </div>
                                 
                                 ${bookSequence.length > 0 ? `
                                     <div class="mt-4 pt-4 border-t border-slate-100">
-                                        <div class="text-xs text-slate-400 font-semibold mb-2">מסכות במסלול:</div>
+                                        <div class="text-xs text-slate-400 font-semibold mb-2">ספרים במסלול:</div>
                                         <div class="flex flex-wrap gap-1.5">
                                             ${bookSequence.slice(0, 8).map((book) => {
                                                 const bookName = typeof book === 'string' ? book : book.name;
@@ -128,7 +129,7 @@ export function renderDashboardPage(container, app, navigateTo) {
                                     </div>
                                 ` : `
                                     <div class="mt-4 pt-4 border-t border-slate-100 text-center">
-                                        <p class="text-xs text-slate-400">אין מסכות במסלול זה. לחץ על "ערוך מסלול" כדי להתחיל.</p>
+                                        <p class="text-xs text-slate-400">אין ספרים במסלול זה. לחץ על "ערוך מסלול" כדי להתחיל.</p>
                                     </div>
                                 `}
                             </div>

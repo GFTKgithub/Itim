@@ -1,3 +1,117 @@
+/* --- Step Card Wizard (Planner Page) --- */
+.step-card {
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 1.25rem;
+    padding: 1.25rem;
+    transition: opacity 0.3s ease, background-color 0.3s ease;
+}
+
+.step-disabled {
+    opacity: 0.5;
+    background-color: #f8fafc;
+}
+
+.step-number {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 2rem;
+    height: 2rem;
+    border-radius: 50%;
+    background: #1e3a5f;
+    color: white;
+    font-size: 0.8rem;
+    font-weight: 900;
+    flex-shrink: 0;
+}
+
+.step-number-muted {
+    background: #cbd5e1 !important;
+    color: #94a3b8 !important;
+}
+
+.count-badge {
+    background: #e2e8f0;
+    color: #64748b;
+    font-size: 0.7rem;
+    font-weight: 700;
+    padding: 0.25rem 0.65rem;
+    border-radius: 9999px;
+    transition: all 0.2s ease;
+}
+
+.count-badge-active {
+    background: #dbeafe;
+    color: #1e40af;
+}
+
+/* Day pills (compact weekday selector) */
+.day-pill {
+    flex: 1;
+    text-align: center;
+    cursor: pointer;
+    max-width: 3rem;
+}
+
+.day-pill-inner {
+    padding: 0.5rem 0;
+    font-size: 0.8rem;
+    font-weight: 800;
+    border-radius: 0.75rem;
+    border: 2px solid #e2e8f0;
+    color: #64748b;
+    background: white;
+    transition: all 0.15s ease;
+    text-align: center;
+}
+
+.day-pill .peer:checked + .day-pill-inner {
+    background: #1e3a5f;
+    border-color: #1e3a5f;
+    color: white;
+}
+
+.day-pill .peer:not(:checked) + .day-pill-inner:hover {
+    background: #f1f5f9;
+    border-color: #94a3b8;
+}
+
+/* Generate button animation states */
+.generate-btn {
+    position: relative;
+    overflow: hidden;
+}
+
+.generate-btn:not([disabled]):active {
+    transform: scale(0.98);
+}
+
+.generate-btn[disabled] {
+    cursor: not-allowed;
+}
+
+/* Generation progress bar animation */
+@keyframes progressPulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.7; }
+}
+
+#generationProgress.active {
+    animation: progressPulse 1.5s ease-in-out infinite;
+}
+
+/* Step card spacing for mobile */
+@media screen and (max-width: 768px) {
+    .step-card {
+        padding: 1rem;
+    }
+    
+    .step-card > .pr-8 {
+        padding-right: 0 !important;
+    }
+}
+
 /* --- Page Transitions --- */
 #page-container {
     min-height: calc(100vh - 56px); /* Fill viewport minus nav height */

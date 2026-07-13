@@ -2,8 +2,7 @@ import { createAppState } from './state/app-state.js';
 import { initPrintLayoutHandler } from './ui/components/calendar.js';
 import { initAuthListener } from './services/auth.js';
 
-import { setupResetActions } from './setup/reset-actions.js';
-import { setupBookSequence, setupActionDock, setupBackupManagement, setupViewModeToggle } from './setup/listeners.js';
+import { setupBookSequence, setupActionDock, setupBackupManagement, setupViewModeToggle, setupSettingsGearDropdown } from './setup/listeners.js';
 import { setupTrackSettings } from './setup/track-settings.js';
 import { setupSettingsDrawer } from './setup/settings-drawer.js';
 import { setupBookSequenceDragAndDrop } from './setup/drag-and-drop.js';
@@ -170,7 +169,8 @@ function setupPlannerPageListeners(app) {
         calendarContainer.addEventListener('click', calendarContainer._plannerCalClick);
     }
 
-    setupResetActions({
+    // Settings gear dropdown (replaces old reset actions <details> tag)
+    setupSettingsGearDropdown({
         onResetSettings: () => app.handleResetSettings(),
         onResetStudyStatusOverrides: () => app.handleResetStudyStatusOverrides()
     });

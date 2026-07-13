@@ -43,7 +43,7 @@ export function renderStatsPage(container, app) {
                             <span class="text-xs font-bold text-slate-400 bg-slate-100 px-2 py-1 rounded-full">מסלול</span>
                         </div>
                         <p class="text-3xl font-black text-slate-800">${totalBooks}</p>
-                        <p class="text-sm text-slate-500 font-medium mt-1">מסכות במסלול</p>
+                        <p class="text-sm text-slate-500 font-medium mt-1">ספרים במסלול</p>
                     </div>
 
                     <div class="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm hover:shadow-md transition-shadow">
@@ -101,8 +101,8 @@ export function renderStatsPage(container, app) {
                     <div class="divide-y divide-slate-100">
                         ${bookSequence.length === 0 ? `
                             <div class="p-8 text-center text-slate-400">
-                                <p class="font-medium">אין מסכות במסלול הנוכחי</p>
-                                <p class="text-sm mt-1">הוסף מסכות במתכנן הלימוד כדי לראות פירוט</p>
+                                <p class="font-medium">אין ספרים במסלול הנוכחי</p>
+                                <p class="text-sm mt-1">הוסף ספרים במתכנן הלימוד כדי לראות פירוט</p>
                             </div>
                         ` : bookSequence.map((book, idx) => {
                             const bookName = typeof book === 'string' ? book : book.name;
@@ -136,7 +136,7 @@ export function renderStatsPage(container, app) {
                     <div class="mt-8 bg-blue-50 border border-blue-200 rounded-2xl p-6 text-center">
                         <span class="text-3xl block mb-2">💡</span>
                         <p class="text-blue-800 font-bold">עדיין לא הופק לוח לימוד</p>
-                        <p class="text-blue-600 text-sm mt-1">עבור למתכנן הלימוד, בחר מסכות ולחץ על "צור לוח לימוד מותאם אישית"</p>
+                        <p class="text-blue-600 text-sm mt-1">עבור לעורך המסלול, בחר ספרים ולחץ על "צור לוח לימוד מותאם אישית"</p>
                     </div>
                 ` : ''}
             `}

@@ -130,6 +130,137 @@ export function createAppState() {
 
         /* ---- Handlers ---- */
 
+        /** Compute a lightweight summary of the current schedule for the live summary bar */
+        computeScheduleSummary: function () {
+            if (!activeTrack || !activeTrack.studySchedule || activeTrack.studySchedule.length === 0) {
+                return { endDate: null, totalDays: 0, avgPagesPerDay: 0 };
+            }
+
+            const schedule = activeTrack.studySchedule;
+            const studyDays = schedule.filter(d => !d.isEmpty && !d.isShabbat && !d.isHoliday);
+            const totalDays = studyDays.length;
+            
+            // Find last non-empty day
+            let lastStudyDay = null;
+            for (let i = schedule.length - 1; i >= 0; i--) {
+                if (!schedule[i].isEmpty) {
+                    lastStudyDay = schedule[i];
+                    break;
+                }
+            }
+
+            const endDate = lastStudyDay ? lastStudyDay.dateString : null;
+
+            // Calculate average pages per study day
+            const totalPages = studyDays.reduce((sum, d) => sum + (d.pages || 0), 0);
+            const avgPagesPerDay = totalDays > 0 ? Math.round((totalPages / totalDays) * 10) / 10 : 0;
+
+            return { endDate, totalDays, avgPagesPerDay };
+        },
+
+        /** Update the live summary bar in the planner page */
+        updateScheduleSummaryBar: function () {
+            const summaryBar = document.getElementById('scheduleSummaryBar');
+            const endDateEl = document.getElementById('summaryEndDate');
+            const avgPagesEl = document.getElementById('summaryAvgPages');
+            const totalDaysEl = document.getElementById('summaryTotalDays');
+            const lastGeneratedHint = document.getElementById('lastGeneratedHint');
+            const lastGeneratedTime = document.getElementById('lastGeneratedTime');
+            const generateBtnText = document.getElementById('generateBtnText');
+            const generateIcon = document.getElementById('generateIcon');
+
+            if (!summaryBar) return;
+
+            const summary = this.computeScheduleSummary();
+
+            if (summary.endDate && summary.totalDays > 0) {
+                // Format end date nicely
+                const endDateObj = new Date(summary.endDate);
+                const formattedDate = endDateObj.toLocaleDateString('he-IL', { 
+                    year: 'numeric', month: 'long', day: 'numeric' 
+                });
+                if (endDateEl) endDateEl.textContent = formattedDate;
+                if (avgPagesEl) avgPagesEl.textContent = `~${summary.avgPagesPerDay} דפים`;
+                if (totalDaysEl) totalDaysEl.textContent = `${summary.totalDays} ימים`;
+                summaryBar.classList.remove('hidden');
+
+                // Update last generated hint
+                if (lastGeneratedHint) {
+                    lastGeneratedHint.classList.remove('hidden');
+                    if (lastGeneratedTime) {
+                        const now = new Date();
+                        lastGeneratedTime.textContent = now.toLocaleTimeString('he-IL', { 
+                            hour: '2-digit', minute: '2-digit' 
+                        });
+                    }
+                }
+
+                // Update generate button text
+                if (generateBtnText) generateBtnText.textContent = 'רענן לוח לימוד';
+                if (generateIcon) {
+                    generateIcon.innerHTML = `
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                    `;
+                }
+            } else {
+                summaryBar.classList.add('hidden');
+                if (lastGeneratedHint) lastGeneratedHint.classList.add('hidden');
+                if (generateBtnText) generateBtnText.textContent = 'צור לוח לימוד מותאם אישית';
+                if (generateIcon) {
+                    generateIcon.innerHTML = `
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                    `;
+                }
+            }
+        },
+
+        /** Show generation progress animation */
+        showGenerationProgress: function () {
+            const progressContainer = document.getElementById('generationProgress');
+            const progressBar = document.getElementById('generationProgressBar');
+            const progressText = document.getElementById('generationProgressText');
+            if (!progressContainer || !progressBar) return;
+
+            progressContainer.classList.remove('hidden');
+            progressContainer.classList.add('active');
+
+            // Animate from 0 to 90% (last 10% jumps to 100 on completion)
+            let progress = 0;
+            const interval = setInterval(() => {
+                progress += Math.random() * 15 + 5;
+                if (progress >= 90) {
+                    progress = 90;
+                    clearInterval(interval);
+                }
+                progressBar.style.width = `${Math.min(progress, 90)}%`;
+                if (progressText) progressText.textContent = `${Math.round(Math.min(progress, 90))}%`;
+            }, 200);
+            
+            return interval; // Return interval so caller can clear it
+        },
+
+        /** Complete generation progress (jump to 100% and hide) */
+        completeGenerationProgress: function (interval) {
+            const progressContainer = document.getElementById('generationProgress');
+            const progressBar = document.getElementById('generationProgressBar');
+            const progressText = document.getElementById('generationProgressText');
+            
+            if (interval) clearInterval(interval);
+            
+            if (progressBar) progressBar.style.width = '100%';
+            if (progressText) progressText.textContent = '100%';
+            
+            // Hide after a brief delay
+            setTimeout(() => {
+                if (progressContainer) {
+                    progressContainer.classList.add('hidden');
+                    progressContainer.classList.remove('active');
+                }
+                if (progressBar) progressBar.style.width = '0%';
+                if (progressText) progressText.textContent = '0%';
+            }, 600);
+        },
+
         handleScheduleGeneration: async function () {
             if (!activeTrack.bookSequence || activeTrack.bookSequence.length === 0) {
                 activeTrack.studySchedule = [];
@@ -142,8 +273,12 @@ export function createAppState() {
                     `;
                 }
                 document.getElementById('action-dock')?.classList.add('hidden');
+                this.updateScheduleSummaryBar();
                 return;
             }
+
+            // Show progress animation
+            const progressInterval = this.showGenerationProgress();
 
             try {
                 const updatedSchedule = await generateStudyCalendar({
@@ -197,8 +332,13 @@ export function createAppState() {
                     document.getElementById('action-dock')?.classList.remove('hidden');
                 }
 
+                // Update summary bar after generation
+                this.updateScheduleSummaryBar();
+
             } catch (error) {
                 alert(error.message);
+            } finally {
+                this.completeGenerationProgress(progressInterval);
             }
         },
 
@@ -368,8 +508,8 @@ export function createAppState() {
 
         handleClearSequence: async function() {
             const confirmed = await showDialog({
-                title: 'ניקוי רשימת המסכתות במסלול',
-                message: 'האם אתה בטוח שברצונך לנקות את רשימת המסכתות במסלול?',
+                title: 'ניקוי רשימת הספרים במסלול',
+                message: 'האם אתה בטוח שברצונך לנקות את רשימת הספרים במסלול?',
                 icon: '🗑️',
                 showCancel: true,
                 confirmText: 'כן, נקה הכל',
@@ -405,7 +545,7 @@ export function createAppState() {
 
             const confirmed = await showDialog({
                 title: 'סנכרן עד היום',
-                message: 'פעולה זו תסמן את כל ימי הלימוד שעברו (עד היום) בכל המסכתות כנלמדו. להמשיך?',
+                message: 'פעולה זו תסמן את כל ימי הלימוד שעברו (עד היום) בכל הספרים כנלמדו. להמשיך?',
                 icon: '🔄',
                 showCancel: true,
                 confirmText: 'כן, סנכרן',

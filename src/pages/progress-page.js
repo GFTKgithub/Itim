@@ -46,28 +46,25 @@ function getProgressPageHtml(activeTrack, bookSequence) {
                     <p class="text-amber-600 text-sm mt-1">צור מסלול לימוד כדי להתחיל</p>
                 </div>
             ` : `
-                <!-- Stats Cards -->
+                <!-- Stats Cards (Centralized elements) -->
                 <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
-                    <div class="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm">
-                        <div class="flex items-center justify-between mb-3">
+                    <div class="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm flex flex-col items-center text-center justify-center">
+                        <div class="flex items-center justify-center mb-3">
                             <span class="text-2xl">📚</span>
-                            <span class="text-xs font-bold text-slate-400 bg-slate-100 px-2 py-1 rounded-full">מסלול</span>
                         </div>
                         <p class="text-3xl font-black text-slate-800">${bookSequence.length}</p>
-                        <p class="text-sm text-slate-500 font-medium mt-1">מסכות במסלול</p>
+                        <p class="text-sm text-slate-500 font-medium mt-1">ספרים במסלול</p>
                     </div>
-                    <div class="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm">
-                        <div class="flex items-center justify-between mb-3">
+                    <div class="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm flex flex-col items-center text-center justify-center">
+                        <div class="flex items-center justify-center mb-3">
                             <span class="text-2xl">📖</span>
-                            <span class="text-xs font-bold text-slate-400 bg-slate-100 px-2 py-1 rounded-full">עמודים</span>
                         </div>
                         <p class="text-3xl font-black text-slate-800">${totalLearned}/${totalAmudim}</p>
                         <p class="text-sm text-slate-500 font-medium mt-1">עמודים נלמדו</p>
                     </div>
-                    <div class="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm">
-                        <div class="flex items-center justify-between mb-3">
+                    <div class="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm flex flex-col items-center text-center justify-center">
+                        <div class="flex items-center justify-center mb-3">
                             <span class="text-2xl">✅</span>
-                            <span class="text-xs font-bold text-slate-400 bg-slate-100 px-2 py-1 rounded-full">התקדמות</span>
                         </div>
                         <p class="text-3xl font-black text-emerald-600">${completionRate}%</p>
                         <p id="statsSkippedCount" class="text-sm text-slate-500 font-medium mt-1">${totalSkipped > 0 ? `${totalSkipped} דילוגים` : ''}</p>
@@ -114,8 +111,8 @@ function getProgressPageHtml(activeTrack, bookSequence) {
                     ${bookSequence.length === 0 ? `
                         <div class="bg-slate-50 border border-dashed border-slate-300 rounded-2xl p-8 text-center">
                             <span class="text-4xl block mb-2">📭</span>
-                            <p class="text-slate-500 font-bold">אין מסכות במסלול זה</p>
-                            <p class="text-slate-400 text-sm mt-1">הוסף מסכות בדף עריכת המסלול</p>
+                            <p class="text-slate-500 font-bold">אין ספרים במסלול זה</p>
+                            <p class="text-slate-400 text-sm mt-1">הוסף ספרים בדף עריכת המסלול</p>
                         </div>
                     ` : bookSequence.map((book, idx) => {
                         const bookName = typeof book === 'string' ? book : book.name;
@@ -534,7 +531,7 @@ export function renderProgressPage(container, app) {
                         <span class="text-sm font-medium text-slate-700">מסכת ${d.bookName}</span>
                         <span class="text-sm text-red-500 font-bold">${d.deficit} עמודים מאחור</span>
                     </div>
-                    ${note ? `<span class="text-[10px] text-slate-500">${note}</span>` : ''}
+                    ${note ? `<span class="text-[14px] text-slate-500">${note}</span>` : ''}
                 </div>`;
             }).join('');
 

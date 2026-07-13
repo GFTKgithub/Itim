@@ -1,17 +1,28 @@
 // Updates UI of Book sequence (planner page only — no progress bars)
 export function updateBookSequenceUI(sequence) {
     const list = document.getElementById('bookSequenceList');
+    const badge = document.getElementById('bookCountBadge');
+    const clearBtn = document.getElementById('clearSequenceBtn');
+
+    if (!list) return;
 
     if (!sequence || sequence.length === 0) {
-        list.className = "max-h-56 overflow-y-auto bg-slate-50 p-4 rounded-xl border-2 border-dashed border-slate-300 min-h-[80px]";
+        list.className = "max-h-64 overflow-y-auto bg-slate-50 p-4 rounded-xl border-2 border-dashed border-slate-200 min-h-[80px]";
         list.innerHTML = `
-            <div class="text-center text-slate-400 text-sm italic">
-                אין מסכתות ברשימה. בחר מסכת מלמעלה והוסף אותה.
+            <div class="text-center text-slate-400 text-sm italic pt-4">
+                <div class="text-2xl mb-2">📚</div>
+                <span>עדיין לא נבחרו ספרים. בחר ספר מהרשימה ולחץ "הוסף".</span>
             </div>`;
+        if (badge) { badge.textContent = '0 ספרים'; badge.className = 'count-badge'; }
+        if (clearBtn) clearBtn.classList.add('hidden');
         return;
     }
 
-    list.className = "ordered-book-list space-y-2 max-h-56 overflow-y-auto bg-slate-50 py-3 px-2 rounded-xl border-2 border-dashed border-slate-300 min-h-[80px] touch-pan-y";
+    list.className = "ordered-book-list space-y-1.5 max-h-64 overflow-y-auto bg-slate-50 py-3 px-2 rounded-xl border-2 border-dashed border-slate-200 min-h-[80px] touch-pan-y";
+    
+    const count = sequence.length;
+    if (badge) { badge.textContent = `${count} ספרים`; badge.className = 'count-badge count-badge-active'; }
+    if (clearBtn) clearBtn.classList.remove('hidden');
 
     list.innerHTML = sequence.map((m, i) => {
         const bookName = typeof m === 'string' ? m : m.name;

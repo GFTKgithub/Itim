@@ -253,14 +253,14 @@ function renderFullCalendarLayout(container, studySchedule, config) {
             const isLastPage = validatedIndex === monthKeys.length - 1;
             htmlBuffer.push(`
                 <div class="bg-slate-800 text-white p-4 flex justify-between items-center font-bold text-xl select-none no-print">
-                    <div class="flex items-center gap-1">
-                        <button data-nav="skip-prev" class="cursor-pointer px-2 opacity-80 hover:opacity-100 no-print ${isFirstPage ? 'invisible' : ''}">&laquo;&laquo;</button>
-                        <button data-nav="prev" class="cursor-pointer px-2 opacity-80 hover:opacity-100 no-print ${isFirstPage ? 'invisible' : ''}">&rarr;</button>
+                <div class="flex items-center gap-1">
+                        <button data-nav="skip-prev" class="cursor-pointer px-2 opacity-80 hover:opacity-100 no-print text-sm ${isFirstPage ? 'invisible' : ''}" title="לדף הראשון">❮❮</button>
+                        <button data-nav="prev" class="cursor-pointer px-2 opacity-80 hover:opacity-100 no-print text-sm ${isFirstPage ? 'invisible' : ''}" title="החודש הקודם">❮</button>
                     </div>
                     <span class="flex-1 text-center">${key}</span>
                     <div class="flex items-center gap-1">
-                        <button data-nav="next" class="cursor-pointer px-2 opacity-80 hover:opacity-100 no-print ${isLastPage ? 'invisible' : ''}">&larr;</button>
-                        <button data-nav="skip-next" class="cursor-pointer px-2 opacity-80 hover:opacity-100 no-print ${isLastPage ? 'invisible' : ''}">&raquo;&raquo;</button>
+                        <button data-nav="next" class="cursor-pointer px-2 opacity-80 hover:opacity-100 no-print text-sm ${isLastPage ? 'invisible' : ''}" title="החודש הבא">❯</button>
+                        <button data-nav="skip-next" class="cursor-pointer px-2 opacity-80 hover:opacity-100 no-print text-sm ${isLastPage ? 'invisible' : ''}" title="לדף האחרון">❯❯</button>
                     </div>
                 </div>
             `);

@@ -41,10 +41,46 @@ export function setupBookSequenceDragAndDrop({ onReorder, onRemove }) {
         }
     }
 
-    bookSequenceList.addEventListener('pointerdown', (e) => {
+        // Show a subtle hint on the first hover
+        let hintShown = false;
+        const hintEl = document.createElement('div');
+        hintEl.className = 'text-[10px] text-slate-400 text-center italic mt-1 transition-opacity duration-300';
+        hintEl.textContent = '💡 גרור את הנקודות לסידור מחדש';
+        
+        const showHint = () => {
+            if (!hintShown && bookSequenceList.children.length > 1) {
+                // Check if hint already exists
+                if (!bookSequenceList.querySelector('.drag-hint')) {
+                    hintEl.className += ' drag-hint';
+                    bookSequenceList.parentNode.appendChild(hintEl);
+                }
+                hintShown = true;
+            }
+        };
+
+        // Show hint after 2 seconds if there are items
+        let hintTimeout = setTimeout(showHint, 2000);
+
+        const observer = new MutationObserver(() => {
+            clearTimeout(hintTimeout);
+            if (bookSequenceList.children.length > 1) {
+                hintTimeout = setTimeout(showHint, 2000);
+            } else {
+                const existingHint = bookSequenceList.parentNode?.querySelector('.drag-hint');
+                if (existingHint) existingHint.remove();
+                hintShown = false;
+            }
+        });
+        observer.observe(bookSequenceList, { childList: true });
+
+        bookSequenceList.addEventListener('pointerdown', (e) => {
         const handle = e.target.closest('.drag-handle');
         const row = e.target.closest('.drag-row');
         if (!handle || !row) return;
+        
+        // Remove hint when user starts dragging
+        const existingHint = bookSequenceList.parentNode?.querySelector('.drag-hint');
+        if (existingHint) existingHint.remove();
 
         e.preventDefault();
         dragElement = row;

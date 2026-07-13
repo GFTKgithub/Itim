@@ -45,13 +45,45 @@ export function setupBookSequence({ onAddToSequence, onClearSequence }) {
 
     addToSequenceBtn?.addEventListener('click', () => {
         const selectedName = select?.value; 
-        if (selectedName) {
-            onAddToSequence(selectedName); 
+        if (selectedName && selectedName !== "") {
+            onAddToSequence(selectedName);
+            // Reset select to placeholder after adding
+            if (select) select.selectedIndex = 0;
         }
     });
 
     clearSequenceBtn?.addEventListener('click', () => {
         onClearSequence();
+    });
+}
+
+// --- Settings Gear Dropdown (Reset actions) ---
+export function setupSettingsGearDropdown({ onResetSettings, onResetStudyStatusOverrides }) {
+    const gearBtn = document.getElementById('settingsGearBtn');
+    const dropdown = document.getElementById('settingsResetDropdown');
+
+    if (!gearBtn || !dropdown) return;
+
+    gearBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        dropdown.classList.toggle('hidden');
+    });
+
+    // Close dropdown when clicking outside
+    document.addEventListener('click', (e) => {
+        if (!gearBtn.contains(e.target) && !dropdown.contains(e.target)) {
+            dropdown.classList.add('hidden');
+        }
+    });
+
+    document.getElementById('resetSettingsBtn')?.addEventListener('click', () => {
+        dropdown.classList.add('hidden');
+        if (onResetSettings) onResetSettings();
+    });
+
+    document.getElementById('resetStudyStatusOverridesBtn')?.addEventListener('click', () => {
+        dropdown.classList.add('hidden');
+        if (onResetStudyStatusOverrides) onResetStudyStatusOverrides();
     });
 }
 
