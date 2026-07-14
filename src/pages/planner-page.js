@@ -1,11 +1,3 @@
-/**
- * Planner Page — three-step wizard layout:
- *   1. 📚 מה לומדים? (book selection & sequence)
- *   2. ⚙️ מתי לומדים? (schedule settings with live summary)
- *   3. 🚀 צור לוח לימוד (generate + progress)
- * Plus a calendar preview area below.
- */
-
 export function renderPlannerPage(container, app) {
     const activeTrack = app.getActiveTrack();
     const trackName = activeTrack?.name || 'מסלול לא ידוע';
@@ -14,22 +6,20 @@ export function renderPlannerPage(container, app) {
     const hasSchedule = schedule.length > 0;
 
     container.innerHTML = `
-        <div class="max-w-4xl mx-auto p-4 md:p-6">
+        <div class="max-w-4xl mx-auto p-4 md:p-8">
+            <div class="mb-8 no-print">
+                <div class="flex items-center gap-3 mb-2">
+                    <span class="text-3xl">📐</span>
+                    <h1 class="text-3xl font-black text-slate-800">עריכת מסלול: ${trackName}</h1>
+                </div>
+                <p class="text-slate-500 font-medium mr-12">שלושה צעדים פשוטים ללוח לימוד מותאם</p>
+            </div>
+
             <div class="bg-white rounded-2xl shadow-xl no-print border border-slate-200 overflow-hidden">
                 <div class="h-2 bg-gradient-to-r from-blue-900 via-blue-700 to-blue-900"></div>
 
                 <div class="p-5 md:p-7 space-y-6">
 
-                    <!-- Track header (compact) -->
-                    <div class="flex items-center gap-3 pb-3 border-b border-slate-100">
-                        <span class="text-xl">📐</span>
-                        <div>
-                            <h2 class="text-base font-bold text-slate-800">עריכת מסלול: ${trackName}</h2>
-                            <p class="text-[11px] text-slate-400">שלושה צעדים פשוטים ללוח לימוד מותאם</p>
-                        </div>
-                    </div>
-
-                    <!-- ==================== STEP 1: מה לומדים? ==================== -->
                     <div class="step-card step-1" data-step="1">
                         <div class="flex items-center gap-3 mb-4">
                             <span class="step-number">1</span>
@@ -41,7 +31,6 @@ export function renderPlannerPage(container, app) {
                         </div>
 
                         <div class="pr-8 space-y-4">
-                            <!-- Add book row -->
                             <div class="flex gap-2 items-center">
                                 <div class="flex-1 relative">
                                     <select id="bookSelect" class="w-full border border-slate-300 rounded-xl p-3 bg-white shadow-sm font-medium text-sm appearance-none cursor-pointer">
@@ -57,7 +46,6 @@ export function renderPlannerPage(container, app) {
                                 </button>
                             </div>
 
-                            <!-- Book sequence list -->
                             <div>
                                 <div class="flex justify-between items-center mb-2">
                                     <label class="text-xs font-bold text-slate-500">רשימת הספרים</label>
@@ -74,7 +62,6 @@ export function renderPlannerPage(container, app) {
                         </div>
                     </div>
 
-                    <!-- ==================== STEP 2: מתי לומדים? ==================== -->
                     <div class="step-card step-2 ${sequenceCount === 0 ? 'step-disabled' : ''}" data-step="2">
                         <div class="flex items-center gap-3 mb-4">
                             <span class="step-number ${sequenceCount === 0 ? 'step-number-muted' : ''}">2</span>
@@ -82,11 +69,10 @@ export function renderPlannerPage(container, app) {
                                 <h3 class="text-md font-bold text-slate-800">מתי לומדים?</h3>
                                 <p class="text-xs text-slate-400">הגדר ימים, מועדים וקצב הלימוד</p>
                             </div>
-                            <!-- Settings gear with reset dropdown -->
                             <div class="relative" id="settingsGearContainer">
                                 <button id="settingsGearBtn" class="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-all text-sm ${sequenceCount === 0 ? 'opacity-30 pointer-events-none' : ''}">
                                     <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                                     </svg>
                                 </button>
@@ -104,7 +90,6 @@ export function renderPlannerPage(container, app) {
                         </div>
 
                         <div class="pr-8 space-y-4">
-                            <!-- Start date row -->
                             <div class="flex flex-col sm:flex-row sm:items-end gap-2 sm:gap-4">
                                 <div class="flex-1">
                                     <label class="block text-xs font-bold text-slate-500 mb-1 mr-1" for="startDateInput">תאריך התחלה</label>
@@ -119,7 +104,6 @@ export function renderPlannerPage(container, app) {
                                 </div>
                             </div>
 
-                            <!-- Study days — compact pills -->
                             <div>
                                 <label class="block text-xs font-bold text-slate-500 mb-2 mr-1">ימי לימוד בשבוע</label>
                                 <div class="flex gap-1.5 select-none" dir="rtl">
@@ -154,7 +138,6 @@ export function renderPlannerPage(container, app) {
                                 </div>
                             </div>
 
-                            <!-- Toggles row (holidays + bein hazmanim) side by side -->
                             <div class="flex flex-wrap gap-3" dir="rtl">
                                 <label class="flex items-center gap-2.5 cursor-pointer group select-none bg-slate-50 hover:bg-slate-100 border border-slate-200 px-3.5 py-2 rounded-xl transition-all">
                                     <div class="relative flex items-center justify-center w-5 h-5">
@@ -187,7 +170,6 @@ export function renderPlannerPage(container, app) {
                                 </div>
                             </div>
 
-                            <!-- Live summary bar -->
                             <div id="scheduleSummaryBar" class="bg-blue-50 border border-blue-100 rounded-xl p-3 flex flex-wrap items-center gap-x-5 gap-y-1.5 text-xs ${hasSchedule ? '' : 'hidden'}">
                                 <div class="flex items-center gap-1.5 text-blue-800">
                                     <span>📅</span>
@@ -208,7 +190,6 @@ export function renderPlannerPage(container, app) {
                         </div>
                     </div>
 
-                    <!-- ==================== STEP 3: צור לוח ==================== -->
                     <div class="step-card step-3 ${sequenceCount === 0 ? 'step-disabled' : ''}" data-step="3">
                         <div class="flex items-center gap-3 mb-0">
                             <span class="step-number ${sequenceCount === 0 ? 'step-number-muted' : ''}">3</span>
@@ -228,7 +209,6 @@ export function renderPlannerPage(container, app) {
                                 <span id="generateBtnText">צור לוח לימוד מותאם אישית</span>
                             </button>
 
-                            <!-- Generation progress bar (hidden by default) -->
                             <div id="generationProgress" class="hidden mt-3">
                                 <div class="flex justify-between text-xs text-slate-400 mb-1">
                                     <span>מייצר לוח...</span>
@@ -239,7 +219,6 @@ export function renderPlannerPage(container, app) {
                                 </div>
                             </div>
 
-                            <!-- Last generated hint -->
                             <div id="lastGeneratedHint" class="text-center mt-2 ${hasSchedule ? 'text-[11px] text-slate-400' : 'hidden'}">
                                 <span>נוצר לאחרונה: </span>
                                 <span id="lastGeneratedTime">—</span>
@@ -250,38 +229,38 @@ export function renderPlannerPage(container, app) {
                 </div>
             </div>
 
-            <!-- ==================== CALENDAR PREVIEW ==================== -->
-            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 bg-white p-4 rounded-2xl shadow-xl border border-slate-200 mt-6 mb-6 select-none no-print" dir="rtl">
-                <div class="flex items-center gap-2">
-                    <span class="text-xl">📅</span>
-                    <h3 class="text-md font-bold text-slate-800">תצוגה מקדימה</h3>
+            <div class="relative mt-6">
+                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 bg-white p-4 rounded-2xl shadow-xl border border-slate-200 mb-6 select-none no-print" dir="rtl">
+                    <div class="flex items-center gap-2">
+                        <span class="text-xl">📅</span>
+                        <h3 class="text-md font-bold text-slate-800">תצוגה מקדימה</h3>
+                    </div>
+                    <button id="toggleCalendarViewModeBtn" 
+                        class="w-full sm:w-auto bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 font-bold px-4 py-2.5 rounded-xl shadow-sm transition-all active:scale-95 flex items-center justify-center gap-2 text-sm">
+                        <span id="toggleViewIcon">📄</span>
+                        <span id="toggleViewText">הצג את כל החודשים ברצף</span>
+                    </button>
                 </div>
-                <button id="toggleCalendarViewModeBtn" 
-                    class="w-full sm:w-auto bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 font-bold px-4 py-2.5 rounded-xl shadow-sm transition-all active:scale-95 flex items-center justify-center gap-2 text-sm">
-                    <span id="toggleViewIcon">📄</span>
-                    <span id="toggleViewText">הצג את כל החודשים ברצף</span>
-                </button>
-            </div>
 
-            <div id="calendarContainer" class="space-y-12 mb-24"></div>
+                <div id="calendarContainer" class="space-y-12 pb-28"></div>
 
-            <!-- Action dock -->
-            <div id="action-dock" class="fixed bottom-0 left-0 w-full bg-white/60 backdrop-blur-md border-t border-slate-200 flex gap-3 md:gap-4 justify-center py-4 hidden select-none no-print z-50 shadow-lg">
-                <button id="printBtn"
-                    class="bg-white text-slate-800 px-6 md:px-8 py-3 md:py-2.5 rounded-xl shadow-sm border border-slate-200 text-xs md:text-sm font-bold hover:bg-slate-50 hover:border-slate-300 transition-all flex items-center gap-2 group active:scale-98">
-                    <span class="text-lg group-hover:rotate-12 group-hover:scale-110 transition-transform">🖨️</span>
-                    <span>הדפסת הלוח</span>
-                </button>
-                <button id="exportToExcelBtn"
-                    class="bg-emerald-600 text-white px-6 md:px-8 py-3 md:py-2.5 rounded-xl shadow-sm shadow-emerald-600/10 text-xs md:text-sm font-bold hover:bg-emerald-700 transition-all flex items-center gap-2 group active:scale-98">
-                    <span class="text-lg group-hover:rotate-12 group-hover:scale-110 transition-transform">📊</span>
-                    <span>ייצוא לאקסל</span>
-                </button>
-                <button id="exportToICalBtn"
-                    class="bg-blue-600 text-white px-6 md:px-8 py-3 md:py-2.5 rounded-xl shadow-sm shadow-blue-600/10 text-xs md:text-sm font-bold hover:bg-blue-700 transition-all flex items-center gap-2 group active:scale-98">
-                    <span class="text-lg group-hover:rotate-12 group-hover:scale-110 transition-transform">📅</span>
-                    <span>ייצוא ל-iCal</span>
-                </button>
+                <div id="action-dock" class="sticky bottom-4 left-0 w-full bg-white/80 backdrop-blur-md border border-slate-200 flex gap-3 md:gap-4 justify-center py-4 px-4 rounded-2xl hidden select-none no-print z-50 shadow-2xl">
+                    <button id="printBtn"
+                        class="bg-white text-slate-800 px-6 md:px-8 py-3 md:py-2.5 rounded-xl shadow-sm border border-slate-200 text-xs md:text-sm font-bold hover:bg-slate-50 hover:border-slate-300 transition-all flex items-center gap-2 group active:scale-98">
+                        <span class="text-lg group-hover:rotate-12 group-hover:scale-110 transition-transform">🖨️</span>
+                        <span>הדפסת הלוח</span>
+                    </button>
+                    <button id="exportToExcelBtn"
+                        class="bg-emerald-600 text-white px-6 md:px-8 py-3 md:py-2.5 rounded-xl shadow-sm shadow-emerald-600/10 text-xs md:text-sm font-bold hover:bg-emerald-700 transition-all flex items-center gap-2 group active:scale-98">
+                        <span class="text-lg group-hover:rotate-12 group-hover:scale-110 transition-transform">📊</span>
+                        <span>ייצוא לאקסל</span>
+                    </button>
+                    <button id="exportToICalBtn"
+                        class="bg-blue-600 text-white px-6 md:px-8 py-3 md:py-2.5 rounded-xl shadow-sm shadow-blue-600/10 text-xs md:text-sm font-bold hover:bg-blue-700 transition-all flex items-center gap-2 group active:scale-98">
+                        <span class="text-lg group-hover:rotate-12 group-hover:scale-110 transition-transform">📅</span>
+                        <span>ייצוא ל-iCal</span>
+                    </button>
+                </div>
             </div>
         </div>
     `;
