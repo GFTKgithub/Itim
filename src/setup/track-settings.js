@@ -5,7 +5,7 @@ import { renderDateLabels } from "../ui/components/track-settings-panel.js";
  * Pure settings (calendar system, study days, holidays, bein hazmanim, start date).
  * NOT the settings drawer — that's a separate UI concern.
  */
-export function setupTrackSettings({ onUpdateTrackSetting, onGenerate, onSyncToToday }) {
+export function setupTrackSettings({ onUpdateTrackSetting, onGenerate, onSetToToday }) {
     const calendarSystem = document.getElementById('calendarSystem');
     const includeHolidaysInput = document.getElementById('includeHolidaysInput');
     const includeBeinHazmanimInput = document.getElementById('includeBeinHazmanimInput');
@@ -42,7 +42,7 @@ export function setupTrackSettings({ onUpdateTrackSetting, onGenerate, onSyncToT
 
     startDateInput?.addEventListener('change', handleDateChange);
 
-    document.getElementById('syncToTodayBtn')?.addEventListener('click', () => {
-        if (onSyncToToday) onSyncToToday();
+    document.getElementById('setToTodayBtn')?.addEventListener('click', () => {
+        if (onSetToToday) onSetToToday();
     });
 }

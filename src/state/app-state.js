@@ -221,8 +221,8 @@ export function createAppState() {
             const progressText = document.getElementById('generationProgressText');
             if (!progressContainer || !progressBar) return;
 
-            progressContainer.classList.remove('hidden');
-            progressContainer.classList.add('active');
+            progressContainer.classList.remove('invisible');
+            progressContainer.classList.add('visible', 'active');
 
             // Animate from 0 to 90% (last 10% jumps to 100 on completion)
             let progress = 0;
@@ -253,8 +253,8 @@ export function createAppState() {
             // Hide after a brief delay
             setTimeout(() => {
                 if (progressContainer) {
-                    progressContainer.classList.add('hidden');
-                    progressContainer.classList.remove('active');
+                    progressContainer.classList.add('invisible');
+                    progressContainer.classList.remove('visible', 'active');
                 }
                 if (progressBar) progressBar.style.width = '0%';
                 if (progressText) progressText.textContent = '0%';

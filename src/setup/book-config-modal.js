@@ -1,82 +1,108 @@
+/**
+ * Book Config Modal — clean modular sections for one book's settings.
+ * Sections: Study Method, Study Range, Reviews, Start Date Override.
+ */
 import { getTotalAmudim } from "../utils/talmud.js";
 import { numberToHebrew } from "../utils/gematria.js";
 import { HEBREW_MILESTONE_DATES, getNearestHebrewMilestone } from "../utils/dates.js";
 
-// --- Book Config Modal ---
-// Focused solely on book pacing, range, and periodic review settings.
-// Progress marking (amud grid, daily view) moved to the progress page.
 let _modalWired = false;
 
 export function setupBookConfigModal({ getSchedule, getBookSequence, getBookRangeLimits, computeDaySlots, onSaveConfig }) {
     const bookSequenceList = document.getElementById('bookSequenceList');
     const configModal = document.getElementById('bookConfigModal');
 
-    // Modal Injected Control Elements
-    const configCalcMethod = document.getElementById('bookConfigCalcMethod');
-    const configPaceSection = document.getElementById('bookConfigPaceSection');
-    const configTargetDateSection = document.getElementById('bookConfigTargetDateSection');
-    const configPaceInput = document.getElementById('bookConfigPaceInput');
-    const configTargetDateInput = document.getElementById('bookConfigTargetDateInput');
-    const configStartDateInput = document.getElementById('bookConfigStartDateInput');
+    // Elements
+    const methodPaceBtn = document.getElementById('bookConfigMethodPace');
+    const methodTargetBtn = document.getElementById('bookConfigMethodTarget');
+    const paceSection = document.getElementById('bookConfigPaceSection');
+    const targetDateSection = document.getElementById('bookConfigTargetDateSection');
+    const paceInput = document.getElementById('bookConfigPaceInput');
+    const targetDateInput = document.getElementById('bookConfigTargetDateInput');
+    const startDateInput = document.getElementById('bookConfigStartDateInput');
 
-    // Periodic Review Elements
-    const configPeriodicToggle = document.getElementById('bookConfigPeriodicReviewToggle');
-    const configPeriodicFields = document.getElementById('bookConfigPeriodicReviewFields');
-    const configPeriodicFrequency = document.getElementById('bookConfigPeriodicFrequency');
-    const configPeriodicMode = document.getElementById('bookConfigPeriodicMode');
-    const configPeriodicAmount = document.getElementById('bookConfigPeriodicAmount');
-    const configPeriodicSummary = document.getElementById('bookConfigPeriodicSummary');
+    // Reviews
+    const reviewDaysInput = document.getElementById('bookConfigReviewDays');
+    const periodicToggle = document.getElementById('bookConfigPeriodicReviewToggle');
+    const periodicFields = document.getElementById('bookConfigPeriodicReviewFields');
+    const periodicFrequency = document.getElementById('bookConfigPeriodicFrequency');
+    const periodicMode = document.getElementById('bookConfigPeriodicMode');
+    const periodicAmount = document.getElementById('bookConfigPeriodicAmount');
+    const periodicSummary = document.getElementById('bookConfigPeriodicSummary');
 
-    // Range Bound Elements
+    // Range
     const startDafSelect = document.getElementById('bookConfigStartDaf');
     const startAmudSelect = document.getElementById('bookConfigStartAmud');
     const endDafSelect = document.getElementById('bookConfigEndDaf');
     const endAmudSelect = document.getElementById('bookConfigEndAmud');
 
-    // Only wire persistent modal button listeners once to prevent double-registration
+    // ─── Persistent wire (once) ──────────────────────────────────
     if (!_modalWired) {
         _modalWired = true;
 
+        // Range validation
         startDafSelect?.addEventListener('change', validateRangeConstraints);
         startAmudSelect?.addEventListener('change', validateRangeConstraints);
         endDafSelect?.addEventListener('change', validateRangeConstraints);
         endAmudSelect?.addEventListener('change', validateRangeConstraints);
 
-        configCalcMethod?.addEventListener('change', (e) => {
-            toggleModalFields(e.target.value);
+        // Method toggle tabs
+        const setMethod = (method) => {
+            methodPaceBtn?.classList.toggle('active', method === 'pace');
+            methodTargetBtn?.classList.toggle('active', method === 'targetDate');
+            paceSection?.classList.toggle('hidden', method !== 'pace');
+            targetDateSection?.classList.toggle('hidden', method !== 'targetDate');
+        };
+
+        methodPaceBtn?.addEventListener('click', () => setMethod('pace'));
+        methodTargetBtn?.addEventListener('click', () => setMethod('targetDate'));
+
+        // Periodic review toggle
+        periodicToggle?.addEventListener('change', () => {
+            periodicFields?.classList.toggle('hidden', !periodicToggle.checked);
+            updatePeriodicSummary();
         });
 
-        configPeriodicToggle?.addEventListener('change', () => {
-            if (configPeriodicFields) {
-                configPeriodicFields.classList.toggle('hidden', !configPeriodicToggle.checked);
-            }
-            updatePeriodicReviewSummary();
-        });
-
-        configPeriodicFrequency?.addEventListener('input', updatePeriodicReviewSummary);
-        configPeriodicMode?.addEventListener('change', updatePeriodicReviewSummary);
-        configPeriodicAmount?.addEventListener('input', updatePeriodicReviewSummary);
-
+        periodicFrequency?.addEventListener('input', updatePeriodicSummary);
+        periodicMode?.addEventListener('change', updatePeriodicSummary);
+        periodicAmount?.addEventListener('input', updatePeriodicSummary);
         document.querySelectorAll('.periodic-weekday-cb').forEach(cb => {
-            cb.addEventListener('change', updatePeriodicReviewSummary);
+            cb.addEventListener('change', updatePeriodicSummary);
         });
 
+        // Quick milestone selector
+        const dropdown = document.getElementById('bookConfigDateTemplate');
+        if (dropdown && targetDateInput) {
+            dropdown.addEventListener('change', (e) => {
+                const key = e.target.value;
+                const template = HEBREW_MILESTONE_DATES[key];
+                if (!template) return;
+                const calculatedISODate = getNearestHebrewMilestone(template);
+                targetDateInput.value = calculatedISODate;
+                targetDateInput.dispatchEvent(new Event('change', { bubbles: true }));
+            });
+        }
+
+        // Save
         document.getElementById('saveConfigBtn')?.addEventListener('click', () => {
-            const reviewDays = parseInt(document.getElementById('bookConfigReviewDays').value, 10) || 0;
-            const calcMethod = configCalcMethod ? configCalcMethod.value : 'pace';
-            const paceValue = configPaceInput ? parseFloat(configPaceInput.value) : 1;
-            const targetDate = configTargetDateInput ? configTargetDateInput.value : '';
-            const startDateOverride = configStartDateInput ? configStartDateInput.value : '';
+            const reviewDays = parseInt(reviewDaysInput?.value || '0', 10);
+
+            // Determine active method
+            const isTarget = methodTargetBtn?.classList.contains('active');
+            const calcMethod = isTarget ? 'targetDate' : 'pace';
+            const paceValue = paceInput ? parseFloat(paceInput.value) : 1;
+            const targetDate = targetDateInput ? targetDateInput.value : '';
+            const startDateOverride = startDateInput ? startDateInput.value : '';
             const { startAmudIdx, endAmudIdx } = getSelectedIndices();
             const editingIndex = parseInt(configModal.dataset.editingIndex || '0', 10);
 
             let periodicReview = null;
-            if (configPeriodicToggle && configPeriodicToggle.checked) {
+            if (periodicToggle?.checked) {
                 periodicReview = {
                     enabled: true,
-                    mode: (configPeriodicMode ? configPeriodicMode.value : 'days'),
-                    frequency: parseInt(configPeriodicFrequency ? configPeriodicFrequency.value : 7, 10) || 7,
-                    amount: parseInt(configPeriodicAmount ? configPeriodicAmount.value : 1, 10) || 1
+                    mode: (periodicMode ? periodicMode.value : 'days'),
+                    frequency: parseInt(periodicFrequency ? periodicFrequency.value : 7, 10) || 7,
+                    amount: parseInt(periodicAmount ? periodicAmount.value : 1, 10) || 1
                 };
                 if (periodicReview.mode === 'weekdays') {
                     const checkedWeekdays = [];
@@ -89,39 +115,26 @@ export function setupBookConfigModal({ getSchedule, getBookSequence, getBookRang
 
             onSaveConfig({
                 index: editingIndex,
-                calcMethod: calcMethod,
-                paceValue: paceValue,
-                targetDate: targetDate,
+                calcMethod,
+                paceValue,
+                targetDate,
                 startDate: startDateOverride || undefined,
-                reviewDays: reviewDays,
-                startAmudIdx: startAmudIdx,
-                endAmudIdx: endAmudIdx,
-                periodicReview: periodicReview
+                reviewDays,
+                startAmudIdx,
+                endAmudIdx,
+                periodicReview
             });
 
             configModal.classList.add('hidden');
         });
 
-        const closeConfig = () => {
-            configModal.classList.add('hidden');
-        };
+        // Close
+        const closeConfig = () => configModal.classList.add('hidden');
         document.getElementById('closeBookConfigModal')?.addEventListener('click', closeConfig);
         document.getElementById('cancelConfigBtn')?.addEventListener('click', closeConfig);
-
-        const dropdown = document.getElementById('bookConfigDateTemplate');
-        if (dropdown && configTargetDateInput) {
-            dropdown.addEventListener('change', (e) => {
-                const key = e.target.value;
-                const template = HEBREW_MILESTONE_DATES[key];
-                if (!template) return;
-                const calculatedISODate = getNearestHebrewMilestone(template);
-                configTargetDateInput.value = calculatedISODate;
-                configTargetDateInput.dispatchEvent(new Event('change', { bubbles: true }));
-            });
-        }
     }
 
-    // ========== Functions ==========
+    // ─── Helpers ──────────────────────────────────────
 
     function populateRangeDropdowns(totalAmudim) {
         if (!startDafSelect || !endDafSelect) return;
@@ -139,8 +152,9 @@ export function setupBookConfigModal({ getSchedule, getBookSequence, getBookRang
 
     function getSelectedIndices() {
         const uniqueDafList = [];
-        const opts = startDafSelect.options;
-        for (let i = 0; i < opts.length; i++) uniqueDafList.push(opts[i].value);
+        for (let i = 0; i < startDafSelect.options.length; i++) {
+            uniqueDafList.push(startDafSelect.options[i].value);
+        }
         const startDafIdx = uniqueDafList.indexOf(startDafSelect.value);
         const endDafIdx = uniqueDafList.indexOf(endDafSelect.value);
         const startAmudIdx = (startDafIdx * 2) + (startAmudSelect.value === 'b' ? 1 : 0);
@@ -156,44 +170,34 @@ export function setupBookConfigModal({ getSchedule, getBookSequence, getBookRang
         }
     }
 
-    function toggleModalFields(method) {
-        if (method === 'targetDate') {
-            configPaceSection?.classList.add('hidden');
-            configTargetDateSection?.classList.remove('hidden');
-        } else {
-            configPaceSection?.classList.remove('hidden');
-            configTargetDateSection?.classList.add('hidden');
-        }
-    }
-
-    function updatePeriodicReviewSummary() {
-        if (!configPeriodicSummary || !configPeriodicMode || !configPeriodicFrequency || !configPeriodicAmount) return;
-        const mode = configPeriodicMode.value;
-        const freq = configPeriodicFrequency.value || '7';
-        const amount = configPeriodicAmount.value || '1';
+    function updatePeriodicSummary() {
+        if (!periodicSummary || !periodicMode || !periodicFrequency || !periodicAmount) return;
+        const mode = periodicMode.value;
+        const freq = periodicFrequency.value || '7';
+        const amount = periodicAmount.value || '1';
 
         const weekdaysContainer = document.getElementById('bookConfigPeriodicWeekdays');
         if (weekdaysContainer) {
             weekdaysContainer.classList.toggle('hidden', mode !== 'weekdays');
         }
 
-        if (mode === 'days') {
-            configPeriodicSummary.textContent = `${amount} ימי חזרה בכל ${freq} ימי לימוד`;
-        } else if (mode === 'calendar') {
-            configPeriodicSummary.textContent = `${amount} ימי חזרה בכל ${freq} ימים בלוח`;
-        } else if (mode === 'weekdays') {
+        const descriptions = {
+            days: `${amount} ימי חזרה בכל ${freq} ימי לימוד`,
+            calendar: `${amount} ימי חזרה בכל ${freq} ימים בלוח`,
+            dafs: `${amount} ימי חזרה אחרי כל ${freq} דפים`,
+        };
+        if (mode === 'weekdays') {
             const checked = document.querySelectorAll('.periodic-weekday-cb:checked');
             const dayNames = ['א', 'ב', 'ג', 'ד', 'ה', 'ו', 'ש'];
             const selected = Array.from(checked).map(cb => dayNames[parseInt(cb.value)]).join(', ');
-            configPeriodicSummary.textContent = selected ? `חזרה בימים: ${selected}` : 'בחר ימי חזרה שבועיים';
+            periodicSummary.textContent = selected ? `חזרה בימים: ${selected}` : 'בחר ימי חזרה שבועיים';
         } else {
-            configPeriodicSummary.textContent = `${amount} ימי חזרה אחרי כל ${freq} דפים`;
+            periodicSummary.textContent = descriptions[mode] || `${amount} ימי חזרה בכל ${freq} ${mode}`;
         }
     }
 
-    // ========== Re-wire listeners on planner DOM elements (called each time planner page renders) ==========
+    // ─── Per-open wiring ──────────────────────────────────
 
-    // Unwire old listener if it exists
     if (bookSequenceList._configClickHandler) {
         bookSequenceList.removeEventListener('click', bookSequenceList._configClickHandler);
     }
@@ -204,82 +208,80 @@ export function setupBookConfigModal({ getSchedule, getBookSequence, getBookRang
         const editingIndex = parseInt(configBtn.getAttribute('data-index'), 10);
         const currentBookSequence = getBookSequence();
         const currentSchedule = getSchedule();
-
         const book = currentBookSequence[editingIndex];
         if (!book) return;
 
         const bookName = typeof book === 'string' ? book : (book.name || "לא ידוע");
         document.getElementById('bookConfigModalTitle').innerText = `הגדרות מסכת ${bookName}`;
-        document.getElementById('bookConfigReviewDays').value = book.reviewDays || 0;
         configModal.dataset.editingIndex = editingIndex;
 
-        if (configStartDateInput) {
-            configStartDateInput.value = book.startDate || '';
-            if (editingIndex > 0 && currentSchedule && currentSchedule.length > 0) {
-                const previousBookName = typeof currentBookSequence[editingIndex - 1] === 'string'
+        // Start date override
+        if (startDateInput) {
+            startDateInput.value = book.startDate || '';
+            if (editingIndex > 0 && currentSchedule?.length > 0) {
+                const prevBookName = typeof currentBookSequence[editingIndex - 1] === 'string'
                     ? currentBookSequence[editingIndex - 1]
                     : currentBookSequence[editingIndex - 1].name;
-                const prevBookDays = currentSchedule.filter(d => d.book === previousBookName);
+                const prevBookDays = currentSchedule.filter(d => d.book === prevBookName);
                 if (prevBookDays.length > 0) {
                     const lastDayString = prevBookDays[prevBookDays.length - 1].dateString;
                     if (lastDayString) {
                         const nextAvailableDate = new Date(lastDayString);
                         nextAvailableDate.setDate(nextAvailableDate.getDate() + 1);
-                        configStartDateInput.min = nextAvailableDate.toISOString().split('T')[0];
+                        startDateInput.min = nextAvailableDate.toISOString().split('T')[0];
                     }
                 }
             } else {
-                configStartDateInput.min = '';
+                startDateInput.min = '';
             }
         }
 
+        // Range
         const totalAmudimCount = getTotalAmudim(bookName);
         populateRangeDropdowns(totalAmudimCount);
 
         const savedStartAmudIdx = book.startAmudIdx !== undefined ? book.startAmudIdx : 0;
         const savedEndAmudIdx = book.endAmudIdx !== undefined ? book.endAmudIdx : (totalAmudimCount - 1);
 
-        const startDafHeb = numberToHebrew(Math.floor(savedStartAmudIdx / 2) + 2);
-        const startAmudVal = (savedStartAmudIdx % 2 === 1) ? 'b' : 'a';
-        const endDafHeb = numberToHebrew(Math.floor(savedEndAmudIdx / 2) + 2);
-        const endAmudVal = (savedEndAmudIdx % 2 === 1) ? 'b' : 'a';
+        startDafSelect.value = numberToHebrew(Math.floor(savedStartAmudIdx / 2) + 2);
+        startAmudSelect.value = (savedStartAmudIdx % 2 === 1) ? 'b' : 'a';
+        endDafSelect.value = numberToHebrew(Math.floor(savedEndAmudIdx / 2) + 2);
+        endAmudSelect.value = (savedEndAmudIdx % 2 === 1) ? 'b' : 'a';
 
-        if (startDafSelect) startDafSelect.value = startDafHeb;
-        if (startAmudSelect) startAmudSelect.value = startAmudVal;
-        if (endDafSelect) endDafSelect.value = endDafHeb;
-        if (endAmudSelect) endAmudSelect.value = endAmudVal;
-
-        const limits = getBookRangeLimits(editingIndex);
-        if (configTargetDateInput && limits.minDate) {
-            configTargetDateInput.min = limits.minDate;
-            if (book.targetDate && book.targetDate < limits.minDate) {
-                book.targetDate = limits.minDate;
-            }
-        }
-
+        // Method
         const savedMethod = book.calcMethod || 'pace';
+        const isPace = savedMethod === 'pace';
+        methodPaceBtn?.classList.toggle('active', isPace);
+        methodTargetBtn?.classList.toggle('active', !isPace);
+        paceSection?.classList.toggle('hidden', !isPace);
+        targetDateSection?.classList.toggle('hidden', isPace);
+
         const savedPace = book.paceValue !== undefined ? book.paceValue : 1;
+        const limits = getBookRangeLimits(editingIndex);
+        if (targetDateInput && limits.minDate) {
+            targetDateInput.min = limits.minDate;
+        }
         const savedTargetDate = book.targetDate || limits.minDate || '';
+        if (paceInput) paceInput.value = savedPace;
+        if (targetDateInput) targetDateInput.value = savedTargetDate;
 
-        if (configCalcMethod) configCalcMethod.value = savedMethod;
-        if (configPaceInput) configPaceInput.value = savedPace;
-        if (configTargetDateInput) configTargetDateInput.value = savedTargetDate;
+        // Reviews — end-of-book
+        if (reviewDaysInput) reviewDaysInput.value = book.reviewDays || 0;
 
-        toggleModalFields(savedMethod);
-
+        // Reviews — periodic
         const periodic = (typeof book === 'object' && book.periodicReview) || {};
-        if (configPeriodicToggle) configPeriodicToggle.checked = periodic.enabled || false;
-        if (configPeriodicFields) configPeriodicFields.classList.toggle('hidden', !periodic.enabled);
-        if (configPeriodicMode) configPeriodicMode.value = periodic.mode || 'days';
-        if (configPeriodicFrequency) configPeriodicFrequency.value = periodic.frequency || 7;
-        if (configPeriodicAmount) configPeriodicAmount.value = periodic.amount || 1;
+        if (periodicToggle) periodicToggle.checked = periodic.enabled || false;
+        if (periodicFields) periodicFields.classList.toggle('hidden', !periodic.enabled);
+        if (periodicMode) periodicMode.value = periodic.mode || 'days';
+        if (periodicFrequency) periodicFrequency.value = periodic.frequency || 7;
+        if (periodicAmount) periodicAmount.value = periodic.amount || 1;
 
         const savedWeekdays = periodic.weekdays || [];
         document.querySelectorAll('.periodic-weekday-cb').forEach(cb => {
             cb.checked = savedWeekdays.includes(parseInt(cb.value, 10));
         });
 
-        updatePeriodicReviewSummary();
+        updatePeriodicSummary();
 
         configModal.classList.remove('hidden');
     };

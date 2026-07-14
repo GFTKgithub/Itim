@@ -110,8 +110,8 @@ export function renderPlannerPage(container, app) {
                                     <label class="block text-xs font-bold text-slate-500 mb-1 mr-1" for="startDateInput">תאריך התחלה</label>
                                     <div class="flex items-center gap-2">
                                         <input type="date" id="startDateInput" class="flex-1 border border-slate-300 rounded-xl p-2.5 bg-white min-w-[140px] text-sm">
-                                        <button id="syncToTodayBtn" class="text-xs text-blue-600 hover:text-blue-800 hover:bg-blue-50 font-semibold px-3 py-2.5 rounded-xl border border-slate-200 transition-colors whitespace-nowrap" title="סנכרן להיום">
-                                            <span class="hidden sm:inline">📅 סנכרן להיום</span>
+                                        <button id="setToTodayBtn" class="text-xs text-blue-600 hover:text-blue-800 hover:bg-blue-50 font-semibold px-3 py-2.5 rounded-xl border border-slate-200 transition-colors whitespace-nowrap" title="קבע את תאריך ההתחלה להיום">
+                                            <span class="hidden sm:inline">📅 קבע להיום</span>
                                             <span class="sm:hidden">📅</span>
                                         </button>
                                     </div>

@@ -22,208 +22,228 @@
     <div id="page-container" class="transition-all duration-200 ease-out"></div>
 
     <div id="bookConfigModal" class="fixed inset-0 z-[100] flex items-center justify-center hidden bg-slate-900/60 backdrop-blur-sm p-2 sm:p-4">
-        <div class="bg-white w-full max-w-4xl h-full max-h-[95vh] sm:max-h-[90vh] rounded-2xl shadow-2xl flex flex-col overflow-hidden border border-slate-200">
-            
-            <div class="p-4 sm:p-6 border-b border-slate-100 bg-slate-50 flex justify-between items-center shrink-0">
-                <div>
-                    <h2 id="bookConfigModalTitle" class="text-xl sm:text-2xl font-black text-slate-800">הגדרות מסכת</h2>
-                    <div id="bookConfigModalProgressInfo" class="text-xs sm:text-sm text-slate-500 font-medium">התקדמות: 0/0 עמודים (0%)</div>
-                </div>
-                <button id="closeBookConfigModal" class="text-slate-400 hover:text-slate-600 text-xl sm:text-2xl p-2">✕</button>
+        <div class="bg-white w-full max-w-2xl max-h-[95vh] sm:max-h-[90vh] rounded-2xl shadow-2xl flex flex-col overflow-hidden border border-slate-200">
+
+            <div class="p-4 sm:p-5 border-b border-slate-100 bg-slate-50 flex justify-between items-center shrink-0">
+                <h2 id="bookConfigModalTitle" class="text-lg sm:text-xl font-black text-slate-800">הגדרות מסכת</h2>
+                <button id="closeBookConfigModal" class="text-slate-400 hover:text-slate-600 text-xl sm:text-2xl p-1.5 hover:bg-slate-200 rounded-xl transition-all">✕</button>
             </div>
 
-            <div class="flex-1 overflow-y-auto p-4 sm:p-6 space-y-6">
-                
-                <div class="bg-slate-50 p-4 rounded-xl border border-slate-200 font-sans space-y-4">
-                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 max-w-4xl mx-auto">
-                        
-                        <div class="flex flex-col bg-white p-3 sm:p-4 rounded-xl border border-slate-200/80 shadow-sm">
-                            <label for="bookConfigCalcMethod" class="block text-xs font-bold text-slate-500 mb-2 tracking-wide">
-                                שיטת לימוד עבור ספר זה
-                            </label>
-                            <div class="relative mt-auto">
-                                <select id="bookConfigCalcMethod" class="w-full h-11 border border-slate-200 rounded-lg px-3 bg-slate-50/50 text-sm font-semibold text-slate-800 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 focus:bg-white transition-all cursor-pointer appearance-none">
-                                    <option value="pace">קצב קבוע</option>
-                                    <option value="targetDate">יעד סיום סופי</option>
-                                </select>
-                                <div class="absolute inset-y-0 left-3 flex items-center pointer-events-none text-slate-400">
-                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
-                                </div>
+            <div class="flex-1 overflow-y-auto p-4 sm:p-5 space-y-5">
+
+                <!-- ====== Study Method Section ====== -->
+                <div class="modal-section">
+                    <div class="modal-section-header">
+                        <span>📐</span>
+                        <span>שיטת לימוד</span>
+                    </div>
+                    <div class="modal-section-body">
+                        <!-- Method toggle tabs -->
+                        <div class="flex bg-slate-100 rounded-xl p-0.5 select-none" dir="rtl">
+                            <button id="bookConfigMethodPace" class="method-tab flex-1 py-2 px-3 rounded-lg text-xs font-bold transition-all" data-method="pace">קצב קבוע</button>
+                            <button id="bookConfigMethodTarget" class="method-tab flex-1 py-2 px-3 rounded-lg text-xs font-bold transition-all" data-method="targetDate">יעד סיום</button>
+                        </div>
+
+                        <!-- Pace field -->
+                        <div id="bookConfigPaceSection" class="mt-3">
+                            <label class="block text-xs font-bold text-slate-500 mb-1.5" for="bookConfigPaceInput">הספק ליום לימוד (דפים)</label>
+                            <input type="number" id="bookConfigPaceInput" value="1" min="0.5" step="0.5"
+                                class="w-full h-10 border border-slate-300 rounded-xl px-3 text-sm font-bold text-slate-800 bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all">
+                        </div>
+
+                        <!-- Target date fields -->
+                        <div id="bookConfigTargetDateSection" class="hidden mt-3 space-y-3">
+                            <div>
+                                <label class="block text-xs font-bold text-slate-500 mb-1.5" for="bookConfigTargetDateInput">תאריך יעד לסיום</label>
+                                <input type="date" id="bookConfigTargetDateInput"
+                                    class="w-full h-10 border border-slate-300 rounded-xl px-3 text-sm font-bold text-slate-800 bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all">
                             </div>
-                        </div>
-                    
-                        <div id="bookConfigPaceSection" class="flex flex-col bg-blue-50/40 p-3 sm:p-4 rounded-xl border border-blue-100 shadow-sm">
-                            <label for="bookConfigPaceInput" class="block text-xs font-bold text-blue-800 mb-2 tracking-wide">
-                                הספק ליום לימוד
-                            </label>
-                            <input type="number" id="bookConfigPaceInput" value="1" stroke="0.5" min="0.5" step="0.5"
-                                class="w-full h-11 border border-blue-200/80 rounded-lg px-3 text-sm font-bold text-blue-900 bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all mt-auto">
-                        </div>
-                    
-                        <div id="bookConfigTargetDateSection" class="hidden flex-col bg-blue-50/40 p-3 sm:p-4 rounded-xl border border-blue-100 shadow-sm sm:col-span-2">
-                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 w-full">
-                                
-                                <div class="flex flex-col">
-                                    <label for="bookConfigTargetDateInput" class="block text-xs font-bold text-blue-800 mb-2 tracking-wide select-none">
-                                        תאריך יעד לסיום ספר זה
-                                    </label>
-                                    <input type="date" id="bookConfigTargetDateInput"
-                                        class="w-full h-11 border border-blue-200/80 rounded-lg px-3 text-sm font-bold text-blue-900 bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all mt-auto select-none">
-                                </div>
-                
-                                <div class="flex flex-col">
-                                    <label for="bookConfigDateTemplate" class="block text-xs font-bold text-blue-800 mb-2 tracking-wide">
-                                        בחירה מהירה לפי מועדים
-                                    </label>
-                                    <div class="relative mt-auto">
-                                        <select id="bookConfigDateTemplate" class="w-full h-11 border border-blue-200 rounded-lg px-3 bg-white text-sm font-semibold text-slate-800 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all cursor-pointer appearance-none">
-                                            <option value="" disabled selected>בחר מועד...</option>
-                                            <option value="zman_choref_end">סוף זמן חורף (א' ניסן)</option>
-                                            <option value="zman_kayitz_end">סוף זמן קיץ (ט' אב)</option>
-                                            <option value="zman_elul_end">סוף זמן אלול (כ"ט אלול)</option>
-                                            <option value="rosh_hashana">ראש השנה (א' תשרי)</option>
-                                            <option value="chanukah">חנוכה (כ"ה כסלו)</option>
-                                            <option value="purim">פורים (י"ד אדר)</option>
-                                            <option value="leil_haseder">ליל הסדר (ט"ו ניסן)</option>
-                                            <option value="shavuot">שבועות (ו' סיון)</option>
-                                        </select>
-                                        <div class="absolute inset-y-0 left-3 flex items-center pointer-events-none text-slate-400">
-                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
-                                        </div>
+                            <div>
+                                <label class="block text-xs font-bold text-slate-500 mb-1.5" for="bookConfigDateTemplate">בחירה מהירה לפי מועדים</label>
+                                <div class="relative">
+                                    <select id="bookConfigDateTemplate" class="w-full h-10 border border-slate-300 rounded-xl px-3 bg-white text-sm font-semibold text-slate-700 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all cursor-pointer appearance-none">
+                                        <option value="" disabled selected>בחר מועד...</option>
+                                        <option value="zman_choref_end">סוף זמן חורף (א' ניסן)</option>
+                                        <option value="zman_kayitz_end">סוף זמן קיץ (ט' אב)</option>
+                                        <option value="zman_elul_end">סוף זמן אלול (כ"ט אלול)</option>
+                                        <option value="rosh_hashana">ראש השנה (א' תשרי)</option>
+                                        <option value="chanukah">חנוכה (כ"ה כסלו)</option>
+                                        <option value="purim">פורים (י"ד אדר)</option>
+                                        <option value="leil_haseder">ליל הסדר (ט"ו ניסן)</option>
+                                        <option value="shavuot">שבועות (ו' סיון)</option>
+                                    </select>
+                                    <div class="absolute inset-y-0 left-3 flex items-center pointer-events-none text-slate-400">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
                                     </div>
                                 </div>
-                
                             </div>
                         </div>
+                    </div>
+                </div>
+                
+                <!-- ====== Start Date Override Section ====== -->
+                <div class="modal-section">
+                    <div class="modal-section-header">
+                        <span>📅</span>
+                        <span>תאריך התחלה מותאם</span>
+                        <span class="text-[10px] text-slate-400 font-medium mr-auto">אופציונלי</span>
+                    </div>
+                    <div class="modal-section-body">
+                        <input type="date" id="bookConfigStartDateInput"
+                            class="w-full h-10 border border-slate-300 rounded-xl px-3 text-sm font-bold text-slate-800 bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all">
+                        <p class="text-[10px] text-slate-400 mt-1">ברירת מחדל: תחילת המסכת מיד לאחר סיום הקודמת</p>
+                    </div>
+                </div>
 
-                        <div class="flex flex-col bg-slate-50 p-3 sm:p-4 rounded-xl border border-slate-200/80 shadow-sm">
-                            <label for="bookConfigStartDateInput" class="block text-xs font-bold text-slate-500 mb-2 tracking-wide">
-                                תאריך התחלה מותאם (אופציונלי)
-                            </label>
-                            <div class="relative mt-auto">
-                                <input type="date" id="bookConfigStartDateInput"
-                                    class="w-full h-11 border border-slate-200 rounded-lg px-3 text-sm font-bold text-slate-800 bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all">
+                <!-- ====== Study Range Section ====== -->
+                <div class="modal-section">
+                    <div class="modal-section-header">
+                        <span>📏</span>
+                        <span>טווח לימוד</span>
+                    </div>
+                    <div class="modal-section-body">
+                        <div class="flex flex-wrap items-center justify-center gap-3 sm:gap-4">
+                            <div class="flex items-center gap-1.5">
+                                <span class="text-xs font-medium text-slate-400">מדף</span>
+                                <select id="bookConfigStartDaf" class="range-select"></select>
+                                <select id="bookConfigStartAmud" class="range-select range-select-sm">
+                                    <option value="a">א׳</option>
+                                    <option value="b">ב׳</option>
+                                </select>
+                            </div>
+
+                            <svg class="w-4 h-4 text-slate-300 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M15 19l-7-7 7-7"></path>
+                            </svg>
+
+                            <div class="flex items-center gap-1.5">
+                                <span class="text-xs font-medium text-slate-400">עד דף</span>
+                                <select id="bookConfigEndDaf" class="range-select"></select>
+                                <select id="bookConfigEndAmud" class="range-select range-select-sm">
+                                    <option value="a">א׳</option>
+                                    <option value="b" selected>ב׳</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ====== Reviews Section ====== -->
+                <div class="modal-section">
+                    <div class="modal-section-header">
+                        <span>🔄</span>
+                        <span>חזרות</span>
+                    </div>
+                    
+                    <div class="modal-section-body space-y-4">
+                        <div class="flex items-center justify-between gap-3 bg-amber-50/60 border border-amber-100 rounded-xl px-4 py-3">
+                            <div class="flex items-center gap-2 min-w-0">
+                                <span class="text-base shrink-0">📚</span>
+                                <div class="min-w-0">
+                                    <span class="text-xs font-bold text-amber-800 block">ימי חזרה בסיום המסכת</span>
+                                    <span class="text-[10px] text-amber-600/70 block leading-tight">ימים רצופים לאחר סיום הלימוד החדש</span>
+                                </div>
+                            </div>
+                            <div class="flex items-center gap-1.5 shrink-0">
+                                <input type="number" id="bookConfigReviewDays" min="0" value="0"
+                                    class="w-14 h-8 border border-amber-200 rounded-lg px-1 text-xs font-bold text-amber-900 bg-white text-center focus:border-amber-500 focus:ring-2 focus:ring-amber-100 transition-all">
+                                <span class="text-xs font-bold text-amber-700">ימים</span>
                             </div>
                         </div>
                 
-                        <div class="flex flex-col bg-amber-50/40 p-3 sm:p-4 rounded-xl border border-amber-100 shadow-sm col-span-1">
-                            <label for="bookConfigReviewDays" class="block text-xs font-bold text-amber-800 mb-2 tracking-wide">
-                                📚 ימי חזרה מרוכזת בסיום
-                            </label>
-                            <input type="number" id="bookConfigReviewDays" min="0" value="0"
-                                class="w-full h-11 border border-amber-200/80 rounded-lg px-3 text-sm font-bold text-amber-900 bg-white focus:border-amber-500 focus:ring-2 focus:ring-amber-100 transition-all mt-auto">
-                            <span class="text-[10px] text-amber-600/70 mt-1 leading-tight">ימי חזרה רצופים לאחר סיום הלימוד החדש של המסכת</span>
+                        <div class="flex items-center gap-2">
+                            <div class="flex-1 h-px bg-slate-200"></div>
+                            <span class="text-[10px] font-bold text-slate-300 uppercase tracking-widest">או</span>
+                            <div class="flex-1 h-px bg-slate-200"></div>
                         </div>
-
-                        <div class="flex flex-col bg-indigo-50/40 p-3 sm:p-4 rounded-xl border border-indigo-100 shadow-sm sm:col-span-3">
-                            <div class="flex items-center justify-between mb-2">
-                                <label class="text-xs font-bold text-indigo-800 tracking-wide">🔄 חזרה מחזורית תוך כדי הלימוד</label>
-                                <label class="relative inline-flex items-center cursor-pointer shrink-0">
-                                    <input type="checkbox" id="bookConfigPeriodicReviewToggle" class="peer hidden">
-                                    <div class="w-8 h-4.5 bg-slate-300 peer-checked:bg-indigo-500 rounded-full transition-all duration-200 after:content-[''] after:absolute after:top-[1px] after:right-[1px] after:bg-white after:rounded-full after:h-3.5 after:w-3.5 after:transition-all peer-checked:after:-translate-x-3.5"></div>
+                
+                        <div class="flex items-center justify-between gap-3 bg-indigo-50/50 border border-indigo-100 rounded-xl px-4 py-3">
+                            <div class="flex items-center gap-2 min-w-0">
+                                <span class="text-base shrink-0">🔄</span>
+                                <div class="min-w-0">
+                                    <span class="text-xs font-bold text-indigo-800 block">חזרה מחזורית תוך כדי הלימוד</span>
+                                    <span class="text-[10px] text-indigo-600/70 block leading-tight">ימי חזרה המשולבים בלוח הרגיל</span>
+                                </div>
+                            </div>
+                            <div class="flex items-center shrink-0">
+                                <label class="relative inline-flex items-center h-5 w-9 cursor-pointer select-none">
+                                    <input type="checkbox" id="bookConfigPeriodicReviewToggle" class="peer sr-only">
+                                    <div class="w-9 h-5 bg-slate-300 peer-checked:bg-indigo-500 rounded-full transition-all duration-200 after:content-[''] after:absolute after:top-[2px] after:right-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:after:-translate-x-4"></div>
                                 </label>
                             </div>
-                            <div id="bookConfigPeriodicReviewFields" class="hidden">
-                                <div class="flex flex-wrap items-center gap-x-2 gap-y-1.5">
-                                    <span class="text-[11px] font-bold text-indigo-700 whitespace-nowrap">כל</span>
+                        </div>
+                
+                        <div id="bookConfigPeriodicReviewFields" class="hidden bg-white border border-slate-200 rounded-xl p-4 space-y-3.5">
+                            <div class="grid grid-cols-1 sm:flex sm:flex-wrap items-center gap-3">
+                                
+                                <div class="flex items-center gap-2 w-full sm:w-auto">
+                                    <span class="text-xs font-bold text-slate-600 shrink-0">כל</span>
                                     <input type="number" id="bookConfigPeriodicFrequency" min="1" value="7"
-                                        class="w-14 h-8 border border-indigo-200/80 rounded-lg px-1 text-xs font-bold text-indigo-900 bg-white focus:border-indigo-500 text-center">
-                                    <select id="bookConfigPeriodicMode" class="h-8 border border-indigo-200 rounded-lg px-1 text-[11px] font-bold text-indigo-900 bg-white focus:border-indigo-500 cursor-pointer">
+                                        class="w-14 h-8 border border-slate-300 rounded-lg px-1 text-xs font-bold text-slate-700 bg-white text-center focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 transition-all">
+                                    <select id="bookConfigPeriodicMode" class="flex-1 sm:flex-none h-8 border border-slate-300 rounded-lg px-2 text-xs font-bold text-slate-700 bg-white focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 cursor-pointer">
                                         <option value="days">ימי לימוד</option>
                                         <option value="calendar">ימים בלוח</option>
                                         <option value="weekdays">ימי שבוע קבועים</option>
                                         <option value="dafs">דפים</option>
                                     </select>
-                                    <span class="text-[11px] font-bold text-indigo-700 whitespace-nowrap">—</span>
+                                </div>
+                
+                                <span class="hidden sm:inline text-xs font-bold text-slate-400">—</span>
+                
+                                <div class="flex items-center gap-2 w-full sm:w-auto">
                                     <input type="number" id="bookConfigPeriodicAmount" min="1" value="1"
-                                        class="w-12 h-8 border border-indigo-200/80 rounded-lg px-1 text-xs font-bold text-indigo-900 bg-white focus:border-indigo-500 text-center">
-                                    <span class="text-[11px] font-bold text-indigo-700 whitespace-nowrap">ימי חזרה</span>
-                                </div>
-                                <div id="bookConfigPeriodicWeekdays" class="hidden mt-2">
-                                    <span class="text-[10px] font-bold text-indigo-700 block mb-1">בחר ימי חזרה שבועיים:</span>
-                                    <div class="flex justify-between gap-1 select-none" dir="rtl">
-                                        <label class="flex-1 text-center cursor-pointer group">
-                                            <input type="checkbox" name="periodicWeekday" value="0" class="peer hidden periodic-weekday-cb">
-                                            <div class="py-1 text-[10px] font-bold rounded-lg border border-indigo-200 text-indigo-600 peer-checked:bg-indigo-500 peer-checked:border-indigo-500 peer-checked:text-white transition-all">א</div>
-                                        </label>
-                                        <label class="flex-1 text-center cursor-pointer group">
-                                            <input type="checkbox" name="periodicWeekday" value="1" class="peer hidden periodic-weekday-cb">
-                                            <div class="py-1 text-[10px] font-bold rounded-lg border border-indigo-200 text-indigo-600 peer-checked:bg-indigo-500 peer-checked:border-indigo-500 peer-checked:text-white transition-all">ב</div>
-                                        </label>
-                                        <label class="flex-1 text-center cursor-pointer group">
-                                            <input type="checkbox" name="periodicWeekday" value="2" class="peer hidden periodic-weekday-cb">
-                                            <div class="py-1 text-[10px] font-bold rounded-lg border border-indigo-200 text-indigo-600 peer-checked:bg-indigo-500 peer-checked:border-indigo-500 peer-checked:text-white transition-all">ג</div>
-                                        </label>
-                                        <label class="flex-1 text-center cursor-pointer group">
-                                            <input type="checkbox" name="periodicWeekday" value="3" class="peer hidden periodic-weekday-cb">
-                                            <div class="py-1 text-[10px] font-bold rounded-lg border border-indigo-200 text-indigo-600 peer-checked:bg-indigo-500 peer-checked:border-indigo-500 peer-checked:text-white transition-all">ד</div>
-                                        </label>
-                                        <label class="flex-1 text-center cursor-pointer group">
-                                            <input type="checkbox" name="periodicWeekday" value="4" class="peer hidden periodic-weekday-cb">
-                                            <div class="py-1 text-[10px] font-bold rounded-lg border border-indigo-200 text-indigo-600 peer-checked:bg-indigo-500 peer-checked:border-indigo-500 peer-checked:text-white transition-all">ה</div>
-                                        </label>
-                                        <label class="flex-1 text-center cursor-pointer group">
-                                            <input type="checkbox" name="periodicWeekday" value="5" class="peer hidden periodic-weekday-cb">
-                                            <div class="py-1 text-[10px] font-bold rounded-lg border border-indigo-200 text-indigo-600 peer-checked:bg-indigo-500 peer-checked:border-indigo-500 peer-checked:text-white transition-all">ו</div>
-                                        </label>
-                                        <label class="flex-1 text-center cursor-pointer group">
-                                            <input type="checkbox" name="periodicWeekday" value="6" class="peer hidden periodic-weekday-cb">
-                                            <div class="py-1 text-[10px] font-bold rounded-lg border border-indigo-200 text-indigo-600 peer-checked:bg-indigo-500 peer-checked:border-indigo-500 peer-checked:text-white transition-all">ש</div>
-                                        </label>
-                                    </div>
-                                </div>
-                                <div id="bookConfigPeriodicSummary" class="mt-1.5 text-[11px] text-indigo-600/80 font-medium">
-                                    1 יום חזרה בכל 7 ימי לימוד
+                                        class="w-14 h-8 border border-slate-300 rounded-lg px-1 text-xs font-bold text-slate-700 bg-white text-center focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 transition-all">
+                                    <span class="text-xs font-bold text-slate-600 whitespace-nowrap">ימי חזרה</span>
                                 </div>
                             </div>
-                        </div>
-                    </div>
-
-                    <div class="border-t border-slate-200/60 pt-3 max-w-4xl mx-auto flex flex-wrap items-center justify-between gap-2 bg-slate-50/50 p-2 rounded-xl border border-slate-200/40">
-                        <div class="text-xs font-bold text-slate-500 tracking-wide shrink-0">
-                            טווח לימוד:
-                        </div>
-                        
-                        <div class="flex flex-wrap items-center gap-2 xs:gap-3 sm:gap-4">
-                            
-                            <div class="flex items-center gap-1.5 shrink-0">
-                                <span class="text-xs text-slate-400 font-medium">מדף</span>
-                                <div class="flex items-center gap-0.5">
-                                    <select id="bookConfigStartDaf" class="h-7 min-w-[55px] border border-slate-200 rounded-md bg-white text-xs font-bold text-slate-800 focus:border-blue-500 px-1 cursor-pointer"></select>
-                                    <select id="bookConfigStartAmud" class="h-7 border border-slate-200 rounded-md bg-white text-xs font-bold text-slate-800 focus:border-blue-500 px-1 cursor-pointer">
-                                        <option value="a">א׳</option>
-                                        <option value="b">ב׳</option>
-                                    </select>
+                
+                            <div id="bookConfigPeriodicWeekdays" class="hidden pt-1">
+                                <div class="flex gap-1.5 select-none w-full justify-start" dir="rtl">
+                                    <label class="periodic-day-pill">
+                                        <input type="checkbox" name="periodicWeekday" value="0" class="peer hidden periodic-weekday-cb">
+                                        <div class="periodic-day-pill-inner">א</div>
+                                    </label>
+                                    <label class="periodic-day-pill">
+                                        <input type="checkbox" name="periodicWeekday" value="1" class="peer hidden periodic-weekday-cb">
+                                        <div class="periodic-day-pill-inner">ב</div>
+                                    </label>
+                                    <label class="periodic-day-pill">
+                                        <input type="checkbox" name="periodicWeekday" value="2" class="peer hidden periodic-weekday-cb">
+                                        <div class="periodic-day-pill-inner">ג</div>
+                                    </label>
+                                    <label class="periodic-day-pill">
+                                        <input type="checkbox" name="periodicWeekday" value="3" class="peer hidden periodic-weekday-cb">
+                                        <div class="periodic-day-pill-inner">ד</div>
+                                    </label>
+                                    <label class="periodic-day-pill">
+                                        <input type="checkbox" name="periodicWeekday" value="4" class="peer hidden periodic-weekday-cb">
+                                        <div class="periodic-day-pill-inner">ה</div>
+                                    </label>
+                                    <label class="periodic-day-pill">
+                                        <input type="checkbox" name="periodicWeekday" value="5" class="peer hidden periodic-weekday-cb">
+                                        <div class="periodic-day-pill-inner">ו</div>
+                                    </label>
+                                    <label class="periodic-day-pill">
+                                        <input type="checkbox" name="periodicWeekday" value="6" class="peer hidden periodic-weekday-cb">
+                                        <div class="periodic-day-pill-inner">ש</div>
+                                    </label>
                                 </div>
                             </div>
-                            
-                            <div class="text-slate-300 hidden xs:block shrink-0">
-                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M15 19l-7-7 7-7"></path>
-                                </svg>
+                
+                            <div id="bookConfigPeriodicSummary" class="text-xs text-indigo-600/80 font-semibold text-center bg-indigo-50/40 py-1.5 rounded-lg border border-indigo-100/30">
+                                1 יום חזרה בכל 7 ימי לימוד
                             </div>
-                            
-                            <div class="flex items-center gap-1.5 shrink-0">
-                                <span class="text-xs text-slate-400 font-medium">עד דף</span>
-                                <div class="flex items-center gap-0.5">
-                                    <select id="bookConfigEndDaf" class="h-7 min-w-[55px] border border-slate-200 rounded-md bg-white text-xs font-bold text-slate-800 focus:border-blue-500 px-1 cursor-pointer"></select>
-                                    <select id="bookConfigEndAmud" class="h-7 border border-slate-200 rounded-md bg-white text-xs font-bold text-slate-800 focus:border-blue-500 px-1 cursor-pointer">
-                                        <option value="a">א׳</option>
-                                        <option value="b" selected>ב׳</option>
-                                    </select>
-                                </div>
-                            </div>
-                    
                         </div>
                     </div>
                 </div>
+
             </div>
 
             <div class="p-4 bg-slate-50 border-t border-slate-100 flex justify-between items-center gap-3 shrink-0">
                 <div></div>
                 <div class="flex gap-2 sm:gap-3">
-                    <button id="cancelConfigBtn" class="px-4 sm:px-6 py-2.5 font-bold text-slate-500 hover:bg-slate-200 rounded-xl transition-all text-sm">ביטול</button>
-                    <button id="saveConfigBtn" class="px-5 sm:px-8 py-2.5 bg-blue-800 text-white font-bold rounded-xl shadow-lg hover:bg-black transition-all text-sm whitespace-nowrap">שמור שינויים</button>
+                    <button id="cancelConfigBtn" class="px-5 py-2.5 font-bold text-slate-500 hover:bg-slate-200 rounded-xl transition-all text-sm">ביטול</button>
+                    <button id="saveConfigBtn" class="px-6 py-2.5 bg-blue-800 text-white font-bold rounded-xl shadow-lg hover:bg-black transition-all text-sm">שמור שינויים</button>
                 </div>
             </div>
         </div>

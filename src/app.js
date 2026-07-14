@@ -12,6 +12,7 @@ import { setupCalendarContextMenus } from './setup/calendar-context.js';
 
 import { registerPage, navigateTo, setContainerId } from './services/router.js';
 import { renderNavBar, updateActiveNavLink } from './ui/components/nav-bar.js';
+import { renderDateLabels } from './ui/components/track-settings-panel.js';
 import { renderDashboardPage } from './pages/dashboard-page.js';
 import { renderPlannerPage } from './pages/planner-page.js';
 import { renderProgressPage } from './pages/progress-page.js';
@@ -129,7 +130,15 @@ function setupPlannerPageListeners(app) {
     setupTrackSettings({
         onUpdateTrackSetting: (key, value) => app.handleUpdateTrackSetting(key, value),
         onGenerate: () => app.handleScheduleGeneration(),
-        onSyncToToday: () => app.handleSyncToToday()
+        onSetToToday: () => {
+            const today = new Date().toISOString().split('T')[0];
+            document.getElementById('startDateInput').value = today;
+            app.handleUpdateTrackSetting('startDate', today);
+            // Update the Hebrew date label
+            renderDateLabels(today);
+            // Trigger generation to refresh the calendar with the new start date
+            app.handleScheduleGeneration();
+        }
     });
 
     setupActionDock({
