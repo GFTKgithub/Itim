@@ -38,7 +38,7 @@ function renderAmudGrid(containerId, amudStates, isDaf = false) {
             colorClass = combinedLearned
                 ? "bg-emerald-500 text-white border-emerald-600 shadow-sm"
                 : combinedSkipped
-                    ? "bg-purple-500 text-white border-purple-600 shadow-sm"
+                    ? "bg-orange-400 text-white border-orange-600 shadow-sm"
                     : "bg-slate-100 text-slate-400 border-slate-200";
         } else {
             // Uses your native engine formatting
@@ -46,7 +46,7 @@ function renderAmudGrid(containerId, amudStates, isDaf = false) {
             colorClass = state === 1
                 ? "bg-emerald-500 text-white border-emerald-600 shadow-sm"
                 : state === 2
-                    ? "bg-purple-500 text-white border-purple-600 shadow-sm"
+                    ? "bg-orange-400 text-white border-orange-600 shadow-sm"
                     : "bg-slate-100 text-slate-400 border-slate-200";
         }
 
@@ -196,7 +196,7 @@ function getProgressPageHtml(activeTrack, bookSequence) {
                                     <div class="flex flex-wrap gap-1 mb-3">
                                         <span class="text-[10px] font-bold text-slate-400 flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-full bg-slate-200 inline-block"></span> טרם</span>
                                         <span class="text-[10px] font-bold text-slate-400 flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-full bg-emerald-500 inline-block"></span> נלמד</span>
-                                        <span class="text-[10px] font-bold text-slate-400 flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-full bg-purple-500 inline-block"></span> השלמות</span>
+                                        <span class="text-[10px] font-bold text-slate-400 flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-full bg-orange-400 inline-block"></span> השלמות</span>
                                     </div>
                                     <div id="amudGrid_${idx}" class="grid grid-cols-4 xs:grid-cols-5 sm:grid-cols-8 md:grid-cols-10 gap-1.5"></div>
                                 </div>
@@ -538,12 +538,12 @@ export function renderProgressPage(container, app) {
                         <span class="text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full font-bold">${deficit.totalDeficit / 2} דפים</span>
                     </div>
                     ${hasPastTarget ? `
-                        <button id="createCatchUpBtn" class="w-full sm:w-auto bg-orange-500 hover:bg-orange-600 text-white px-5 py-2.5 rounded-xl font-bold text-sm transition-all active:scale-95 shadow-sm flex items-center justify-center gap-1.5">
+                        <button id="createCatchUpBtn" class="w-full sm:w-auto bg-orange-400 hover:bg-orange-600 text-white px-5 py-2.5 rounded-xl font-bold text-sm transition-all active:scale-95 shadow-sm flex items-center justify-center gap-1.5">
                             <span>📅</span>
                             <span>קבע תאריך יעד חדש</span>
                         </button>
                     ` : `
-                        <button id="createCatchUpBtn" class="w-full sm:w-auto bg-orange-500 hover:bg-orange-600 text-white px-5 py-2.5 rounded-xl font-bold text-sm transition-all active:scale-95 shadow-sm flex items-center justify-center gap-1.5">
+                        <button id="createCatchUpBtn" class="w-full sm:w-auto bg-orange-400 hover:bg-orange-600 text-white px-5 py-2.5 rounded-xl font-bold text-sm transition-all active:scale-95 shadow-sm flex items-center justify-center gap-1.5">
                             <span>📈</span>
                             <span>צור תכנית צמצום פערים</span>
                         </button>
