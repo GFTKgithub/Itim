@@ -229,6 +229,24 @@ export function renderPlannerPage(container, app) {
                 </div>
             </div>
 
+            <!-- Stylized Divider with Epic Curled Line Ends: Between Steps and Preview -->
+            <div class="my-12 py-8 flex items-center justify-center">
+                <div class="w-full flex items-center justify-center gap-1">
+                    <!-- Left Curled End Line -->
+                    <svg class="grow h-4 text-slate-300" preserveAspectRatio="none" viewBox="0 0 400 16" fill="none" stroke="currentColor" stroke-width="1.5">
+                        <path d="M 0 8 C 15 8, 20 2, 30 2 C 40 2, 35 14, 25 14 C 15 14, 20 8, 45 8 L 400 8" />
+                    </svg>
+                    
+                    <!-- Center Original Rhombus/Diamond Accent -->
+                    <div class="bg-slate-50 px-4 text-slate-300 text-xs tracking-widest shrink-0">❖ ❖ ❖</div>
+                    
+                    <!-- Right Curled End Line -->
+                    <svg class="grow h-4 text-slate-300" preserveAspectRatio="none" viewBox="0 0 400 16" fill="none" stroke="currentColor" stroke-width="1.5">
+                        <path d="M 0 8 L 355 8 C 380 8, 385 14, 375 14 C 365 14, 360 2, 370 2 C 380 2, 385 8, 400 8" />
+                    </svg>
+                </div>
+            </div>
+
             <div class="relative mt-6">
                 <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 bg-white p-4 rounded-2xl shadow-xl border border-slate-200 mb-6 select-none no-print" dir="rtl">
                     <div class="flex items-center gap-2">
