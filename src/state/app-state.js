@@ -781,8 +781,8 @@ export function createAppState() {
 
             if (!skipConfirmation) {
                 const confirmed = await showDialog({
-                    title: 'ביטול תכנית השלמה',
-                    message: 'האם אתה בטוח שברצונך לבטל את תכנית ההשלמה הנוכחית?',
+                    title: 'ביטול תכנית צמצום פערים',
+                    message: 'האם אתה בטוח שברצונך לבטל את תכנית צמצום הפערים הנוכחית?',
                     icon: '🔄',
                     showCancel: true,
                     confirmText: 'כן, בטל תכנית',

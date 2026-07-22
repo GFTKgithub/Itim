@@ -86,7 +86,7 @@ export function renderStatsPage(container, app) {
                     </div>
                     <div class="flex justify-between mt-2 text-xs text-slate-400">
                         <span>${skippedDays > 0 ? `דילוגים: ${skippedDays}` : ''}</span>
-                        <span>${completionRate}% הושלם</span>
+                        <span>${completionRate}% נלמד</span>
                     </div>
                 </div>
 

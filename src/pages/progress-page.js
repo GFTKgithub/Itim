@@ -109,14 +109,14 @@ function getProgressPageHtml(activeTrack, bookSequence) {
                             <span class="text-2xl">📖</span>
                         </div>
                         <p class="text-3xl font-black text-slate-800">${totalLearned}/${activeAmudim}</p>
-                        <p class="text-sm text-slate-500 font-medium mt-1">עמודים נלמדו${totalCompleteLater > 0 ? ` (${totalCompleteLater} הושלמו אח״כ)` : ''}</p>
+                        <p class="text-sm text-slate-500 font-medium mt-1">עמודים נלמדו${totalCompleteLater > 0 ? ` (${totalCompleteLater} השלמות)` : ''}</p>
                     </div>
                     <div class="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm flex flex-col items-center text-center justify-center">
                         <div class="flex items-center justify-center mb-3">
                             <span class="text-2xl">✅</span>
                         </div>
                         <p class="text-3xl font-black text-emerald-600">${completionRate}%</p>
-                        <p id="statsCompleteLaterCount" class="text-sm text-slate-500 font-medium mt-1">${totalCompleteLater > 0 ? `${totalCompleteLater} הושלמו אח״כ` : ''}</p>
+                        <p id="statsCompleteLaterCount" class="text-sm text-slate-500 font-medium mt-1">${totalCompleteLater > 0 ? `${totalCompleteLater} השלמות` : ''}</p>
                     </div>
                 </div>
 
@@ -131,8 +131,8 @@ function getProgressPageHtml(activeTrack, bookSequence) {
                              style="width: ${completionRate}%"></div>
                     </div>
                     <div class="flex justify-between mt-2 text-xs text-slate-400">
-                        <span id="completeLaterCountLabel">${totalCompleteLater > 0 ? `הושלמו אח״כ: ${totalCompleteLater}` : ''}</span>
-                        <span>${completionRate}% הושלם</span>
+                        <span id="completeLaterCountLabel">${totalCompleteLater > 0 ? `השלמות: ${totalCompleteLater}` : ''}</span>
+                        <span>${completionRate}% נלמד</span>
                     </div>
                 </div>
 
@@ -177,7 +177,7 @@ function getProgressPageHtml(activeTrack, bookSequence) {
                                         <div class="flex items-center gap-2">
                                             <span class="text-lg">📖</span>
                                             <h3 class="font-bold text-slate-800">מסכת ${bookName}</h3>
-                                            <span id="bookProgressLabel_${idx}" class="text-xs bg-slate-100 text-slate-500 px-2 py-0.5 rounded-full font-medium">${learned}/${activeAmudim} עמודים${completeLater > 0 ? ` (+${completeLater} אח״כ)` : ''}</span>
+                                            <span id="bookProgressLabel_${idx}" class="text-xs bg-slate-100 text-slate-500 px-2 py-0.5 rounded-full font-medium">${learned}/${activeAmudim} עמודים${completeLater > 0 ? ` (+${completeLater} השלמות)` : ''}</span>
                                         </div>
                                         <div class="flex items-center gap-2">
                                             <span id="bookPctLabel_${idx}" class="text-xs font-bold text-slate-400">${pct}%</span>
@@ -196,7 +196,7 @@ function getProgressPageHtml(activeTrack, bookSequence) {
                                     <div class="flex flex-wrap gap-1 mb-3">
                                         <span class="text-[10px] font-bold text-slate-400 flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-full bg-slate-200 inline-block"></span> טרם</span>
                                         <span class="text-[10px] font-bold text-slate-400 flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-full bg-emerald-500 inline-block"></span> נלמד</span>
-                                        <span class="text-[10px] font-bold text-slate-400 flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-full bg-purple-500 inline-block"></span> ישלים אח״כ</span>
+                                        <span class="text-[10px] font-bold text-slate-400 flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-full bg-purple-500 inline-block"></span> השלמות</span>
                                     </div>
                                     <div id="amudGrid_${idx}" class="grid grid-cols-4 xs:grid-cols-5 sm:grid-cols-8 md:grid-cols-10 gap-1.5"></div>
                                 </div>
@@ -286,7 +286,7 @@ export function renderProgressPage(container, app) {
                 const labelEl = document.getElementById(`bookProgressLabel_${idx}`);
                 const pctEl = document.getElementById(`bookPctLabel_${idx}`);
                 const barEl = document.getElementById(`bookProgressBar_${idx}`);
-                if (labelEl) labelEl.textContent = `${learned}/${activeAmudim} עמודים${completeLater > 0 ? ` (+${completeLater} אח״כ)` : ''}`;
+                if (labelEl) labelEl.textContent = `${learned}/${activeAmudim} עמודים${completeLater > 0 ? ` (+${completeLater} השלמות)` : ''}`;
                 if (pctEl) pctEl.textContent = `${pct}%`;
                 if (barEl) barEl.style.width = `${pct}%`;
                 
@@ -340,7 +340,7 @@ export function renderProgressPage(container, app) {
             if (hasActivePlan) {
                 const confirmed = await showDialog({
                     title: 'סנכרן עד היום',
-                    message: 'האם אתה בטוח שברצונך לסנכרן? פעולה זו תבטל את תכנית ההשלמה הפעילה.',
+                    message: 'האם אתה בטוח שברצונך לסנכרן? פעולה זו תבטל את תכנית הצמצום פערים הפעילה.',
                     icon: '🔄',
                     showCancel: true,
                     confirmText: 'כן, סנכרן ובטל תכנית',
@@ -371,7 +371,7 @@ export function renderProgressPage(container, app) {
                 const labelEl = document.getElementById(`bookProgressLabel_${idx}`);
                 const pctEl = document.getElementById(`bookPctLabel_${idx}`);
                 const barEl = document.getElementById(`bookProgressBar_${idx}`);
-                if (labelEl) labelEl.textContent = `${learned}/${activeAmudim} עמודים${completeLater > 0 ? ` (+${completeLater} אח״כ)` : ''}`;
+                if (labelEl) labelEl.textContent = `${learned}/${activeAmudim} עמודים${completeLater > 0 ? ` (+${completeLater} השלמות)` : ''}`;
                 if (pctEl) pctEl.textContent = `${pct}%`;
                 if (barEl) barEl.style.width = `${pct}%`;
             });
@@ -411,13 +411,13 @@ export function renderProgressPage(container, app) {
         // Update complete-later count in stats card
         const statsCompleteLaterEl = document.getElementById('statsCompleteLaterCount');
         if (statsCompleteLaterEl) {
-            statsCompleteLaterEl.textContent = tCompleteLater > 0 ? `${tCompleteLater} הושלמו אח״כ` : '';
+            statsCompleteLaterEl.textContent = tCompleteLater > 0 ? `${tCompleteLater} השלמות` : '';
         }
         
         // Update complete-later count in progress bar section
         const completeLaterLabel = document.getElementById('completeLaterCountLabel');
         if (completeLaterLabel) {
-            completeLaterLabel.textContent = tCompleteLater > 0 ? `הושלמו אח״כ: ${tCompleteLater}` : '';
+            completeLaterLabel.textContent = tCompleteLater > 0 ? `השלמות: ${tCompleteLater}` : '';
         }
     }
 
@@ -486,7 +486,7 @@ export function renderProgressPage(container, app) {
                 <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
                     <div class="flex items-center gap-2">
                         <span class="text-xl">✅</span>
-                        <h3 class="font-bold text-slate-800">תכנית השלמה פעילה</h3>
+                        <h3 class="font-bold text-slate-800">תכנית צמצום פעילה</h3>
                         <span class="text-xs bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full font-bold">מהיום</span>
                     </div>
                     <button id="cancelCatchUpBtn" class="w-full sm:w-auto text-sm text-red-500 hover:text-red-700 font-bold px-4 py-2 rounded-lg border border-red-200 hover:bg-red-50 transition-all">
@@ -545,12 +545,12 @@ export function renderProgressPage(container, app) {
                     ` : `
                         <button id="createCatchUpBtn" class="w-full sm:w-auto bg-orange-500 hover:bg-orange-600 text-white px-5 py-2.5 rounded-xl font-bold text-sm transition-all active:scale-95 shadow-sm flex items-center justify-center gap-1.5">
                             <span>📈</span>
-                            <span>צור תכנית השלמה</span>
+                            <span>צור תכנית צמצום פערים</span>
                         </button>
                     `}
                 </div>
                 <div class="divide-y divide-amber-100">${deficitHtml}</div>
-                <p class="text-xs text-slate-500 mt-3">ללא תכנית השלמה, ההתאמה נעשית אוטומטית: חומר שנותר יחולק מחדש מהיום ועד הסוף.</p>
+                <p class="text-xs text-slate-500 mt-3">ללא תכנית צמצום פערים, ההתאמה נעשית אוטומטית: חומר שנותר יחולק מחדש מהיום ועד הסוף.</p>
             </div>
         `;
     
@@ -661,8 +661,8 @@ export function renderProgressPage(container, app) {
         });
     
         const result = await showDialog({
-            title: 'צור תכנית השלמה',
-            message: `אתה ${deficit.totalDeficit / 2} דפים מאחור. בחר אסטרטגיית השלמה לכל מסכת:`,
+            title: 'צור תכנית צמצום פערים',
+            message: `אתה ${deficit.totalDeficit / 2} דפים מאחור. בחר אסטרטגיית צמצום פערים לכל ספר:`,
             icon: '📈',
             showCancel: true,
             confirmText: 'צור תכנית',
