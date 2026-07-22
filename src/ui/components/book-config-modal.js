@@ -1,53 +1,4 @@
-import { numberToHebrew } from '../../utils/gematria.js';
 import { indexToDaf } from '../../utils/talmud.js';
-
-// Renders the interactive Amud Grid inside the configuration modal
-export function renderAmudGrid(containerId, amudStates, isDaf = false) {
-    const container = document.getElementById(containerId);
-    if (!container) return;
-
-    const htmlBuffer = [];
-
-    amudStates.forEach((state, i) => {
-        // Daf mode: one button per daf — only render even indices (amud א), skip amud ב
-        if (isDaf && i % 2 !== 0) return;
-
-        const dafNum = Math.floor(i / 2) + 2;
-        const dafGematria = numberToHebrew(dafNum);
-
-        let label, colorClass;
-
-        if (isDaf) {
-            // In daf mode, combine state of both amudim: learned if both are 1, skipped if both are 2, else unlearned
-            const stateB = amudStates[i + 1]; // may be undefined on last daf
-            const combinedLearned = state === 1 && (stateB === 1 || stateB === undefined);
-            const combinedSkipped = state === 2 && (stateB === 2 || stateB === undefined);
-            label = dafGematria;
-            colorClass = combinedLearned
-                ? "bg-emerald-500 text-white border-emerald-600 shadow-sm"
-                : combinedSkipped
-                    ? "bg-amber-500 text-white border-amber-600 shadow-sm"
-                    : "bg-slate-100 text-slate-400 border-slate-200";
-        } else {
-            // Uses your native engine formatting
-            label = indexToDaf(i); 
-            colorClass = state === 1
-                ? "bg-emerald-500 text-white border-emerald-600 shadow-sm"
-                : state === 2
-                    ? "bg-amber-500 text-white border-amber-600 shadow-sm"
-                    : "bg-slate-100 text-slate-400 border-slate-200";
-        }
-
-        htmlBuffer.push(`
-            <button data-amud-idx="${i}"
-                class="amud-btn h-10 rounded-lg border-b-2 font-bold text-xs transition-all active:scale-95 ${colorClass}">
-                ${label}
-            </button>
-        `);
-    });
-
-    container.innerHTML = htmlBuffer.join('');
-}
 
 // Renders the daily study requirement view — one button per scheduled day for this Book, colored by progress and with badges for today and completion status
 export function renderDailyView(containerId, daySlots, amudStates) {
@@ -113,15 +64,4 @@ export function renderDailyView(containerId, daySlots, amudStates) {
     }).join('');
 
     container.innerHTML = `<div class="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-2">${html}</div>`;
-}
-
-// Simple helper to refresh just the progress text in the modal header
-export function updateModalProgressStats(amudStates) {
-    const learned = amudStates.filter(s => s === 1).length;
-    const total = amudStates.length;
-    const percent = total > 0 ? Math.round((learned / total) * 100) : 0;
-    const infoEl = document.getElementById('configModalProgressInfo');
-    if (infoEl) {
-        infoEl.innerText = `התקדמות: ${learned}/${total} עמודים (${percent}%)`;
-    }
 }

@@ -750,19 +750,20 @@ export function createAppState() {
                         strategy: 'squeeze'
                     };
                 } else if (config.strategy === 'sprint') {
-                    // Sprint: temporarily increase pace for N days
-                    // The algorithm auto-calculates the daily pace based on remaining material / sprintDays
+                    // Sprint: temporarily increase pace for N days to close the deficit
                     const sprintDays = Math.max(1, parseInt(config.sprintDays) || 7);
                     plan.books[bookIdx] = {
                         strategy: 'sprint',
-                        sprintDays: sprintDays
+                        sprintDays: sprintDays,
+                        deficitAmount: parseInt(config.deficitAmount) || 0
                     };
                 } else if (config.strategy === 'increase-pace') {
-                    // Increase pace: user sets a new higher pace value permanently
-                    const newPaceValue = parseFloat(config.newPaceValue) || 1;
+                    // Increase pace: add X amudim per day until the deficit is closed
+                    const addAmudimValue = parseFloat(config.addAmudimValue) || 1;
                     plan.books[bookIdx] = {
                         strategy: 'increase-pace',
-                        newPaceValue: newPaceValue
+                        addAmudimValue: addAmudimValue,
+                        deficitAmount: parseInt(config.deficitAmount) || 0
                     };
                 }
             }

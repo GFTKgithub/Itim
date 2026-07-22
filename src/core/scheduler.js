@@ -755,7 +755,7 @@ function addCalendarGridPadding(outputSchedule, timelineDays, startInputDate, ca
 }
 
 // Determines whether a given date should be treated as a rest day based on the user's selected study days, holiday inclusion preference, and the calendar traits of that specific day.
-function shouldDayBeRest(dateObj, studyDays, includeHolidays, includeBeinHazmanim, calendarEvents) {
+export function shouldDayBeRest(dateObj, studyDays, includeHolidays, includeBeinHazmanim, calendarEvents) {
     const dateString = formatDateToIL(dateObj);
     const day = calendarEvents[dateString];
     const traits = day?.traits || {};

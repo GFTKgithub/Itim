@@ -1,32 +1,81 @@
 /**
  * Progress Page — Eifo Ata Ochez (book progress marking).
- * Per-book amud grid with amud, daf, and daily views for marking progress.
+ * Per-book amud grid with amud and daf views for marking progress.
  * 
- * Catch-up plan feature: Completely rewritten from scratch.
- * - Target Date books: Move Target Date, Squeeze, Sprint
- * - Pace books: Sprint only
- * - Never modifies the baseline calendar
+ * Three material states:
+ *   0 = unlearned (will be learned chronologically)
+ *   1 = learned
+ *   2 = complete later (excluded from active cycle, sent to async bank in future)
  */
 
-import { renderAmudGrid, renderDailyView } from '../ui/components/book-config-modal.js';
-import { getTotalAmudim } from '../utils/talmud.js';
-import { computeDaySlots } from '../core/scheduler.js';
+import { getTotalAmudim, indexToDaf } from '../utils/talmud.js';
+import { numberToHebrew } from '../utils/gematria.js';
 import { showDialog } from '../ui/components/dialog.js';
+
+// Renders the interactive Amud Grid for progress marking — one button per amud (or per daf in daf mode),
+// colored by learned/skipped/unlearned state. Used by the progress page (Eifo Ata Ochez).
+function renderAmudGrid(containerId, amudStates, isDaf = false) {
+    const container = document.getElementById(containerId);
+    if (!container) return;
+
+    const htmlBuffer = [];
+
+    amudStates.forEach((state, i) => {
+        // Daf mode: one button per daf — only render even indices (amud א), skip amud ב
+        if (isDaf && i % 2 !== 0) return;
+
+        const dafNum = Math.floor(i / 2) + 2;
+        const dafGematria = numberToHebrew(dafNum);
+
+        let label, colorClass;
+
+        if (isDaf) {
+            // In daf mode, combine state of both amudim: learned if both are 1, skipped if both are 2, else unlearned
+            const stateB = amudStates[i + 1]; // may be undefined on last daf
+            const combinedLearned = state === 1 && (stateB === 1 || stateB === undefined);
+            const combinedSkipped = state === 2 && (stateB === 2 || stateB === undefined);
+            label = dafGematria;
+            colorClass = combinedLearned
+                ? "bg-emerald-500 text-white border-emerald-600 shadow-sm"
+                : combinedSkipped
+                    ? "bg-purple-500 text-white border-purple-600 shadow-sm"
+                    : "bg-slate-100 text-slate-400 border-slate-200";
+        } else {
+            // Uses your native engine formatting
+            label = indexToDaf(i); 
+            colorClass = state === 1
+                ? "bg-emerald-500 text-white border-emerald-600 shadow-sm"
+                : state === 2
+                    ? "bg-purple-500 text-white border-purple-600 shadow-sm"
+                    : "bg-slate-100 text-slate-400 border-slate-200";
+        }
+
+        htmlBuffer.push(`
+            <button data-amud-idx="${i}"
+                class="amud-btn h-10 rounded-lg border-b-2 font-bold text-xs transition-all active:scale-95 ${colorClass}">
+                ${label}
+            </button>
+        `);
+    });
+
+    container.innerHTML = htmlBuffer.join('');
+}
 
 function getProgressPageHtml(activeTrack, bookSequence) {
     // Calculate stats from amudStates directly
     let totalAmudim = 0;
     let totalLearned = 0;
-    let totalSkipped = 0;
+    let totalCompleteLater = 0;
     bookSequence.forEach((book) => {
         const bookName = typeof book === 'string' ? book : book.name;
         const total = getTotalAmudim(bookName);
         const states = (typeof book === 'object' && book.amudStates) ? book.amudStates : [];
         totalAmudim += total;
         totalLearned += states.filter(s => s === 1).length;
-        totalSkipped += states.filter(s => s === 2).length;
+        totalCompleteLater += states.filter(s => s === 2).length;
     });
-    const completionRate = totalAmudim > 0 ? Math.round((totalLearned / totalAmudim) * 100) : 0;
+    const activeAmudim = totalAmudim - totalCompleteLater;
+    const completionRate = activeAmudim > 0 ? Math.round((totalLearned / activeAmudim) * 100) : 0;
 
     return `
         <div class="max-w-5xl mx-auto p-4 md:p-8">
@@ -46,7 +95,7 @@ function getProgressPageHtml(activeTrack, bookSequence) {
                     <p class="text-amber-600 text-sm mt-1">צור מסלול לימוד כדי להתחיל</p>
                 </div>
             ` : `
-                <!-- Stats Cards (Centralized elements) -->
+                <!-- Stats Cards -->
                 <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
                     <div class="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm flex flex-col items-center text-center justify-center">
                         <div class="flex items-center justify-center mb-3">
@@ -59,15 +108,15 @@ function getProgressPageHtml(activeTrack, bookSequence) {
                         <div class="flex items-center justify-center mb-3">
                             <span class="text-2xl">📖</span>
                         </div>
-                        <p class="text-3xl font-black text-slate-800">${totalLearned}/${totalAmudim}</p>
-                        <p class="text-sm text-slate-500 font-medium mt-1">עמודים נלמדו</p>
+                        <p class="text-3xl font-black text-slate-800">${totalLearned}/${activeAmudim}</p>
+                        <p class="text-sm text-slate-500 font-medium mt-1">עמודים נלמדו${totalCompleteLater > 0 ? ` (${totalCompleteLater} הושלמו אח״כ)` : ''}</p>
                     </div>
                     <div class="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm flex flex-col items-center text-center justify-center">
                         <div class="flex items-center justify-center mb-3">
                             <span class="text-2xl">✅</span>
                         </div>
                         <p class="text-3xl font-black text-emerald-600">${completionRate}%</p>
-                        <p id="statsSkippedCount" class="text-sm text-slate-500 font-medium mt-1">${totalSkipped > 0 ? `${totalSkipped} דילוגים` : ''}</p>
+                        <p id="statsCompleteLaterCount" class="text-sm text-slate-500 font-medium mt-1">${totalCompleteLater > 0 ? `${totalCompleteLater} הושלמו אח״כ` : ''}</p>
                     </div>
                 </div>
 
@@ -75,26 +124,24 @@ function getProgressPageHtml(activeTrack, bookSequence) {
                 <div class="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm mb-8">
                     <div class="flex justify-between items-center mb-3">
                         <h3 class="font-bold text-slate-800">התקדמות כללית</h3>
-                        <span class="text-sm font-bold text-slate-500">${totalLearned}/${totalAmudim} עמודים</span>
+                        <span class="text-sm font-bold text-slate-500">${totalLearned}/${activeAmudim} עמודים</span>
                     </div>
                     <div class="w-full bg-slate-100 rounded-full h-4 overflow-hidden">
                         <div id="overallProgressBar" class="bg-gradient-to-l from-blue-800 to-blue-600 h-full rounded-full transition-all duration-500 ease-out" 
                              style="width: ${completionRate}%"></div>
                     </div>
                     <div class="flex justify-between mt-2 text-xs text-slate-400">
-                        <span id="skippedCountLabel">${totalSkipped > 0 ? `דילוגים: ${totalSkipped}` : ''}</span>
+                        <span id="completeLaterCountLabel">${totalCompleteLater > 0 ? `הושלמו אח״כ: ${totalCompleteLater}` : ''}</span>
                         <span>${completionRate}% הושלם</span>
                     </div>
                 </div>
 
                 <!-- Catch-Up Status & Actions -->
                 <div class="mb-6 space-y-3">
-
-                    <!-- Catch-Up Section -->
                     <div id="catchUpSection" class="hidden"></div>
                 </div>
 
-                <!-- Calendar (baseline or catch-up overlay) -->
+                <!-- Calendar (adjusted schedule) -->
                 <div id="progressCalendarContainer" class="mb-8"></div>
 
                 <!-- Sync to Today Button -->
@@ -119,16 +166,18 @@ function getProgressPageHtml(activeTrack, bookSequence) {
                         const totalAmudim = getTotalAmudim(bookName);
                         const amudStates = (typeof book === 'object' && book.amudStates) ? [...book.amudStates] : new Array(totalAmudim).fill(0);
                         const learned = amudStates.filter(s => s === 1).length;
-                        const pct = totalAmudim > 0 ? Math.round((learned / totalAmudim) * 100) : 0;
+                        const completeLater = amudStates.filter(s => s === 2).length;
+                        const activeAmudim = totalAmudim - completeLater;
+                        const pct = activeAmudim > 0 ? Math.round((learned / activeAmudim) * 100) : 0;
                         
                         return `
                             <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden" data-book-idx="${idx}">
                                 <div class="p-4 border-b border-slate-100">
-                                    <div class="flex items-center justify-between mb-2">
+                                    <div class="flex items-center justify-between">
                                         <div class="flex items-center gap-2">
                                             <span class="text-lg">📖</span>
                                             <h3 class="font-bold text-slate-800">מסכת ${bookName}</h3>
-                                            <span id="bookProgressLabel_${idx}" class="text-xs bg-slate-100 text-slate-500 px-2 py-0.5 rounded-full font-medium">${learned}/${totalAmudim} עמודים</span>
+                                            <span id="bookProgressLabel_${idx}" class="text-xs bg-slate-100 text-slate-500 px-2 py-0.5 rounded-full font-medium">${learned}/${activeAmudim} עמודים${completeLater > 0 ? ` (+${completeLater} אח״כ)` : ''}</span>
                                         </div>
                                         <div class="flex items-center gap-2">
                                             <span id="bookPctLabel_${idx}" class="text-xs font-bold text-slate-400">${pct}%</span>
@@ -137,10 +186,9 @@ function getProgressPageHtml(activeTrack, bookSequence) {
                                             </div>
                                         </div>
                                     </div>
-                                    <!-- View toggle buttons -->
-                                    <div class="flex bg-slate-100 p-0.5 rounded-lg self-start w-fit">
-                                        <button data-book-idx="${idx}" data-view="daily" class="view-toggle-btn px-2.5 py-1 rounded-md text-[10px] font-bold bg-white shadow-sm">לפי תאריך</button>
-                                        <button data-book-idx="${idx}" data-view="amud" class="view-toggle-btn px-2.5 py-1 rounded-md text-[10px] font-bold text-slate-500 hover:text-slate-700">עמודים</button>
+                                    <!-- View toggle buttons (amud/daf only) -->
+                                    <div class="flex bg-slate-100 p-0.5 rounded-lg self-start w-fit mt-2">
+                                        <button data-book-idx="${idx}" data-view="amud" class="view-toggle-btn px-2.5 py-1 rounded-md text-[10px] font-bold bg-white shadow-sm">עמודים</button>
                                         <button data-book-idx="${idx}" data-view="daf" class="view-toggle-btn px-2.5 py-1 rounded-md text-[10px] font-bold text-slate-500 hover:text-slate-700">דפים</button>
                                     </div>
                                 </div>
@@ -148,10 +196,9 @@ function getProgressPageHtml(activeTrack, bookSequence) {
                                     <div class="flex flex-wrap gap-1 mb-3">
                                         <span class="text-[10px] font-bold text-slate-400 flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-full bg-slate-200 inline-block"></span> טרם</span>
                                         <span class="text-[10px] font-bold text-slate-400 flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-full bg-emerald-500 inline-block"></span> נלמד</span>
-                                        <span class="text-[10px] font-bold text-slate-400 flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-full bg-amber-500 inline-block"></span> דלג</span>
+                                        <span class="text-[10px] font-bold text-slate-400 flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-full bg-purple-500 inline-block"></span> ישלים אח״כ</span>
                                     </div>
-                                    <div id="amudGrid_${idx}" class="hidden grid grid-cols-4 xs:grid-cols-5 sm:grid-cols-8 md:grid-cols-10 gap-1.5"></div>
-                                    <div id="dailyView_${idx}"></div>
+                                    <div id="amudGrid_${idx}" class="grid grid-cols-4 xs:grid-cols-5 sm:grid-cols-8 md:grid-cols-10 gap-1.5"></div>
                                 </div>
                             </div>
                         `;
@@ -168,10 +215,10 @@ export function renderProgressPage(container, app) {
     
     container.innerHTML = getProgressPageHtml(activeTrack, bookSequence);
 
-    // Track view modes per book
+    // Track view modes per book (amud or daf)
     const viewModes = {};
 
-    // Render the calendar with catch-up overlay if active
+    // Render the calendar with adjusted schedule
     app.handleScheduleGeneration();
 
     // Render amud grids and wire up clicks for each book
@@ -180,14 +227,13 @@ export function renderProgressPage(container, app) {
         const totalAmudim = getTotalAmudim(bookName);
         const amudStates = (typeof book === 'object' && book.amudStates) ? [...book.amudStates] : new Array(totalAmudim).fill(0);
         const gridContainer = document.getElementById(`amudGrid_${idx}`);
-        const dailyContainer = document.getElementById(`dailyView_${idx}`);
         
-        viewModes[idx] = 'daily';
+        // Default to amud view (no more daily view)
+        viewModes[idx] = 'amud';
         
-        if (dailyContainer) {
-            const schedule = activeTrack.studySchedule || [];
-            const slots = computeDaySlots(schedule, bookName, idx, activeTrack.bookSequence);
-            renderDailyView(`dailyView_${idx}`, slots, amudStates);
+        // Initial render of the grid
+        if (gridContainer) {
+            renderAmudGrid(`amudGrid_${idx}`, amudStates, false);
         }
 
         // Amud grid click handler
@@ -234,79 +280,29 @@ export function renderProgressPage(container, app) {
                 
                 // Update per-book progress indicators
                 const learned = entry.amudStates.filter(s => s === 1).length;
-                const pct = totalAmudim > 0 ? Math.round((learned / totalAmudim) * 100) : 0;
+                const completeLater = entry.amudStates.filter(s => s === 2).length;
+                const activeAmudim = totalAmudim - completeLater;
+                const pct = activeAmudim > 0 ? Math.round((learned / activeAmudim) * 100) : 0;
                 const labelEl = document.getElementById(`bookProgressLabel_${idx}`);
                 const pctEl = document.getElementById(`bookPctLabel_${idx}`);
                 const barEl = document.getElementById(`bookProgressBar_${idx}`);
-                if (labelEl) labelEl.textContent = `${learned}/${totalAmudim} עמודים`;
+                if (labelEl) labelEl.textContent = `${learned}/${activeAmudim} עמודים${completeLater > 0 ? ` (+${completeLater} אח״כ)` : ''}`;
                 if (pctEl) pctEl.textContent = `${pct}%`;
                 if (barEl) barEl.style.width = `${pct}%`;
                 
                 // Update overall stats
                 updateOverallStats(activeTrack.bookSequence);
                 
-                // Save
+                // Save and regenerate the adjusted schedule
                 app.handleSaveBookConfig({ index: idx });
+                app.handleScheduleGeneration();
             };
             
             gridContainer.addEventListener('click', gridContainer[handlerKey]);
         }
-
-        // Daily view click handler
-        if (dailyContainer) {
-            const dailyHandlerKey = `_progressDailyClick_${idx}`;
-            if (dailyContainer[dailyHandlerKey]) {
-                dailyContainer.removeEventListener('click', dailyContainer[dailyHandlerKey]);
-            }
-            dailyContainer[dailyHandlerKey] = (e) => {
-                const btn = e.target.closest('.day-slot-btn');
-                if (!btn) return;
-                const slotIdx = parseInt(btn.dataset.slotIdx);
-                if (isNaN(slotIdx)) return;
-                
-                const bookEntry = activeTrack.bookSequence[idx];
-                if (!bookEntry) return;
-                if (typeof bookEntry === 'string') {
-                    activeTrack.bookSequence[idx] = { name: bookEntry, amudStates: new Array(totalAmudim).fill(0) };
-                }
-                const entry = activeTrack.bookSequence[idx];
-                if (!entry.amudStates) {
-                    entry.amudStates = new Array(totalAmudim).fill(0);
-                }
-                
-                // Toggle all amudim in this day slot
-                const schedule = activeTrack.studySchedule || [];
-                const slots = computeDaySlots(schedule, bookName, idx, activeTrack.bookSequence);
-                const slot = slots[slotIdx];
-                if (!slot) return;
-                
-                // Cycle through states: 0 (unlearned) -> 1 (learned) -> 2 (skipped) -> 0
-                const firstAmudIdx = slot.amudStart;
-                const currentState = firstAmudIdx < entry.amudStates.length ? entry.amudStates[firstAmudIdx] : 0;
-                const newState = (currentState + 1) % 3;
-                for (let i = slot.amudStart; i < slot.amudStart + slot.amudCount && i < entry.amudStates.length; i++) {
-                    entry.amudStates[i] = newState;
-                }
-                
-                renderDailyView(`dailyView_${idx}`, slots, entry.amudStates);
-                
-                const learned = entry.amudStates.filter(s => s === 1).length;
-                const pct = totalAmudim > 0 ? Math.round((learned / totalAmudim) * 100) : 0;
-                const labelEl = document.getElementById(`bookProgressLabel_${idx}`);
-                const pctEl = document.getElementById(`bookPctLabel_${idx}`);
-                const barEl = document.getElementById(`bookProgressBar_${idx}`);
-                if (labelEl) labelEl.textContent = `${learned}/${totalAmudim} עמודים`;
-                if (pctEl) pctEl.textContent = `${pct}%`;
-                if (barEl) barEl.style.width = `${pct}%`;
-                
-                updateOverallStats(activeTrack.bookSequence);
-                app.handleSaveBookConfig({ index: idx });
-            };
-            dailyContainer.addEventListener('click', dailyContainer[dailyHandlerKey]);
-        }
     });
 
-    // Wire up view toggle buttons
+    // Wire up view toggle buttons (amud/daf only)
     container.querySelectorAll('.view-toggle-btn').forEach(btn => {
         btn.addEventListener('click', () => {
             const bookIdx = parseInt(btn.dataset.bookIdx, 10);
@@ -318,7 +314,6 @@ export function renderProgressPage(container, app) {
             const totalAmudim = getTotalAmudim(bookName);
             const amudStates = (typeof book === 'object' && book.amudStates) ? [...book.amudStates] : new Array(totalAmudim).fill(0);
             const gridContainer = document.getElementById(`amudGrid_${bookIdx}`);
-            const dailyContainer = document.getElementById(`dailyView_${bookIdx}`);
             viewModes[bookIdx] = view;
             
             // Update button styles
@@ -330,60 +325,10 @@ export function renderProgressPage(container, app) {
             btn.classList.add('bg-white', 'shadow-sm');
             btn.classList.remove('text-slate-500');
             
-            viewModes[bookIdx] = view;
-            
-            if (view === 'daily') {
-                gridContainer?.classList.add('hidden');
-                dailyContainer?.classList.remove('hidden');
-                const schedule = activeTrack.studySchedule || [];
-                const slots = computeDaySlots(schedule, bookName, bookIdx, activeTrack.bookSequence);
-                renderDailyView(`dailyView_${bookIdx}`, slots, amudStates);
-            } else {
-                gridContainer?.classList.remove('hidden');
-                dailyContainer?.classList.add('hidden');
-                const isDaf = view === 'daf';
-                renderAmudGrid(`amudGrid_${bookIdx}`, amudStates, isDaf);
-            }
+            const isDaf = view === 'daf';
+            renderAmudGrid(`amudGrid_${bookIdx}`, amudStates, isDaf);
         });
     });
-
-    // Helper to update overall stats
-    function updateOverallStats(seq) {
-        let tAmudim = 0;
-        let tLearned = 0;
-        let tSkipped = 0;
-        seq.forEach((b) => {
-            const bName = typeof b === 'string' ? b : b.name;
-            const total = getTotalAmudim(bName);
-            const states = (typeof b === 'object' && b.amudStates) ? b.amudStates : [];
-            tAmudim += total;
-            tLearned += states.filter(s => s === 1).length;
-            tSkipped += states.filter(s => s === 2).length;
-        });
-        const rate = tAmudim > 0 ? Math.round((tLearned / tAmudim) * 100) : 0;
-        
-        const overallBar = document.getElementById('overallProgressBar');
-        if (overallBar) overallBar.style.width = `${rate}%`;
-        
-        // Update stat cards
-        const statCards = container.querySelectorAll('.grid.grid-cols-1.sm\\:grid-cols-3 .text-3xl');
-        if (statCards.length >= 3) {
-            statCards[1].textContent = `${tLearned}/${tAmudim}`;
-            statCards[2].textContent = `${rate}%`;
-        }
-        
-        // Update skipped count in stats card
-        const statsSkippedEl = document.getElementById('statsSkippedCount');
-        if (statsSkippedEl) {
-            statsSkippedEl.textContent = tSkipped > 0 ? `${tSkipped} דילוגים` : '';
-        }
-        
-        // Update skipped count in progress bar section
-        const skippedLabel = document.getElementById('skippedCountLabel');
-        if (skippedLabel) {
-            skippedLabel.textContent = tSkipped > 0 ? `דילוגים: ${tSkipped}` : '';
-        }
-    }
 
     // Wire up sync-to-today button
     const syncBtn = container.querySelector('#syncToTodayBtn');
@@ -403,7 +348,6 @@ export function renderProgressPage(container, app) {
                 });
                 if (!confirmed) return;
 
-                // Cancel plan without showing its own confirmation dialog
                 await app.handleCancelCatchUpPlan(true);
             }
 
@@ -421,21 +365,64 @@ export function renderProgressPage(container, app) {
                 renderAmudGrid(`amudGrid_${idx}`, states, isDaf);
                 
                 const learned = states.filter(s => s === 1).length;
-                const pct = total > 0 ? Math.round((learned / total) * 100) : 0;
+                const completeLater = states.filter(s => s === 2).length;
+                const activeAmudim = total - completeLater;
+                const pct = activeAmudim > 0 ? Math.round((learned / activeAmudim) * 100) : 0;
                 const labelEl = document.getElementById(`bookProgressLabel_${idx}`);
                 const pctEl = document.getElementById(`bookPctLabel_${idx}`);
                 const barEl = document.getElementById(`bookProgressBar_${idx}`);
-                if (labelEl) labelEl.textContent = `${learned}/${total} עמודים`;
+                if (labelEl) labelEl.textContent = `${learned}/${activeAmudim} עמודים${completeLater > 0 ? ` (+${completeLater} אח״כ)` : ''}`;
                 if (pctEl) pctEl.textContent = `${pct}%`;
                 if (barEl) barEl.style.width = `${pct}%`;
             });
             
+            // Regenerate the calendar and catch-up section after sync
+            await app.handleScheduleGeneration();
             renderCatchUpSection();
         });
     }
 
+    // Helper to update overall stats
+    function updateOverallStats(seq) {
+        let tAmudim = 0;
+        let tLearned = 0;
+        let tCompleteLater = 0;
+        seq.forEach((b) => {
+            const bName = typeof b === 'string' ? b : b.name;
+            const total = getTotalAmudim(bName);
+            const states = (typeof b === 'object' && b.amudStates) ? b.amudStates : [];
+            tAmudim += total;
+            tLearned += states.filter(s => s === 1).length;
+            tCompleteLater += states.filter(s => s === 2).length;
+        });
+        const activeAmudim = tAmudim - tCompleteLater;
+        const rate = activeAmudim > 0 ? Math.round((tLearned / activeAmudim) * 100) : 0;
+        
+        const overallBar = document.getElementById('overallProgressBar');
+        if (overallBar) overallBar.style.width = `${rate}%`;
+        
+        // Update stat cards
+        const statCards = container.querySelectorAll('.grid.grid-cols-1.sm\\:grid-cols-3 .text-3xl');
+        if (statCards.length >= 3) {
+            statCards[1].textContent = `${tLearned}/${activeAmudim}`;
+            statCards[2].textContent = `${rate}%`;
+        }
+        
+        // Update complete-later count in stats card
+        const statsCompleteLaterEl = document.getElementById('statsCompleteLaterCount');
+        if (statsCompleteLaterEl) {
+            statsCompleteLaterEl.textContent = tCompleteLater > 0 ? `${tCompleteLater} הושלמו אח״כ` : '';
+        }
+        
+        // Update complete-later count in progress bar section
+        const completeLaterLabel = document.getElementById('completeLaterCountLabel');
+        if (completeLaterLabel) {
+            completeLaterLabel.textContent = tCompleteLater > 0 ? `הושלמו אח״כ: ${tCompleteLater}` : '';
+        }
+    }
+
     /* ================================================================
-     * CATCH-UP PLAN — COMPLETE REWRITE
+     * CATCH-UP PLAN
      * ================================================================
      *
      * Three strategies for Target Date books:
@@ -450,25 +437,26 @@ export function renderProgressPage(container, app) {
     function renderCatchUpSection() {
         const catchUpSection = document.getElementById('catchUpSection');
         if (!catchUpSection) return;
-
+    
         const deficit = app.getCatchUpDeficit();
         const track = app.getActiveTrack();
         const hasPlan = track?.catchUpPlan?.isActive;
-
+    
+        // Only show if there's a plan OR if there's a deficit
         if (!deficit.isAnyBehind && !hasPlan) {
             catchUpSection.classList.add('hidden');
             return;
         }
-
+    
         catchUpSection.classList.remove('hidden');
-
+    
         if (hasPlan) {
             renderActivePlan(catchUpSection, deficit, track);
         } else {
             renderDeficitNotice(catchUpSection, deficit);
         }
     }
-
+    
     function renderActivePlan(section, deficit, track) {
         const plan = track.catchUpPlan;
         const planEntries = Object.entries(plan.books || {});
@@ -481,39 +469,41 @@ export function renderProgressPage(container, app) {
             } else if (bp.strategy === 'squeeze') {
                 desc = 'חלוקה מחדש של החומר הנותר על הימים הנותרים';
             } else if (bp.strategy === 'sprint') {
-                desc = `ספרינט: ${bp.sprintDays} ימים קצב מוגבר`;
+                desc = `ספרינט: השלמת פער של ${bp.deficitAmount / 2} דפים לאורך ${bp.sprintDays} ימי לימוד`;
             } else if (bp.strategy === 'increase-pace') {
-                desc = `קצב חדש: ${bp.newPaceValue} דפים ליום`;
+                // Convert amudim value back to dafs for the display string (2 amudim = 1 daf)
+                const addedDaf = (bp.addAmudimValue || 0) / 2;
+                desc = `הגדלת קצב: הוספת ${addedDaf} דף/דפים ליום לקצב היומי המקורי`;
             }
             return `<div class="flex items-center justify-between py-1">
                 <span class="text-sm font-medium text-slate-700">מסכת ${bookName}</span>
-                <span class="text-sm text-orange-600 font-bold">${desc}</span>
+                <span class="text-sm text-emerald-600 font-bold">${desc}</span>
             </div>`;
         }).join('');
-
+    
         section.innerHTML = `
-            <div class="bg-orange-50 border border-orange-200 rounded-2xl p-5 shadow-sm">
+            <div class="bg-emerald-50 border border-emerald-200 rounded-2xl p-5 shadow-sm">
                 <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
                     <div class="flex items-center gap-2">
-                        <span class="text-xl">📈</span>
+                        <span class="text-xl">✅</span>
                         <h3 class="font-bold text-slate-800">תכנית השלמה פעילה</h3>
-                        <span class="text-xs bg-orange-100 text-orange-700 px-2 py-0.5 rounded-full font-bold">מהיום</span>
+                        <span class="text-xs bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full font-bold">מהיום</span>
                     </div>
                     <button id="cancelCatchUpBtn" class="w-full sm:w-auto text-sm text-red-500 hover:text-red-700 font-bold px-4 py-2 rounded-lg border border-red-200 hover:bg-red-50 transition-all">
                         בטל תכנית
                     </button>
                 </div>
-                <div class="divide-y divide-orange-100">${detailsHtml}</div>
+                <div class="divide-y divide-emerald-100">${detailsHtml}</div>
             </div>
         `;
-
+    
         document.getElementById('cancelCatchUpBtn')?.addEventListener('click', async () => {
             await app.handleCancelCatchUpPlan();
             await app.handleScheduleGeneration();
             renderCatchUpSection();
         });
     }
-
+    
     function renderDeficitNotice(section, deficit) {
         const deficitHtml = Object.entries(deficit.books)
             .filter(([, d]) => d.isBehind)
@@ -526,25 +516,26 @@ export function renderProgressPage(container, app) {
                 } else if (d.calcMethod !== 'targetDate') {
                     note = 'הלימוד ממשיך בקצב המקורי אוטומטית';
                 }
+                // Show deficit in Dafs (pages) instead of raw amudim
+                const deficitDafs = d.deficit / 2;
                 return `<div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 py-2">
                     <div class="flex items-center gap-2">
                         <span class="text-sm font-medium text-slate-700">מסכת ${d.bookName}</span>
-                        <span class="text-sm text-red-500 font-bold">${d.deficit} עמודים מאחור</span>
+                        <span class="text-sm text-red-500 font-bold">${deficitDafs} דפים מאחור</span>
                     </div>
                     ${note ? `<span class="text-[14px] text-slate-500">${note}</span>` : ''}
                 </div>`;
             }).join('');
-
-        // Check if any target-date book has passed its target date - those NEED intervention
+    
         const hasPastTarget = Object.entries(deficit.books).some(([, d]) => d.isBehind && d.calcMethod === 'targetDate' && d.targetDatePassed);
-
+    
         section.innerHTML = `
             <div class="bg-amber-50 border border-amber-200 rounded-2xl p-5 shadow-sm">
                 <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
                     <div class="flex items-center gap-2">
                         <span class="text-xl">⚠️</span>
                         <h3 class="font-bold text-slate-800">פער בלימוד</h3>
-                        <span class="text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full font-bold">${deficit.totalDeficit} עמודים</span>
+                        <span class="text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full font-bold">${deficit.totalDeficit / 2} דפים</span>
                     </div>
                     ${hasPastTarget ? `
                         <button id="createCatchUpBtn" class="w-full sm:w-auto bg-orange-500 hover:bg-orange-600 text-white px-5 py-2.5 rounded-xl font-bold text-sm transition-all active:scale-95 shadow-sm flex items-center justify-center gap-1.5">
@@ -559,69 +550,64 @@ export function renderProgressPage(container, app) {
                     `}
                 </div>
                 <div class="divide-y divide-amber-100">${deficitHtml}</div>
-                <p class="text-xs text-slate-500 mt-3">ללא תכנית השלמה, ההתאמה נעשית אוטומטית: חומר שפספסת יפוזר מחדש עד תאריך היעד, והספק קבוע יימשך אוטומטית.</p>
+                <p class="text-xs text-slate-500 mt-3">ללא תכנית השלמה, ההתאמה נעשית אוטומטית: חומר שנותר יחולק מחדש מהיום ועד הסוף.</p>
             </div>
         `;
-
+    
         document.getElementById('createCatchUpBtn')?.addEventListener('click', async () => {
             await showCatchUpDialog(app, deficit, renderCatchUpSection);
         });
     }
-
-    /**
-     * Show dialog for creating a catch-up plan.
-     * Uses dynamic field visibility (dependsOn) to show/hide inputs based on strategy selection.
-     * For each behind book, presents strategies based on its calcMethod:
-     *   - targetDate books: Move Target Date, Squeeze, Sprint
-     *   - pace books: Sprint only
-     */
+    
     async function showCatchUpDialog(app, deficit, onComplete) {
+        // 1. Grab the active track from the app instance so it is in scope
+        const activeTrack = app.getActiveTrack(); 
+        if (!activeTrack) return;
+    
         const behindBooks = Object.entries(deficit.books).filter(([, d]) => d.isBehind);
         if (behindBooks.length === 0) return;
-
+    
         const inputs = [];
-
+    
         behindBooks.forEach(([bookIdx, bookData]) => {
             const isTarget = bookData.calcMethod === 'targetDate';
-            const bookLabel = `מסכת ${bookData.bookName} (${bookData.deficit} עמודים מאחור)`;
+            const bookLabel = `מסכת ${bookData.bookName} (${bookData.deficit / 2} דפים מאחור)`;
             const strategyFieldName = `strategy_${bookIdx}`;
-
+    
             if (isTarget) {
                 const targetPassed = bookData.targetDatePassed;
-                // ── Target-Date book: 3 strategies ──────────────────
-                // If target date has passed, only offer "Set new target date"
                 const options = targetPassed
                     ? [
                         { value: 'move-target', text: '📅 קבע תאריך יעד חדש (חובה — תאריך היעד המקורי כבר עבר)' }
                       ]
                     : [
                         { value: 'move-target', text: '📅 קבע תאריך יעד חדש' },
-                        { value: 'squeeze', text: '↔️ דחוס: חלק את כל החומר שפוספס על הימים הנותרים כדי לסיים בזמן המקורי' },
-                        { value: 'sprint', text: '⚡ ספרינט: קצב מוגבר זמני למספר ימים' }
+                        { value: 'squeeze', text: '↔️ דחוס: חלק את כל החומר שנותר על הימים הנותרים כדי לסיים בזמן המקורי' },
+                        { value: 'sprint', text: '⚡ ספרינט: חלק את הפער שנוצר באופן שווה על פני מספר ימי ספרינט' }
                       ];
-
+    
                 inputs.push({
                     type: 'select',
                     name: strategyFieldName,
                     label: `${bookLabel} — אסטרטגיה:`,
                     options: options
                 });
-                // Compute the max allowed date for the new target: the start date of the next book (if any)
                 let maxDate = '';
                 const nextBookIdx = parseInt(bookIdx) + 1;
+                
+                // This now works perfectly because activeTrack is defined!
                 if (nextBookIdx < activeTrack.bookSequence.length) {
                     const nextBook = activeTrack.bookSequence[nextBookIdx];
                     const nextBookName = typeof nextBook === 'string' ? nextBook : nextBook.name;
                     const nextBookDays = activeTrack.studySchedule.filter(d => d.book === nextBookName && !d.isEmpty);
                     if (nextBookDays.length > 0) {
                         const nextBookStart = new Date(nextBookDays[0].date);
-                        nextBookStart.setDate(nextBookStart.getDate() - 1); // day before next book starts
+                        nextBookStart.setDate(nextBookStart.getDate() - 1);
                         maxDate = nextBookStart.toISOString().split('T')[0];
                     }
                 }
                 const todayStr = new Date().toISOString().split('T')[0];
-
-                // Move Target Date input — always visible for target-date books (shown by default if target passed)
+    
                 inputs.push({
                     type: 'date',
                     name: `newTargetDate_${bookIdx}`,
@@ -631,11 +617,10 @@ export function renderProgressPage(container, app) {
                     max: maxDate || undefined,
                     dependsOn: { field: strategyFieldName, value: 'move-target' }
                 });
-                // Sprint days input — only visible when 'sprint' is selected
                 inputs.push({
                     type: 'number',
                     name: `sprintDays_${bookIdx}`,
-                    label: 'תוך כמה ימי לימוד תרצה להשלים?',
+                    label: 'תוך כמה ימי לימוד תרצה להשלים את הפער?',
                     value: Math.max(1, Math.ceil(bookData.deficit / 2)),
                     min: 1,
                     max: 90,
@@ -643,20 +628,19 @@ export function renderProgressPage(container, app) {
                     dependsOn: { field: strategyFieldName, value: 'sprint' }
                 });
             } else {
-                // ── Pace book: Sprint or Increase Pace ───────────────
                 inputs.push({
                     type: 'select',
                     name: strategyFieldName,
                     label: `${bookLabel} — אסטרטגיה:`,
                     options: [
-                        { value: 'sprint', text: '⚡ ספרינט: קצב מוגבר זמני למספר ימים' },
-                        { value: 'increase-pace', text: '🚀 הגדל קצב: קבע קצב חדש גבוה יותר קבוע' }
+                        { value: 'sprint', text: '⚡ ספרינט: חלק את הפער שנוצר באופן שווה על פני מספר ימי ספרינט' },
+                        { value: 'increase-pace', text: '🚀 הגדל קצב: הוסף מספר קבוע של דפים ליום לקצב הקיים' }
                     ]
                 });
                 inputs.push({
                     type: 'number',
                     name: `sprintDays_${bookIdx}`,
-                    label: 'תוך כמה ימי לימוד תרצה להשלים? (הקצב מחושב אוטומטית)',
+                    label: 'תוך כמה ימי לימוד תרצה להשלים את הפער? (הקצב הנוסף מחושב אוטומטית)',
                     value: Math.max(1, Math.ceil(bookData.deficit / 2)),
                     min: 1,
                     max: 90,
@@ -665,9 +649,9 @@ export function renderProgressPage(container, app) {
                 });
                 inputs.push({
                     type: 'number',
-                    name: `newPace_${bookIdx}`,
-                    label: 'כמה דפים ליום? (לדוגמה: 1 = דף אחד, 1.5 = דף וחצי)',
-                    value: bookData.paceValue || 1,
+                    name: `addDafs_${bookIdx}`,
+                    label: 'כמה דפים תרצה להוסיף לקצב היומי המקורי שלך? (לדוגמה: 0.5 = עמוד אחד נוסף, 1 = דף נוסף, 2 = שני דפים נוספים)',
+                    value: 0.5,
                     min: 0.5,
                     max: 10,
                     step: 0.5,
@@ -675,24 +659,24 @@ export function renderProgressPage(container, app) {
                 });
             }
         });
-
+    
         const result = await showDialog({
             title: 'צור תכנית השלמה',
-            message: `אתה ${deficit.totalDeficit} עמודים מאחור. בחר אסטרטגיית השלמה לכל מסכת:`,
+            message: `אתה ${deficit.totalDeficit / 2} דפים מאחור. בחר אסטרטגיית השלמה לכל מסכת:`,
             icon: '📈',
             showCancel: true,
             confirmText: 'צור תכנית',
             cancelText: 'ביטול',
             inputs
         });
-
+    
         if (!result) return;
 
-        // Build plan config from dialog result
         const planConfig = { books: {} };
 
         behindBooks.forEach(([bookIdx, bookData]) => {
-            const strategy = result[`strategy_${bookIdx}`] || 'squeeze';
+            // 1. Force identify exactly what strategy was chosen
+            const strategy = result[`strategy_${bookIdx}`];
             const isTarget = bookData.calcMethod === 'targetDate';
 
             if (isTarget) {
@@ -703,31 +687,50 @@ export function renderProgressPage(container, app) {
                         newTargetDate: newTargetDate || null
                     };
                 } else if (strategy === 'sprint') {
-                    const sprintDays = parseInt(result[`sprintDays_${bookIdx}`]) || 7;
-                    // The daily pace is auto-calculated by the algorithm based on remaining material / sprintDays
+                    // Read from result object, fallback directly to DOM if dialog stripped hidden/altered fields
+                    let rawDays = result[`sprintDays_${bookIdx}`];
+                    if (rawDays === undefined || rawDays === "") {
+                        const el = document.querySelector(`[name="sprintDays_${bookIdx}"]`);
+                        rawDays = el ? el.value : 7;
+                    }
+                    
                     planConfig.books[bookIdx] = {
                         strategy: 'sprint',
-                        sprintDays: sprintDays
+                        sprintDays: Math.max(1, parseInt(rawDays, 10) || 7),
+                        deficitAmount: bookData.deficit
                     };
                 } else {
-                    // Squeeze (default for target): redistribute remaining material
                     planConfig.books[bookIdx] = {
                         strategy: 'squeeze'
                     };
                 }
             } else {
-                // Pace books: sprint or increase-pace
+                // PACE TRACKS
                 if (strategy === 'increase-pace') {
-                    const newPace = parseFloat(result[`newPace_${bookIdx}`]) || 1;
+                    let rawDafs = result[`addDafs_${bookIdx}`];
+                    if (rawDafs === undefined || rawDafs === "") {
+                        const el = document.querySelector(`[name="addDafs_${bookIdx}"]`);
+                        rawDafs = el ? el.value : 0.5;
+                    }
+
+                    const parsedDafs = parseFloat(rawDafs) || 0.5;
                     planConfig.books[bookIdx] = {
                         strategy: 'increase-pace',
-                        newPaceValue: newPace
+                        addAmudimValue: parsedDafs * 2, // Force float calculation immediately
+                        deficitAmount: bookData.deficit
                     };
                 } else {
-                    const sprintDays = parseInt(result[`sprintDays_${bookIdx}`]) || 7;
+                    // Must be sprint
+                    let rawDays = result[`sprintDays_${bookIdx}`];
+                    if (rawDays === undefined || rawDays === "") {
+                        const el = document.querySelector(`[name="sprintDays_${bookIdx}"]`);
+                        rawDays = el ? el.value : 7;
+                    }
+
                     planConfig.books[bookIdx] = {
                         strategy: 'sprint',
-                        sprintDays: sprintDays
+                        sprintDays: Math.max(1, parseInt(rawDays, 10) || 7),
+                        deficitAmount: bookData.deficit
                     };
                 }
             }
@@ -738,10 +741,9 @@ export function renderProgressPage(container, app) {
         onComplete();
     }
 
-    // Initial render of catch-up section
     renderCatchUpSection();
 
     return () => {
-        // Cleanup if needed
-    };
+        // Clean-up if necessary
+    }
 }
