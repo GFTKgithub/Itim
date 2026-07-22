@@ -79,7 +79,9 @@ function getProgressPageHtml(activeTrack, bookSequence) {
 
     return `
         <div class="max-w-5xl mx-auto p-4 md:p-8">
-            <!-- Page Header -->
+            <!-- ════════════════════════════════════════════════════════
+                 Page Header
+                 ════════════════════════════════════════════════════════ -->
             <div class="mb-8">
                 <div class="flex items-center gap-3 mb-2">
                     <span class="text-3xl">📊</span>
@@ -95,115 +97,221 @@ function getProgressPageHtml(activeTrack, bookSequence) {
                     <p class="text-amber-600 text-sm mt-1">צור מסלול לימוד כדי להתחיל</p>
                 </div>
             ` : `
-                <!-- Stats Cards -->
-                <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
-                    <div class="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm flex flex-col items-center text-center justify-center">
-                        <div class="flex items-center justify-center mb-3">
-                            <span class="text-2xl">📚</span>
+                <!-- ════════════════════════════════════════════════════════
+                     Section 1: סקירה כללית — Overview
+                     ════════════════════════════════════════════════════════ -->
+                <section class="mb-8">
+                    <div class="flex items-center gap-2 mb-4">
+                        <span class="text-xl">📈</span>
+                        <h2 class="text-xl font-bold text-slate-800">סקירה כללית</h2>
+                        <span class="text-xs text-slate-400 font-medium mr-2">מבט על ההתקדמות שלך</span>
+                    </div>
+
+                    <!-- Stats Cards: books count + pages learned (no redundant % card) -->
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+                        <div class="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm flex flex-col items-center text-center justify-center">
+                            <div class="flex items-center justify-center mb-3">
+                                <span class="text-2xl">📚</span>
+                            </div>
+                            <p class="text-3xl font-black text-slate-800">${bookSequence.length}</p>
+                            <p class="text-sm text-slate-500 font-medium mt-1">ספרים במסלול</p>
                         </div>
-                        <p class="text-3xl font-black text-slate-800">${bookSequence.length}</p>
-                        <p class="text-sm text-slate-500 font-medium mt-1">ספרים במסלול</p>
-                    </div>
-                    <div class="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm flex flex-col items-center text-center justify-center">
-                        <div class="flex items-center justify-center mb-3">
-                            <span class="text-2xl">📖</span>
+                        <div class="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm flex flex-col items-center text-center justify-center">
+                            <div class="flex items-center justify-center mb-3">
+                                <span class="text-2xl">📖</span>
+                            </div>
+                            <p class="text-3xl font-black text-slate-800">${totalLearned}/${activeAmudim}</p>
+                            <p class="text-sm text-slate-500 font-medium mt-1">עמודים נלמדו${totalCompleteLater > 0 ? ` (${totalCompleteLater} השלמות)` : ''}</p>
                         </div>
-                        <p class="text-3xl font-black text-slate-800">${totalLearned}/${activeAmudim}</p>
-                        <p class="text-sm text-slate-500 font-medium mt-1">עמודים נלמדו${totalCompleteLater > 0 ? ` (${totalCompleteLater} השלמות)` : ''}</p>
                     </div>
-                    <div class="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm flex flex-col items-center text-center justify-center">
-                        <div class="flex items-center justify-center mb-3">
-                            <span class="text-2xl">✅</span>
+
+                    <!-- Overall Progress Bar -->
+                    <div class="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
+                        <div class="flex justify-between items-center mb-3">
+                            <h3 class="font-bold text-slate-800">התקדמות כללית</h3>
+                            <span class="text-sm font-bold text-slate-500">${totalLearned}/${activeAmudim} עמודים</span>
                         </div>
-                        <p class="text-3xl font-black text-emerald-600">${completionRate}%</p>
-                        <p id="statsCompleteLaterCount" class="text-sm text-slate-500 font-medium mt-1">${totalCompleteLater > 0 ? `${totalCompleteLater} השלמות` : ''}</p>
-                    </div>
-                </div>
-
-                <!-- Overall Progress Bar -->
-                <div class="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm mb-8">
-                    <div class="flex justify-between items-center mb-3">
-                        <h3 class="font-bold text-slate-800">התקדמות כללית</h3>
-                        <span class="text-sm font-bold text-slate-500">${totalLearned}/${activeAmudim} עמודים</span>
-                    </div>
-                    <div class="w-full bg-slate-100 rounded-full h-4 overflow-hidden">
-                        <div id="overallProgressBar" class="bg-gradient-to-l from-blue-800 to-blue-600 h-full rounded-full transition-all duration-500 ease-out" 
-                             style="width: ${completionRate}%"></div>
-                    </div>
-                    <div class="flex justify-between mt-2 text-xs text-slate-400">
-                        <span id="completeLaterCountLabel">${totalCompleteLater > 0 ? `השלמות: ${totalCompleteLater}` : ''}</span>
-                        <span>${completionRate}% נלמד</span>
-                    </div>
-                </div>
-
-                <!-- Catch-Up Status & Actions -->
-                <div class="mb-6 space-y-3">
-                    <div id="catchUpSection" class="hidden"></div>
-                </div>
-
-                <!-- Calendar (adjusted schedule) -->
-                <div id="progressCalendarContainer" class="mb-8"></div>
-
-                <!-- Sync to Today Button -->
-                <div class="flex justify-start mb-8">
-                    <button id="syncToTodayBtn" 
-                        class="w-full sm:w-auto bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 font-bold px-5 py-2.5 rounded-xl shadow-sm transition-all active:scale-95 flex items-center justify-center gap-2 text-sm">
-                        <span>🔄</span>
-                        <span>סנכרן כל הימים שעברו כנלמדו</span>
-                    </button>
-                </div>
-
-                <!-- Per-Book Progress Marking (Eifo Ata Ochez) -->
-                <div id="progressBooksContainer" class="space-y-6">
-                    ${bookSequence.length === 0 ? `
-                        <div class="bg-slate-50 border border-dashed border-slate-300 rounded-2xl p-8 text-center">
-                            <span class="text-4xl block mb-2">📭</span>
-                            <p class="text-slate-500 font-bold">אין ספרים במסלול זה</p>
-                            <p class="text-slate-400 text-sm mt-1">הוסף ספרים בדף עריכת המסלול</p>
+                        <div class="w-full bg-slate-100 rounded-full h-4 overflow-hidden">
+                            <div id="overallProgressBar" class="bg-gradient-to-l from-blue-800 to-blue-600 h-full rounded-full transition-all duration-500 ease-out" 
+                                 style="width: ${completionRate}%"></div>
                         </div>
-                    ` : bookSequence.map((book, idx) => {
-                        const bookName = typeof book === 'string' ? book : book.name;
-                        const totalAmudim = getTotalAmudim(bookName);
-                        const amudStates = (typeof book === 'object' && book.amudStates) ? [...book.amudStates] : new Array(totalAmudim).fill(0);
-                        const learned = amudStates.filter(s => s === 1).length;
-                        const completeLater = amudStates.filter(s => s === 2).length;
-                        const activeAmudim = totalAmudim - completeLater;
-                        const pct = activeAmudim > 0 ? Math.round((learned / activeAmudim) * 100) : 0;
+                        <div class="flex justify-between mt-2 text-xs text-slate-400">
+                            <span id="completeLaterCountLabel">${totalCompleteLater > 0 ? `השלמות: ${totalCompleteLater}` : ''}</span>
+                            <span>${completionRate}% נלמד</span>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Stylized Divider with Epic Curled Line Ends: Between Stats and Catchup Plan -->
+                <div class="my-12 py-8 flex items-center justify-center">
+                    <div class="w-full flex items-center justify-center gap-1">
+                        <!-- Left Curled End Line -->
+                        <svg class="grow h-4 text-slate-300" preserveAspectRatio="none" viewBox="0 0 400 16" fill="none" stroke="currentColor" stroke-width="1.5">
+                            <path d="M 0 8 C 15 8, 20 2, 30 2 C 40 2, 35 14, 25 14 C 15 14, 20 8, 45 8 L 400 8" />
+                        </svg>
                         
-                        return `
-                            <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden" data-book-idx="${idx}">
-                                <div class="p-4 border-b border-slate-100">
-                                    <div class="flex items-center justify-between">
-                                        <div class="flex items-center gap-2">
-                                            <span class="text-lg">📖</span>
-                                            <h3 class="font-bold text-slate-800">מסכת ${bookName}</h3>
-                                            <span id="bookProgressLabel_${idx}" class="text-xs bg-slate-100 text-slate-500 px-2 py-0.5 rounded-full font-medium">${learned}/${activeAmudim} עמודים${completeLater > 0 ? ` (+${completeLater} השלמות)` : ''}</span>
-                                        </div>
-                                        <div class="flex items-center gap-2">
-                                            <span id="bookPctLabel_${idx}" class="text-xs font-bold text-slate-400">${pct}%</span>
-                                            <div class="w-20 bg-slate-100 rounded-full h-2 overflow-hidden">
-                                                <div id="bookProgressBar_${idx}" class="bg-emerald-500 h-full rounded-full transition-all duration-300" style="width: ${pct}%"></div>
+                        <!-- Center Original Rhombus/Diamond Accent -->
+                        <div class="bg-slate-50 px-4 text-slate-300 text-xs tracking-widest shrink-0">❖ ❖ ❖</div>
+                        
+                        <!-- Right Curled End Line -->
+                        <svg class="grow h-4 text-slate-300" preserveAspectRatio="none" viewBox="0 0 400 16" fill="none" stroke="currentColor" stroke-width="1.5">
+                            <path d="M 0 8 L 355 8 C 380 8, 385 14, 375 14 C 365 14, 360 2, 370 2 C 380 2, 385 8, 400 8" />
+                        </svg>
+                    </div>
+                </div>
+
+                <!-- ════════════════════════════════════════════════════════
+                     Section 2: מצב לימוד — Study Status (catch-up / deficit)
+                     ════════════════════════════════════════════════════════ -->
+                <section class="mb-8">
+                    <div class="flex items-center gap-2 mb-4">
+                        <span class="text-xl">⚠️</span>
+                        <h2 class="text-xl font-bold text-slate-800">מצב לימוד</h2>
+                        <span class="text-xs text-slate-400 font-medium mr-2">פערים ותכניות צמצום</span>
+                    </div>
+                    <div id="catchUpSection" class="hidden"></div>
+                    <div id="noCatchUpPlaceholder" class="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm text-center">
+                        <span class="text-slate-400 text-sm font-medium">הכל בסדר — אין פערים בלימוד</span>
+                    </div>
+                </section>
+
+                <div class="h-10"></div>
+
+                <!-- ════════════════════════════════════════════════════════
+                     Section 3: לוח זמנים — Schedule Calendar
+                     ════════════════════════════════════════════════════════ -->
+                <section class="mb-8">
+                    <div class="flex items-center gap-2 mb-4">
+                        <span class="text-xl">📅</span>
+                        <h2 class="text-xl font-bold text-slate-800">לוח זמנים</h2>
+                        <span class="text-xs text-slate-400 font-medium mr-2">הלוח המעודכן לפי ההתקדמות שלך</span>
+                    </div>
+                    <div id="progressCalendarContainer"></div>
+                </section>
+
+                <!-- Stylized Divider with Epic Curled Line Ends: Below Calendar -->
+                <div class="my-12 py-8 flex items-center justify-center">
+                    <div class="w-full flex items-center justify-center gap-1">
+                        <!-- Left Curled End Line -->
+                        <svg class="grow h-4 text-slate-300" preserveAspectRatio="none" viewBox="0 0 400 16" fill="none" stroke="currentColor" stroke-width="1.5">
+                            <path d="M 0 8 C 15 8, 20 2, 30 2 C 40 2, 35 14, 25 14 C 15 14, 20 8, 45 8 L 400 8" />
+                        </svg>
+                        
+                        <!-- Center Original Rhombus/Diamond Accent -->
+                        <div class="bg-slate-50 px-4 text-slate-300 text-xs tracking-widest shrink-0">❖ ❖ ❖</div>
+                        
+                        <!-- Right Curled End Line -->
+                        <svg class="grow h-4 text-slate-300" preserveAspectRatio="none" viewBox="0 0 400 16" fill="none" stroke="currentColor" stroke-width="1.5">
+                            <path d="M 0 8 L 355 8 C 380 8, 385 14, 375 14 C 365 14, 360 2, 370 2 C 380 2, 385 8, 400 8" />
+                        </svg>
+                    </div>
+                </div>
+
+                <!-- ════════════════════════════════════════════════════════
+                     Section 4: סנכרון — Sync Tools
+                     ════════════════════════════════════════════════════════ -->
+                <section class="mb-8">
+                    <div class="flex items-center gap-2 mb-4">
+                        <span class="text-xl">🔄</span>
+                        <h2 class="text-xl font-bold text-slate-800">סנכרון</h2>
+                        <span class="text-xs text-slate-400 font-medium mr-2">עדכן את ההתקדמות בבת אחת</span>
+                    </div>
+                    <div class="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm">
+                        <p class="text-sm text-slate-500 mb-4">סמן את כל ימי הלימוד שעברו כנלמדו או כהשלמות. שימושי כשאתה מתחיל לעקוב אחרי ההתקדמות שלך.</p>
+                        <button id="syncToTodayBtn" 
+                            class="w-full sm:w-auto bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 font-bold px-5 py-2.5 rounded-xl shadow-sm transition-all active:scale-95 flex items-center justify-center gap-2 text-sm">
+                            <span>🔄</span>
+                            <span>סנכרן כל הימים שעברו</span>
+                        </button>
+                    </div>
+                </section>
+
+                <!-- ════════════════════════════════════════════════════════
+                     Section 5: סימון התקדמות — Per-Book Progress Marking
+                     ════════════════════════════════════════════════════════ -->
+                <section class="mb-8">
+                    <div class="flex items-center gap-2 mb-4">
+                        <span class="text-xl">✏️</span>
+                        <h2 class="text-xl font-bold text-slate-800">סימון התקדמות</h2>
+                        <span class="text-xs text-slate-400 font-medium mr-2">סמן עמודים שלמדת או דילגת עליהם</span>
+                    </div>
+
+                    <div id="progressBooksContainer" class="space-y-6">
+                        ${bookSequence.length === 0 ? `
+                            <div class="bg-slate-50 border border-dashed border-slate-300 rounded-2xl p-8 text-center">
+                                <span class="text-4xl block mb-2">📭</span>
+                                <p class="text-slate-500 font-bold">אין ספרים במסלול זה</p>
+                                <p class="text-slate-400 text-sm mt-1">הוסף ספרים בדף עריכת המסלול</p>
+                            </div>
+                        ` : bookSequence.map((book, idx) => {
+                            const bookName = typeof book === 'string' ? book : book.name;
+                            const totalAmudim = getTotalAmudim(bookName);
+                            const amudStates = (typeof book === 'object' && book.amudStates) ? [...book.amudStates] : new Array(totalAmudim).fill(0);
+                            const learned = amudStates.filter(s => s === 1).length;
+                            const completeLater = amudStates.filter(s => s === 2).length;
+                            const activeAmudim = totalAmudim - completeLater;
+                            const pct = activeAmudim > 0 ? Math.round((learned / activeAmudim) * 100) : 0;
+                            
+                            return `
+                                <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden" data-book-idx="${idx}">
+                                    <div class="p-4 border-b border-slate-100">
+                                        <div class="flex items-center justify-between">
+                                            <div class="flex items-center gap-2">
+                                                <span class="text-lg">📖</span>
+                                                <h3 class="font-bold text-slate-800">מסכת ${bookName}</h3>
+                                                <span id="bookProgressLabel_${idx}" class="text-xs bg-slate-100 text-slate-500 px-2 py-0.5 rounded-full font-medium">${learned}/${activeAmudim} עמודים${completeLater > 0 ? ` (+${completeLater} השלמות)` : ''}</span>
+                                            </div>
+                                            <div class="flex items-center gap-2">
+                                                <span id="bookPctLabel_${idx}" class="text-xs font-bold text-slate-400">${pct}%</span>
+                                                <div class="w-20 bg-slate-100 rounded-full h-2 overflow-hidden">
+                                                    <div id="bookProgressBar_${idx}" class="bg-emerald-500 h-full rounded-full transition-all duration-300" style="width: ${pct}%"></div>
+                                                </div>
                                             </div>
                                         </div>
+                                        <!-- View toggle buttons (amud/daf only) -->
+                                        <div class="flex bg-slate-100 p-0.5 rounded-lg self-start w-fit mt-2">
+                                            <button data-book-idx="${idx}" data-view="amud" class="view-toggle-btn px-2.5 py-1 rounded-md text-[10px] font-bold bg-white shadow-sm">עמודים</button>
+                                            <button data-book-idx="${idx}" data-view="daf" class="view-toggle-btn px-2.5 py-1 rounded-md text-[10px] font-bold text-slate-500 hover:text-slate-700">דפים</button>
+                                        </div>
                                     </div>
-                                    <!-- View toggle buttons (amud/daf only) -->
-                                    <div class="flex bg-slate-100 p-0.5 rounded-lg self-start w-fit mt-2">
-                                        <button data-book-idx="${idx}" data-view="amud" class="view-toggle-btn px-2.5 py-1 rounded-md text-[10px] font-bold bg-white shadow-sm">עמודים</button>
-                                        <button data-book-idx="${idx}" data-view="daf" class="view-toggle-btn px-2.5 py-1 rounded-md text-[10px] font-bold text-slate-500 hover:text-slate-700">דפים</button>
+                                    <div class="p-4">
+                                        <!-- Header Section: Legend & Clear Button -->
+                                        <div class="flex flex-wrap justify-between items-center gap-3 mb-4">
+                                            
+                                            <!-- Legend Items -->
+                                            <div class="flex flex-wrap items-center gap-3">
+                                                <span class="text-[10px] font-bold text-slate-400 flex items-center gap-1.5">
+                                                    <span class="w-2.5 h-2.5 rounded-full bg-slate-200 shrink-0"></span>
+                                                    טרם
+                                                </span>
+                                                <span class="text-[10px] font-bold text-slate-400 flex items-center gap-1.5">
+                                                    <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 shrink-0"></span>
+                                                    נלמד
+                                                </span>
+                                                <span class="text-[10px] font-bold text-slate-400 flex items-center gap-1.5">
+                                                    <span class="w-2.5 h-2.5 rounded-full bg-orange-400 shrink-0"></span>
+                                                    השלמות
+                                                </span>
+                                            </div>
+
+                                            <!-- Action Button -->
+                                            <div class="flex items-center">
+                                                <button data-book-idx="${idx}" class="clear-book-btn flex items-center gap-1 text-xs text-red-400 hover:text-red-600 font-medium transition-all">
+                                                    <span>🗑️</span>
+                                                    <span>אפס התקדמות</span>
+                                                </button>
+                                            </div>
+
+                                        </div>
+
+                                        <!-- Grid Container -->
+                                        <div id="amudGrid_${idx}" class="grid grid-cols-4 xs:grid-cols-5 sm:grid-cols-8 md:grid-cols-10 gap-1.5"></div>
                                     </div>
                                 </div>
-                                <div class="p-4">
-                                    <div class="flex flex-wrap gap-1 mb-3">
-                                        <span class="text-[10px] font-bold text-slate-400 flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-full bg-slate-200 inline-block"></span> טרם</span>
-                                        <span class="text-[10px] font-bold text-slate-400 flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-full bg-emerald-500 inline-block"></span> נלמד</span>
-                                        <span class="text-[10px] font-bold text-slate-400 flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-full bg-orange-400 inline-block"></span> השלמות</span>
-                                    </div>
-                                    <div id="amudGrid_${idx}" class="grid grid-cols-4 xs:grid-cols-5 sm:grid-cols-8 md:grid-cols-10 gap-1.5"></div>
-                                </div>
-                            </div>
-                        `;
-                    }).join('')}
-                </div>
+                            `;
+                        }).join('')}
+                    </div>
+                </section>
             `}
         </div>
     `;
@@ -333,7 +441,57 @@ export function renderProgressPage(container, app) {
         });
     });
 
-    // Wire up sync-to-today button
+    // Wire up "clear book" buttons
+    container.querySelectorAll('.clear-book-btn').forEach(btn => {
+        btn.addEventListener('click', async () => {
+            const bookIdx = parseInt(btn.dataset.bookIdx, 10);
+            const book = activeTrack.bookSequence[bookIdx];
+            if (!book) return;
+
+            const bookName = typeof book === 'string' ? book : book.name;
+
+            const confirmed = await showDialog({
+                title: 'איפוס התקדמות',
+                message: `האם אתה בטוח שברצונך לאפס את כל ההתקדמות במסכת ${bookName}?`,
+                icon: '🗑️',
+                showCancel: true,
+                confirmText: 'כן, אפס הכל',
+                cancelText: 'ביטול'
+            });
+            if (!confirmed) return;
+
+            const totalAmudim = getTotalAmudim(bookName);
+            const entry = activeTrack.bookSequence[bookIdx];
+            if (typeof entry === 'string') {
+                activeTrack.bookSequence[bookIdx] = { name: entry, amudStates: new Array(totalAmudim).fill(0) };
+            } else {
+                entry.amudStates = new Array(totalAmudim).fill(0);
+            }
+
+            // Re-render all UIs
+            const viewMode = viewModes[bookIdx] || 'amud';
+            const isDaf = viewMode === 'daf';
+            renderAmudGrid(`amudGrid_${bookIdx}`, new Array(totalAmudim).fill(0), isDaf);
+
+            // Update per-book indicators
+            const labelEl = document.getElementById(`bookProgressLabel_${bookIdx}`);
+            const pctEl = document.getElementById(`bookPctLabel_${bookIdx}`);
+            const barEl = document.getElementById(`bookProgressBar_${bookIdx}`);
+            if (labelEl) labelEl.textContent = `0/${totalAmudim} עמודים`;
+            if (pctEl) pctEl.textContent = `0%`;
+            if (barEl) barEl.style.width = `0%`;
+
+            // Update overall stats
+            updateOverallStats(activeTrack.bookSequence);
+
+            // Save and regenerate
+            app.handleSaveBookConfig({ index: bookIdx });
+            app.handleScheduleGeneration();
+            renderCatchUpSection();
+        });
+    });
+
+    // Wire up sync-to-today button — now asks what state to mark (1 = learned, 2 = complete later)
     const syncBtn = container.querySelector('#syncToTodayBtn');
     if (syncBtn) {
         syncBtn.addEventListener('click', async () => {
@@ -341,7 +499,7 @@ export function renderProgressPage(container, app) {
             const hasActivePlan = track?.catchUpPlan?.isActive;
 
             if (hasActivePlan) {
-                const confirmed = await showDialog({
+                const cancelConfirmed = await showDialog({
                     title: 'סנכרן עד היום',
                     message: 'האם אתה בטוח שברצונך לסנכרן? פעולה זו תבטל את תכנית הצמצום פערים הפעילה.',
                     icon: '🔄',
@@ -349,12 +507,37 @@ export function renderProgressPage(container, app) {
                     confirmText: 'כן, סנכרן ובטל תכנית',
                     cancelText: 'ביטול'
                 });
-                if (!confirmed) return;
+                if (!cancelConfirmed) return;
 
                 await app.handleCancelCatchUpPlan(true);
             }
 
-            await app.handleSyncToToday();
+            // Ask what state to mark all past days as
+            const syncType = await showDialog({
+                title: 'סנכרן עד היום',
+                message: 'בחר מה לסמן בכל ימי הלימוד שעברו:',
+                icon: '🔄',
+                showCancel: true,
+                confirmText: 'סנכרן',
+                cancelText: 'ביטול',
+                inputs: [
+                    {
+                        type: 'select',
+                        name: 'syncState',
+                        label: 'סמן ימים שעברו כ:',
+                        options: [
+                            { value: '1', text: '📖 נלמד — עמודים שלמדת' },
+                            { value: '2', text: '⏭️ השלמות — עמודים שדילגת עליהם, יושלמו אחר כך' }
+                        ]
+                    }
+                ]
+            });
+
+            if (!syncType) return;
+
+            const stateToMark = parseInt(syncType.syncState, 10);
+            await app.handleSyncToToday(stateToMark);
+
             const updatedTrack = app.getActiveTrack();
             const updatedSeq = updatedTrack?.bookSequence || [];
             
@@ -404,17 +587,10 @@ export function renderProgressPage(container, app) {
         const overallBar = document.getElementById('overallProgressBar');
         if (overallBar) overallBar.style.width = `${rate}%`;
         
-        // Update stat cards
-        const statCards = container.querySelectorAll('.grid.grid-cols-1.sm\\:grid-cols-3 .text-3xl');
-        if (statCards.length >= 3) {
+        // Update stat cards (now only 2 cards: books + pages)
+        const statCards = container.querySelectorAll('.grid.grid-cols-1.sm\\:grid-cols-2 .text-3xl');
+        if (statCards.length >= 2) {
             statCards[1].textContent = `${tLearned}/${activeAmudim}`;
-            statCards[2].textContent = `${rate}%`;
-        }
-        
-        // Update complete-later count in stats card
-        const statsCompleteLaterEl = document.getElementById('statsCompleteLaterCount');
-        if (statsCompleteLaterEl) {
-            statsCompleteLaterEl.textContent = tCompleteLater > 0 ? `${tCompleteLater} השלמות` : '';
         }
         
         // Update complete-later count in progress bar section
@@ -439,27 +615,30 @@ export function renderProgressPage(container, app) {
 
     function renderCatchUpSection() {
         const catchUpSection = document.getElementById('catchUpSection');
+        const placeholder = document.getElementById('noCatchUpPlaceholder');
         if (!catchUpSection) return;
-    
+
         const deficit = app.getCatchUpDeficit();
         const track = app.getActiveTrack();
         const hasPlan = track?.catchUpPlan?.isActive;
-    
+
         // Only show if there's a plan OR if there's a deficit
         if (!deficit.isAnyBehind && !hasPlan) {
             catchUpSection.classList.add('hidden');
+            if (placeholder) placeholder.classList.remove('hidden');
             return;
         }
-    
+
         catchUpSection.classList.remove('hidden');
-    
+        if (placeholder) placeholder.classList.add('hidden');
+
         if (hasPlan) {
             renderActivePlan(catchUpSection, deficit, track);
         } else {
             renderDeficitNotice(catchUpSection, deficit);
         }
     }
-    
+
     function renderActivePlan(section, deficit, track) {
         const plan = track.catchUpPlan;
         const planEntries = Object.entries(plan.books || {});
@@ -480,33 +659,33 @@ export function renderProgressPage(container, app) {
             }
             return `<div class="flex items-center justify-between py-1">
                 <span class="text-sm font-medium text-slate-700">מסכת ${bookName}</span>
-                <span class="text-sm text-emerald-600 font-bold">${desc}</span>
+                <span class="text-sm text-slate-600 font-bold">${desc}</span>
             </div>`;
         }).join('');
-    
+
         section.innerHTML = `
-            <div class="bg-emerald-50 border border-emerald-200 rounded-2xl p-5 shadow-sm">
+            <div class="bg-blue-50 border border-blue-200 rounded-2xl p-5 shadow-sm">
                 <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
                     <div class="flex items-center gap-2">
                         <span class="text-xl">✅</span>
                         <h3 class="font-bold text-slate-800">תכנית צמצום פעילה</h3>
-                        <span class="text-xs bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full font-bold">מהיום</span>
+                        <span class="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full font-bold">מהיום</span>
                     </div>
                     <button id="cancelCatchUpBtn" class="w-full sm:w-auto text-sm text-red-500 hover:text-red-700 font-bold px-4 py-2 rounded-lg border border-red-200 hover:bg-red-50 transition-all">
                         בטל תכנית
                     </button>
                 </div>
-                <div class="divide-y divide-emerald-100">${detailsHtml}</div>
+                <div class="divide-y divide-blue-100">${detailsHtml}</div>
             </div>
         `;
-    
+
         document.getElementById('cancelCatchUpBtn')?.addEventListener('click', async () => {
             await app.handleCancelCatchUpPlan();
             await app.handleScheduleGeneration();
             renderCatchUpSection();
         });
     }
-    
+
     function renderDeficitNotice(section, deficit) {
         const deficitHtml = Object.entries(deficit.books)
             .filter(([, d]) => d.isBehind)
@@ -523,15 +702,15 @@ export function renderProgressPage(container, app) {
                 const deficitDafs = d.deficit / 2;
                 return `<div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 py-2">
                     <div class="flex items-center gap-2">
-                        <span class="text-sm font-medium text-slate-700">מסכת ${d.bookName}</span>
+                        <span class="text-sm font-medium text-slate-600">מסכת ${d.bookName}</span>
                         <span class="text-sm text-red-500 font-bold">${deficitDafs} דפים מאחור</span>
                     </div>
                     ${note ? `<span class="text-[14px] text-slate-500">${note}</span>` : ''}
                 </div>`;
             }).join('');
-    
+
         const hasPastTarget = Object.entries(deficit.books).some(([, d]) => d.isBehind && d.calcMethod === 'targetDate' && d.targetDatePassed);
-    
+
         section.innerHTML = `
             <div class="bg-amber-50 border border-amber-200 rounded-2xl p-5 shadow-sm">
                 <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
@@ -556,27 +735,27 @@ export function renderProgressPage(container, app) {
                 <p class="text-xs text-slate-500 mt-3">ללא תכנית צמצום פערים, ההתאמה נעשית אוטומטית: חומר שנותר יחולק מחדש מהיום ועד הסוף.</p>
             </div>
         `;
-    
+
         document.getElementById('createCatchUpBtn')?.addEventListener('click', async () => {
             await showCatchUpDialog(app, deficit, renderCatchUpSection);
         });
     }
-    
+
     async function showCatchUpDialog(app, deficit, onComplete) {
         // 1. Grab the active track from the app instance so it is in scope
         const activeTrack = app.getActiveTrack(); 
         if (!activeTrack) return;
-    
+
         const behindBooks = Object.entries(deficit.books).filter(([, d]) => d.isBehind);
         if (behindBooks.length === 0) return;
-    
+
         const inputs = [];
-    
+
         behindBooks.forEach(([bookIdx, bookData]) => {
             const isTarget = bookData.calcMethod === 'targetDate';
             const bookLabel = `מסכת ${bookData.bookName} (${bookData.deficit / 2} דפים מאחור)`;
             const strategyFieldName = `strategy_${bookIdx}`;
-    
+
             if (isTarget) {
                 const targetPassed = bookData.targetDatePassed;
                 const options = targetPassed
@@ -588,7 +767,7 @@ export function renderProgressPage(container, app) {
                         { value: 'squeeze', text: '↔️ דחוס: חלק את כל החומר שנותר על הימים הנותרים כדי לסיים בזמן המקורי' },
                         { value: 'sprint', text: '⚡ ספרינט: חלק את הפער שנוצר באופן שווה על פני מספר ימי ספרינט' }
                       ];
-    
+
                 inputs.push({
                     type: 'select',
                     name: strategyFieldName,
@@ -597,7 +776,7 @@ export function renderProgressPage(container, app) {
                 });
                 let maxDate = '';
                 const nextBookIdx = parseInt(bookIdx) + 1;
-                
+
                 // This now works perfectly because activeTrack is defined!
                 if (nextBookIdx < activeTrack.bookSequence.length) {
                     const nextBook = activeTrack.bookSequence[nextBookIdx];
@@ -610,7 +789,7 @@ export function renderProgressPage(container, app) {
                     }
                 }
                 const todayStr = new Date().toISOString().split('T')[0];
-    
+
                 inputs.push({
                     type: 'date',
                     name: `newTargetDate_${bookIdx}`,
@@ -662,7 +841,7 @@ export function renderProgressPage(container, app) {
                 });
             }
         });
-    
+
         const result = await showDialog({
             title: 'צור תכנית צמצום פערים',
             message: `אתה ${deficit.totalDeficit / 2} דפים מאחור. בחר אסטרטגיית צמצום פערים לכל ספר:`,
@@ -672,7 +851,7 @@ export function renderProgressPage(container, app) {
             cancelText: 'ביטול',
             inputs
         });
-    
+
         if (!result) return;
 
         const planConfig = { books: {} };
@@ -696,7 +875,7 @@ export function renderProgressPage(container, app) {
                         const el = document.querySelector(`[name="sprintDays_${bookIdx}"]`);
                         rawDays = el ? el.value : 7;
                     }
-                    
+
                     planConfig.books[bookIdx] = {
                         strategy: 'sprint',
                         sprintDays: Math.max(1, parseInt(rawDays, 10) || 7),
@@ -750,78 +929,3 @@ export function renderProgressPage(container, app) {
         // Clean-up if necessary
     }
 }
-
-/* ================================================================
- * DEPRECATED — Daily Study Requirement View
- * ================================================================
- * Previously lived in ui/components/book-config-modal.js where it did
- * not belong. It renders one button per scheduled day for a book,
- * colored by progress and with badges for today and completion status.
- * Kept here (commented out) for reference / future re-integration into
- * the progress page if the daily view is revived.
- * ================================================================ */
-// // Renders the daily study requirement view — one button per scheduled day for this Book, colored by progress and with badges for today and completion status
-// export function renderDailyView(containerId, daySlots, amudStates) {
-//     const container = document.getElementById(containerId);
-//     if (!container) return;
-//
-//     if (!daySlots || daySlots.length === 0) {
-//         container.innerHTML = `<div class="text-center text-slate-400 italic text-sm py-8">
-//             אין ימי לימוד מתוכננים. יש ליצור לוח לימוד תחילה.
-//         </div>`;
-//         return;
-//     }
-//
-//     const today = new Date().toISOString().split('T')[0];
-//
-//     const html = daySlots.map((slot, idx) => {
-//         let learnedCount = 0, skippedCount = 0;
-//         for (let i = slot.amudStart; i < slot.amudStart + slot.amudCount; i++) {
-//             if (i < amudStates.length) {
-//                 if (amudStates[i] === 1) learnedCount++;
-//                 else if (amudStates[i] === 2) skippedCount++;
-//             }
-//         }
-//         const isFullyLearned = learnedCount === slot.amudCount;
-//         const isFullySkipped = skippedCount === slot.amudCount;
-//         const isPartial = (learnedCount > 0 || skippedCount > 0) && !isFullyLearned && !isFullySkipped;
-//         const isToday = slot.dateString === today;
-//         const isPast = slot.dateString < today;
-//
-//         // Badge row is always rendered at fixed height to prevent layout shift
-//         let badgeText, badgeColor;
-//         if (isFullyLearned)      { badgeText = '✓';    badgeColor = 'text-emerald-500'; }
-//         else if (isFullySkipped) { badgeText = 'דלג';  badgeColor = 'text-amber-500'; }
-//         else if (isPartial)      { badgeText = `${learnedCount}/${slot.amudCount}`; badgeColor = 'text-blue-500'; }
-//         else if (isToday)        { badgeText = 'היום'; badgeColor = 'text-blue-600'; }
-//         else                     { badgeText = '\u00A0'; badgeColor = ''; } // non-breaking space holds the row height
-//
-//         let bg, border, textColor;
-//         if (isFullyLearned)      { bg = 'bg-emerald-50'; border = 'border-emerald-300'; textColor = 'text-emerald-800'; }
-//         else if (isFullySkipped) { bg = 'bg-amber-50';   border = 'border-amber-300';   textColor = 'text-amber-800'; }
-//         else if (isPartial)      { bg = 'bg-blue-50';    border = 'border-blue-300';    textColor = 'text-blue-800'; }
-//         else if (isToday)        { bg = 'bg-blue-50';    border = 'border-blue-400';    textColor = 'text-blue-800'; }
-//         else if (isPast)         { bg = 'bg-slate-50';   border = 'border-slate-200';   textColor = 'text-slate-400'; }
-//         else                     { bg = 'bg-white';      border = 'border-slate-200';   textColor = 'text-slate-600'; }
-//
-//         const [, m, d] = slot.dateString.split('-');
-//         const dateLabel = `${d}/${m}`;
-//
-//         // Dynamically compute the local range content labels safely using your indexToDaf engine
-//         let dafRange = '';
-//         if (slot.amudCount > 0) {
-//             const startLabel = indexToDaf(slot.amudStart);
-//             const endLabel = indexToDaf(slot.amudStart + slot.amudCount - 1);
-//             dafRange = (startLabel === endLabel) ? startLabel : `${startLabel} - ${endLabel}`;
-//         }
-//
-//         return `<button data-slot-idx="${idx}"
-//             class="day-slot-btn flex flex-col items-center justify-between p-2 rounded-xl border-2 ${bg} ${border} transition-all active:scale-95 hover:shadow-sm h-16 w-full">
-//             <span class="text-[11px] font-bold ${textColor} leading-tight">${dateLabel}</span>
-//             <span class="text-[9px] ${textColor} opacity-70 leading-tight text-center max-w-full truncate px-0.5">${dafRange}</span>
-//             <span class="text-[10px] font-bold ${badgeColor} leading-tight">${badgeText}</span>
-//         </button>`;
-//     }).join('');
-//
-//     container.innerHTML = `<div class="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-2">${html}</div>`;
-// }

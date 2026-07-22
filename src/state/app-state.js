@@ -537,15 +537,19 @@ export function createAppState() {
             updateBookSequenceUI(activeTrack.bookSequence);
         },
 
-        handleSyncToToday: async function () {
+        handleSyncToToday: async function (stateToMark) {
             if (!activeTrack.studySchedule || activeTrack.studySchedule.length === 0) {
                 await showDialog({ title: 'אין נתונים', message: 'יש ליצור לוח לימוד קודם כדי לסנכרן.', icon: '📅', confirmText: 'הבנתי' });
                 return;
             }
 
+            // stateToMark: 1 = learned, 2 = complete later (skip / async bank)
+            const targetState = (stateToMark === 1 || stateToMark === 2) ? stateToMark : 1;
+
+            const stateLabel = targetState === 1 ? 'נלמדו' : 'השלמה';
             const confirmed = await showDialog({
                 title: 'סנכרן עד היום',
-                message: 'פעולה זו תסמן את כל ימי הלימוד שעברו (עד היום) בכל הספרים כנלמדו. להמשיך?',
+                message: `פעולה זו תסמן את כל ימי הלימוד שעברו (עד היום) בכל הספרים כ${stateLabel}. להמשיך?`,
                 icon: '🔄',
                 showCancel: true,
                 confirmText: 'כן, סנכרן',
@@ -575,8 +579,8 @@ export function createAppState() {
                 slots.forEach(slot => {
                     if (slot.dateString <= todayStr) {
                         for (let i = slot.amudStart; i < slot.amudStart + slot.amudCount; i++) {
-                            if (i < book.amudStates.length && book.amudStates[i] !== 2) {
-                                book.amudStates[i] = 1;
+                            if (i < book.amudStates.length && book.amudStates[i] !== targetState) {
+                                book.amudStates[i] = targetState;
                                 hasChanges = true;
                             }
                         }
