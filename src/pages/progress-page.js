@@ -296,6 +296,9 @@ export function renderProgressPage(container, app) {
                 // Save and regenerate the adjusted schedule
                 app.handleSaveBookConfig({ index: idx });
                 app.handleScheduleGeneration();
+                
+                // Update catchup plan disclaimer UI
+                renderCatchUpSection();
             };
             
             gridContainer.addEventListener('click', gridContainer[handlerKey]);
