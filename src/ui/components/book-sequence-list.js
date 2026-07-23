@@ -1,4 +1,4 @@
-// Updates UI of Book sequence (planner page only — no progress bars)
+// Updates UI of Book sequence
 export function updateBookSequenceUI(sequence) {
     const list = document.getElementById('bookSequenceList');
     const badge = document.getElementById('bookCountBadge');
@@ -6,7 +6,39 @@ export function updateBookSequenceUI(sequence) {
 
     if (!list) return;
 
-    if (!sequence || sequence.length === 0) {
+    const count = sequence ? sequence.length : 0;
+    const hasBooks = count > 0;
+
+    // --- 1. Update Step 2 & Step 3 Grayed-Out / Disabled States ---
+    const step2Card = document.querySelector('.step-2');
+    if (step2Card) {
+        step2Card.classList.toggle('step-disabled', !hasBooks);
+        const step2Number = step2Card.querySelector('.step-number');
+        if (step2Number) step2Number.classList.toggle('step-number-muted', !hasBooks);
+
+        const settingsGearBtn = document.getElementById('settingsGearBtn');
+        if (settingsGearBtn) {
+            settingsGearBtn.classList.toggle('opacity-30', !hasBooks);
+            settingsGearBtn.classList.toggle('pointer-events-none', !hasBooks);
+        }
+    }
+
+    const step3Card = document.querySelector('.step-3');
+    if (step3Card) {
+        step3Card.classList.toggle('step-disabled', !hasBooks);
+        const step3Number = step3Card.querySelector('.step-number');
+        if (step3Number) step3Number.classList.toggle('step-number-muted', !hasBooks);
+
+        const generateBtn = document.getElementById('generateBtn');
+        if (generateBtn) {
+            generateBtn.disabled = !hasBooks;
+            generateBtn.classList.toggle('opacity-40', !hasBooks);
+            generateBtn.classList.toggle('cursor-not-allowed', !hasBooks);
+        }
+    }
+
+    // --- 2. Update Empty List State ---
+    if (!hasBooks) {
         list.className = "max-h-64 overflow-y-auto bg-slate-50 p-4 rounded-xl border-2 border-dashed border-slate-200 min-h-[80px]";
         list.innerHTML = `
             <div class="text-center text-slate-400 text-sm italic pt-4">
@@ -18,9 +50,9 @@ export function updateBookSequenceUI(sequence) {
         return;
     }
 
+    // --- 3. Update Active List State ---
     list.className = "ordered-book-list space-y-1.5 max-h-64 overflow-y-auto bg-slate-50 py-3 px-2 rounded-xl border-2 border-dashed border-slate-200 min-h-[80px] touch-pan-y";
     
-    const count = sequence.length;
     if (badge) { badge.textContent = `${count} ספרים`; badge.className = 'count-badge count-badge-active'; }
     if (clearBtn) clearBtn.classList.remove('hidden');
 
