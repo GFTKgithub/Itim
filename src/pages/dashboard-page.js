@@ -19,7 +19,7 @@ export function renderDashboardPage(container, app, navigateTo) {
             </div>
 
             <!-- Create New Track Section -->
-            <div class="bg-white rounded-2xl shadow-xl mb-8 border border-slate-200 overflow-hidden">
+            <div class="bg-white rounded-2xl shadow-md mb-8 border border-slate-200 overflow-hidden">
                 <div class="h-2 bg-gradient-to-r from-blue-900 via-blue-700 to-blue-900"></div>
                 <div class="p-6 md:p-8">
                     <div class="flex items-center gap-3 mb-5">

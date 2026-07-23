@@ -248,7 +248,7 @@ export function renderPlannerPage(container, app) {
             </div>
 
             <div class="relative mt-6">
-                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 bg-white p-4 rounded-2xl shadow-xl border border-slate-200 mb-6 select-none no-print" dir="rtl">
+                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 bg-white p-4 rounded-2xl border border-slate-200 mb-6 select-none no-print" dir="rtl">
                     <div class="flex items-center gap-2">
                         <span class="text-xl">📅</span>
                         <h3 class="text-md font-bold text-slate-800">תצוגה מקדימה</h3>

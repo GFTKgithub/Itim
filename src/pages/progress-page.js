@@ -126,7 +126,7 @@ function getProgressPageHtml(activeTrack, bookSequence) {
                     </div>
 
                     <!-- Overall Progress Bar -->
-                    <div class="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
+                    <div class="bg-white rounded-2xl border border-slate-200 p-6 shadow-lg">
                         <div class="flex justify-between items-center mb-3">
                             <h3 class="font-bold text-slate-800">התקדמות כללית</h3>
                             <span class="text-sm font-bold text-slate-500">${totalLearned}/${activeAmudim} עמודים</span>
@@ -253,7 +253,7 @@ function getProgressPageHtml(activeTrack, bookSequence) {
                             const pct = activeAmudim > 0 ? Math.round((learned / activeAmudim) * 100) : 0;
                             
                             return `
-                                <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden" data-book-idx="${idx}">
+                                <div class="bg-white rounded-2xl border border-slate-200 shadow-xl overflow-hidden" data-book-idx="${idx}">
                                     <div class="p-4 border-b border-slate-100">
                                         <div class="flex items-center justify-between">
                                             <div class="flex items-center gap-2">
